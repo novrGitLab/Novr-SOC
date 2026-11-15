@@ -12,8 +12,8 @@
 | Alert forwarder | `services/edge/forwarder` | Python standard library | Server 1 |
 | Threat Insights feeder | `services/edge/threat_intel` | Python standard library, TAXII 2.1 / STIX 2.1 | Server 1 |
 | Response bridge | `services/edge/response_bridge` | Python standard library | Server 1 |
-| NHAI worker | `apps/api/app/nhai/worker.py` | API code, local model runtime | Server 1 |
-| VMS worker | `services/vms-worker` | Python | owner's local host |
+| NHAI worker | `apps/api/app/nhai/worker.py` | API code, local model runtime; database role `novrsoc_nhai` (least privilege) | Server 1 |
+| VMS worker | `services/vms-worker` | Python, own image; scanning disabled by default | Server 2 (`vms` profile, internal network to the API only) |
 
 The jobs worker does the timed work:
 

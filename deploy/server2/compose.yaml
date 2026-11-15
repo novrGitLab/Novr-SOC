@@ -1,5 +1,6 @@
 # NovrSOC V2, Server 2 (application host): PostgreSQL 16, migrations, API (with the SOAR engine, approvals
-# and audit), the background jobs worker, web. NOT DEPLOYED. Ordered procedure: docs/public/DEPLOYMENT.md.
+# and audit), the background jobs worker, web, and the VMS worker (profile "vms", scanning disabled).
+# NOT DEPLOYED. Ordered procedure: docs/public/DEPLOYMENT.md.
 #
 #   cd /opt/novrsoc-v2/deploy/server2
 #   cp compose.env.example .env            # image tag, config directory, bind addresses (no secrets)
@@ -82,7 +83,7 @@ services:
     volumes:
       - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/files:/run/novrsoc:ro
     ports: ["${NOVRSOC_API_BIND:-127.0.0.1:8000}:8000"]
-    networks: [db, app]
+    networks: [db, app, vms]
     tmpfs: ["/tmp:size=64m"]
     mem_limit: 1g
     healthcheck:
@@ -125,6 +126,30 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    depends_on:
+      api: {condition: service_healthy}
+
+  # ---- VMS worker (profile "vms": started only at gate G-B, `docker compose --profile vms up -d vms-worker`) ----
+  # Heartbeat only (VMS_ENGINE=disabled): it never claims a job, and the API refuses scans while
+  # NOVRSOC_VMS_SCANNING=disabled. Its only network is `vms` (internal, no route out): it reaches the API and nothing
+  # else, so no target can be scanned from here. One organization-bound vms_worker credential per organization in
+  # ${NOVRSOC_CONFIG_DIR}/vms/<org-slug>.token (0400, uid 10002). No database access, no secrets beyond those tokens.
+  vms-worker:
+    <<: *hardening
+    image: novrsoc-vms-worker:${NOVRSOC_IMAGE_TAG:?set NOVRSOC_IMAGE_TAG in .env}
+    profiles: [vms]
+    restart: unless-stopped
+    environment:
+      NOVRSOC_API_URL: http://api:8000
+      NOVRSOC_API_TRANSPORT: compose-internal
+      NOVRSOC_VMS_TOKEN_DIR: /run/novrsoc-vms
+      VMS_ENGINE: disabled
+    volumes:
+      - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/vms:/run/novrsoc-vms:ro
+    networks: [vms]
+    tmpfs: ["/tmp:size=16m"]
+    mem_limit: 256m
+    pids_limit: 64
     depends_on:
       api: {condition: service_healthy}
 
@@ -176,6 +201,8 @@ services:
 networks:
   db:
     internal: true          # no route out: only postgres, migrate, api and operator jobs
+  vms:
+    internal: true          # VMS worker <-> API only; no route out, so the worker cannot reach any scan target
   app:
     ipam:
       config: [{subnet: "${NOVRSOC_APP_SUBNET:-172.30.10.0/24}"}]

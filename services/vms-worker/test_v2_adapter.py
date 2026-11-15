@@ -52,6 +52,45 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(api.calls[-1][1]["outcome"], "failed")
         self.assertEqual(v2_adapter.run_once(FakeApi(None), "tcp_connect", None), "no_job")
 
+    def test_disabled_engine_heartbeats_and_never_claims(self):
+        api = FakeApi({"job_id": "j9", "targets": [{"kind": "ip", "value": "127.0.0.1"}]})
+        self.assertEqual(v2_adapter.run_once(api, "disabled", None), "disabled")
+        self.assertEqual([c[0] for c in api.calls], ["/heartbeat"])
+        dep = api.calls[0][1]["dependencies"][0]
+        self.assertEqual((dep["name"], dep["state"]), ("engine.disabled", "unconfigured"))
+
+    def test_default_engine_is_disabled_and_unknown_engines_are_refused(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            env = {"NOVRSOC_API_URL": "http://api:8000", "NOVRSOC_API_TRANSPORT": "compose-internal", "NOVRSOC_VMS_TOKEN_DIR": d}
+            for name in ("alpha.token", "beta.token", "notes.txt"):
+                with open(os.path.join(d, name), "w", encoding="utf-8") as f:
+                    f.write("nsk_x.y")
+            self.assertEqual([os.path.basename(p) for p in v2_adapter.token_files(env)], ["alpha.token", "beta.token"])
+            old = dict(os.environ)
+            try:
+                os.environ.clear(); os.environ.update({**env, "VMS_ENGINE": "nmap"})
+                with self.assertRaises(SystemExit):
+                    v2_adapter.main(["--once"])
+            finally:
+                os.environ.clear(); os.environ.update(old)
+        with tempfile.TemporaryDirectory() as empty, self.assertRaises(SystemExit):
+            v2_adapter.token_files({"NOVRSOC_VMS_TOKEN_DIR": empty})
+        import inspect
+        self.assertIn('os.environ.get("VMS_ENGINE", "disabled")', inspect.getsource(v2_adapter.main))
+
+    def test_plain_http_only_to_loopback_or_an_explicit_compose_service_name(self):
+        allowed = v2_adapter.api_url_allowed
+        self.assertTrue(allowed("https://api.example.test"))
+        self.assertTrue(allowed("http://127.0.0.1:8000"))
+        self.assertTrue(allowed("http://api:8000", "compose-internal"))
+        self.assertFalse(allowed("http://api:8000"))                                   # no opt-in
+        self.assertFalse(allowed("http://api.example.com:8000", "compose-internal"))   # a DNS name is never plain http
+        self.assertFalse(allowed("http://203.0.113.7:8000", "compose-internal"))
+        self.assertFalse(allowed("ftp://api", "compose-internal"))
+        with self.assertRaises(SystemExit):
+            v2_adapter.Api("http://api:8000", "t")
+
     def test_run_once_completes_a_replay_job(self):
         api = FakeApi({"job_id": "j2", "targets": [{"kind": "domain", "value": "app.alpha.test"}]})
         self.assertEqual(v2_adapter.run_once(api, "greenbone_report", REPORT), "completed")

@@ -5,11 +5,12 @@
 # It never contacts a server, a registry or GitHub.
 #
 #   bash scripts/release/rehearse_server2.sh [image tag]     # default tag: rehearsal (build first, see below)
-#   for i in api web; do docker build -f deploy/docker/$i.Dockerfile -t novrsoc-$i:rehearsal .; done
+#   for i in api web vms-worker; do docker build -f deploy/docker/$i.Dockerfile -t novrsoc-$i:rehearsal .; done
 #
 # Steps: compose up (postgres -> migrate -> api after check-env -> web) -> bootstrap-platform (and its refusal on a
-# second run) -> production-path checks (scripts/release/rehearsal_checks.py) -> encrypted backup -> restore drill
-# into a disposable database -> rollback guard (downgrade to 0010, i.e. 0011-0015: check-env must FAIL; upgrade back) ->
+# second run) -> production-path checks (scripts/release/rehearsal_checks.py) -> VMS worker (identity, heartbeat,
+# scanning disabled, network isolation) -> encrypted backup -> restore drill
+# into a disposable database -> rollback guard (downgrade to 0010, i.e. 0011-0016: check-env must FAIL; upgrade back) ->
 # container hardening inspection -> teardown.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
@@ -22,7 +23,7 @@ if command -v cygpath >/dev/null 2>&1; then   # Git Bash on Windows: hand Docker
 fi
 DC=(docker compose -p novrsoc-rehearsal --env-file "$WORK/.env" -f "$ROOT/deploy/server2/compose.yaml")
 quiet() { grep -v -E '^\s*(Container|Network|Volume)|Creat|Start|Waiting|Healthy|Running|Pulling' || true; }
-cleanup() { "${DC[@]}" --profile ops down -v >/dev/null 2>&1 || true; rm -rf "$WORK"; }
+cleanup() { "${DC[@]}" --profile ops --profile vms down -v >/dev/null 2>&1 || true; rm -rf "$WORK"; }
 trap cleanup EXIT
 
 echo "== configuration (throwaway, $WORK)"
@@ -62,6 +63,29 @@ if "${DC[@]}" --profile ops run --rm --no-TTY -v "$WORK/bootstrap:/out" operator
   echo "FAIL  a second bootstrap was accepted"; exit 1; else echo "PASS  a second bootstrap is refused"; fi
 
 echo "== production-path checks"; "$PY" "$ROOT/scripts/release/rehearsal_checks.py" owner@rehearsal.invalid "$WORK/bootstrap/first-admin.txt"
+
+echo "== VMS worker (profile vms; scanning disabled; internal network to the API only)"
+mkdir -p "$WORK/issued" "$WORK/config/vms"
+"${DC[@]}" --profile ops run --rm --no-TTY -v "$WORK/issued:/out" operator create-service-identity --kind vms_worker \
+  --name server2-vms-worker --org-slug rehearsal-client --scope vms:worker --out /out/rehearsal-client.token 2>&1 | quiet
+install -m 0444 "$WORK/issued/rehearsal-client.token" "$WORK/config/vms/rehearsal-client.token"   # production: -o 10002 -m 0400
+"${DC[@]}" --profile vms up -d vms-worker 2>&1 | quiet
+pg() { "${DC[@]}" exec -T postgres sh -c "PGPASSWORD=\$(cat /run/secrets/pg_superuser_password) psql -U postgres -d novrsoc -tAc \"$1\""; }
+beats=0
+for _ in $(seq 1 30); do
+  beats=$(pg "SELECT count(*) FROM novrsoc.vms_worker_heartbeats" | tr -d '[:space:]')
+  [ "${beats:-0}" -gt 0 ] && break; sleep 2
+done
+if [ "${beats:-0}" -gt 0 ]; then echo "PASS  the VMS worker's heartbeat reached the API ($beats)"; else echo "FAIL  no VMS worker heartbeat"; exit 1; fi
+dep=$(pg "SELECT dependencies->0->>'name' FROM novrsoc.vms_worker_heartbeats ORDER BY received_at DESC LIMIT 1" | tr -d '[:space:]')
+[ "$dep" = "engine.disabled" ] && echo "PASS  the worker reports scanning disabled (engine.disabled)" || { echo "FAIL  engine state: $dep"; exit 1; }
+jobs=$(pg "SELECT count(*) FROM novrsoc.vms_scan_jobs WHERE state <> 'queued'" | tr -d '[:space:]')
+[ "${jobs:-0}" = "0" ] && echo "PASS  no scan job was claimed" || { echo "FAIL  $jobs scan job(s) left the queue"; exit 1; }
+docker network inspect novrsoc-rehearsal_vms --format 'vms network internal={{.Internal}}'
+if "${DC[@]}" exec -T vms-worker python -c "import socket; socket.create_connection(('postgres', 5432), 3)" >/dev/null 2>&1; then
+  echo "FAIL  the VMS worker reaches the database"; exit 1; else echo "PASS  the VMS worker cannot reach the database"; fi
+"${DC[@]}" exec -T vms-worker python -c "import socket; socket.create_connection(('api', 8000), 3)" \
+  && echo "PASS  the VMS worker reaches the API on the internal network"
 
 echo "== backup and restore drill"
 "${DC[@]}" --profile ops run --rm --no-TTY backup 2>&1 | quiet

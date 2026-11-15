@@ -49,6 +49,9 @@ def make_database(admin_url: str, name: str) -> None:
     admin = create_engine(admin_url, isolation_level="AUTOCOMMIT")
     with admin.connect() as c:
         c.execute(text(f'CREATE DATABASE "{name}"'))
+        c.execute(text("""DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'novrsoc_nhai') THEN
+                              CREATE ROLE novrsoc_nhai NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS CONNECTION LIMIT 2;
+                            END IF; END $$"""))
     admin.dispose()
     eng = create_engine(_with_db(admin_url, name), isolation_level="AUTOCOMMIT")
     with eng.connect() as c:

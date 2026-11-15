@@ -37,7 +37,7 @@ export default function HealthPage() {
                         : <ul className="text-xs">{d.failures_24h.map((f) => <li key={String(f.action)}><span className="font-mono">{String(f.action)}</span> × {String(f.count)}</li>)}</ul>)}
                 </Loaded>
             </div>
-            <Loaded title="VMS workers" hint="Heartbeats from the owner's local host" data={h.data} error={h.error}>
+            <Loaded title="VMS workers" hint="Heartbeats from the VMS worker on Server 2" data={h.data} error={h.error}>
                 {(d) => (d.workers.length === 0 ? <p className="text-xs text-foreground-muted">No VMS worker has reported.</p>
                     : <ul className="text-xs">{d.workers.map((w) => <li key={String(w.name)}>{String(w.name)} ({String(w.organization)}) · {String(w.state)} · v{String(w.version)} · {fmt(String(w.received_at))}</li>)}</ul>)}
             </Loaded>

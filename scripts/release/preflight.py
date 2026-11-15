@@ -145,6 +145,21 @@ def check_compose() -> None:
                 problems.append("database network is not internal")
             if cfg["services"].get("postgres", {}).get("ports"):
                 problems.append("postgres publishes a port")
+            # VMS worker: gated (profile), heartbeat-only by default, and isolated on an internal network with the API.
+            vms = cfg["services"].get("vms-worker")
+            if vms is None:
+                problems.append("vms-worker service missing")
+            else:
+                if "vms-worker" in default.get("services", {}):
+                    problems.append("vms-worker starts without its gate profile")
+                if set(vms.get("networks") or {}) != {"vms"} or not nets.get("vms", {}).get("internal"):
+                    problems.append("vms-worker must be on the internal vms network only")
+                if (vms.get("environment") or {}).get("VMS_ENGINE") != "disabled":
+                    problems.append("vms-worker: VMS_ENGINE is not disabled")
+                if vms.get("ports"):
+                    problems.append("vms-worker publishes a port")
+                if any(not v.get("read_only") for v in vms.get("volumes", [])):
+                    problems.append("vms-worker: a volume is writable")
         record("compose", not problems, f"{server}: {len(cfg['services'])} services; " + ("; ".join(problems) or "hardening rules met"))
     shutil.rmtree(tmp, ignore_errors=True)
 
@@ -200,6 +215,14 @@ def check_dependencies() -> None:
     py = str(venv) if venv.exists() else sys.executable
     r = subprocess.run([py, str(ROOT / "scripts" / "release" / "runtime_lock.py"), "--check"], cwd=ROOT, capture_output=True, text=True)
     record("dependencies", r.returncode == 0, (r.stdout or r.stderr).strip())
+    vms_lock = ROOT / "services" / "vms-worker" / "requirements.lock"
+    pins = [ln.strip() for ln in vms_lock.read_text(encoding="utf-8").splitlines() if ln.strip() and not ln.startswith("#")] \
+        if vms_lock.exists() else []
+    loose = [p for p in pins if not re.fullmatch(r"[A-Za-z0-9_.-]+==[0-9][0-9A-Za-z.+-]*", p)]
+    gvm = [p for p in pins if p.lower().startswith("python-gvm")]
+    record("dependencies", bool(pins) and not loose and not gvm,
+           f"services/vms-worker/requirements.lock: {len(pins)} exact pins, no python-gvm" if pins and not loose and not gvm
+           else f"VMS worker lock: missing, loose pins {loose} or python-gvm {gvm}")
     pkg = json.loads((ROOT / "apps" / "web" / "package.json").read_text(encoding="utf-8"))
     deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
     hosted = [d for d in deps if "vercel" in d.lower() or "railway" in d.lower()] + \

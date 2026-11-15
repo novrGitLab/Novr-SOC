@@ -542,7 +542,7 @@ def health(p: Principal = Depends(require("platform:monitor")), conn: Connection
                              "Configured; its state is established by each dispatch receipt (see SOAR failures below)."))
     workers = h["vms_workers"]
     stale = [w for w in workers if _dt.fromisoformat(w["received_at"]) < now - _td(seconds=180)]
-    c.append(ComponentHealth(key="vms_workers", label="VMS workers (owner's local host)",
+    c.append(ComponentHealth(key="vms_workers", label="VMS workers (Server 2, vms profile)",
                              state="unconfigured" if not workers else "degraded" if stale else "ok",
                              detail=f"{len(workers)} worker(s), {len(stale)} stale" if workers else "No VMS worker has reported."))
     last = h["ingest"]["last_batch_at"]

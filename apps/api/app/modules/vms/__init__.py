@@ -1,7 +1,8 @@
 """Vulnerability management (workstream B): scopes, scan jobs, the V2 worker protocol, findings, remediation, report.
 
-The VMS worker runs on a LOCAL host operated by the owner, never on Server 1 or Server 2 (owner decision). It authenticates
-with an organization-bound `vms_worker` identity (`nsk_`, scope `vms:worker`); its organization comes from the identity.
+The VMS worker runs on Server 2 as the compose service `vms-worker` (profile "vms", owner decision), on an internal
+network that reaches only the API, with scanning disabled by default. It authenticates with an organization-bound
+`vms_worker` identity (`nsk_`, scope `vms:worker`); its organization comes from the identity.
 
 Scanning is controlled by NOVRSOC_VMS_SCANNING:
   disabled            (default) claims answer `scanning_disabled`; scopes may be recorded, scans are refused.
@@ -263,7 +264,7 @@ def status(p: Principal = Depends(require("vms:read")), conn: Connection = Depen
                                 FROM novrsoc.vms_worker_heartbeats h JOIN novrsoc.service_identities s ON s.id = h.identity_id
                                 ORDER BY s.name""")).all()
     reason = ("Local test targets only (development): scopes are limited to loopback and *.test / *.localhost names. "
-              "The worker runs on the owner's local host." if _enabled(settings) else
+              "In production the worker runs on Server 2 with scanning disabled." if _enabled(settings) else
               "Scanning is disabled in this installation. Workers can report health; they never receive work.")
     return VmsStatus(scanning="enabled" if _enabled(settings) else "disabled", reason=reason, workers=[
         VmsWorkerStatus(identity_name=r.name, last_heartbeat_at=r.received_at, component_version=r.component_version,

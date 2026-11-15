@@ -103,6 +103,7 @@ apps/api/tests/modules/insights/test_insights.py
 apps/api/tests/modules/insights/test_stix_taxii.py
 apps/api/tests/modules/nhai/test_nhai.py
 apps/api/tests/modules/nhai/test_nhai_consolidation.py
+apps/api/tests/modules/nhai/test_nhai_worker_role.py
 apps/api/tests/modules/nhai/test_ollama_backend.py
 apps/api/tests/modules/posture/test_posture.py
 apps/api/tests/modules/protection/test_protection.py
@@ -257,6 +258,7 @@ deploy/README.md
 deploy/dev/compose.yaml
 deploy/dev/postgres/init/01-roles.sh
 deploy/docker/api.Dockerfile
+deploy/docker/vms-worker.Dockerfile
 deploy/docker/web.Dockerfile
 deploy/server1/bridge.json.example
 deploy/server1/nhai-worker.env.example
@@ -350,6 +352,7 @@ packages/db/migrations/versions/0012_asset_inventory.py
 packages/db/migrations/versions/0013_secops_soar_ai_activity.py
 packages/db/migrations/versions/0014_intel_cnii_continuity.py
 packages/db/migrations/versions/0015_admin_exports_chat.py
+packages/db/migrations/versions/0016_nhai_worker_role.py
 release/PUBLIC_ALLOWLIST.txt
 release/PUBLIC_MANIFEST.tsv
 scripts/contracts/compat.py
@@ -390,6 +393,7 @@ services/edge/threat_intel/tests/test_taxii.py
 services/vms-worker/README.md
 services/vms-worker/fixtures/evidence-targets.json
 services/vms-worker/fixtures/greenbone-report.xml
+services/vms-worker/requirements.lock
 services/vms-worker/requirements.txt
 services/vms-worker/test_greenbone.py
 services/vms-worker/test_openvas_report.py

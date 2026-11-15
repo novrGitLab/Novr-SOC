@@ -1,0 +1,8 @@
+# VMS worker image (deploy/docker/vms-worker.Dockerfile): exact versions, installed with --no-deps.
+# requirements.txt states the supported range; this lock is what the image ships. python-gvm is NOT installed:
+# a live Greenbone connection is impossible from this image until a production scanning mode is approved (gate G-B).
+certifi==2026.10.23
+charset-normalizer==3.4.9
+idna==3.20
+requests==2.34.2
+urllib3==2.8.0

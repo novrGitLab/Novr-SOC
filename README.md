@@ -39,7 +39,7 @@ apps/web/            Next.js web application
 packages/contracts/  v1 API contracts (Pydantic → OpenAPI / JSON Schema → TypeScript)
 packages/db/         Alembic migrations (PostgreSQL 16, row-level security)
 services/edge/       Server 1 services: alert forwarder, Threat Insights feeder, response bridge
-services/vms-worker/ VMS scanning worker (local host; scanning disabled by default)
+services/vms-worker/ VMS worker (Server 2, own image; scanning disabled by default)
 deploy/              Docker images, Server 2 Compose, Server 1 systemd units, configuration templates
 scripts/             development, contract, end-to-end and release tooling
 docs/public/         documentation

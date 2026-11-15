@@ -1,8 +1,12 @@
-"""NovrSOC V2 adapter for the local VMS worker (runs on the owner's local host, never on Server 1 or Server 2).
+"""NovrSOC V2 adapter for the VMS worker. Production location: Server 2, as the compose service `vms-worker` (profile
+`vms`), on an internal network that reaches only the API. Development: any local host.
 
 Speaks the V2 worker protocol (/api/v1/vms/worker/, contracts in novrsoc_contracts.v1.vms): heartbeat, claim, results, finish, with an
-organization-bound `nsk_` vms_worker credential read from a file. Two engines, both restricted to LOCAL TEST TARGETS
-(loopback addresses, *.test and *.localhost names), checked again here before anything is touched:
+organization-bound `nsk_` vms_worker credential read from a file (or one file per organization from a directory).
+Engines:
+  disabled          (production default) heartbeat only: no job is ever claimed, nothing is touched.
+The two scanning engines are restricted to LOCAL TEST TARGETS (loopback addresses, *.test and *.localhost names),
+checked again here before anything is touched:
   tcp_connect       a real TCP connect check of a fixed port list on loopback targets (no payloads, no exploits);
   greenbone_report  replays a Greenbone GMP report FILE through the worker's tested parser (worker.openvas_results),
                     attributing its results to the claimed target. Nothing is scanned; the report is labelled as such.
@@ -10,7 +14,9 @@ Production scanning (real Greenbone / nmap against client networks) is NOT enabl
 
   python v2_adapter.py --once      claim at most one job, run it, finish it
   python v2_adapter.py             loop (heartbeat every 60 s)
-Environment: NOVRSOC_API_URL, NOVRSOC_VMS_TOKEN_FILE, NOVRSOC_API_CA_CERT (optional), VMS_ENGINE, VMS_GREENBONE_REPORT,
+Environment: NOVRSOC_API_URL, NOVRSOC_VMS_TOKEN_FILE or NOVRSOC_VMS_TOKEN_DIR (every *.token file in it is one
+organization's credential), NOVRSOC_API_CA_CERT (optional), NOVRSOC_API_TRANSPORT (`compose-internal` permits plain
+http to a single-label compose service name such as `api`), VMS_ENGINE (default `disabled`), VMS_GREENBONE_REPORT,
 VMS_TCP_PORTS (comma list).
 """
 from __future__ import annotations
@@ -23,12 +29,27 @@ import ssl
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from datetime import datetime, timezone
 
 VERSION = "2.0.0"
 DEFAULT_PORTS = (22, 80, 443, 3210, 5432, 8000, 8080, 55432)
+ENGINES = ("disabled", "tcp_connect", "greenbone_report")
+
+
+def api_url_allowed(url: str, transport: str | None = None) -> bool:
+    """https anywhere; plain http only to a loopback API, or (explicit `compose-internal` transport) to a single-label
+    compose service name, which resolves only on the container network and never through public DNS."""
+    if url.startswith("https://"):
+        return True
+    if not url.startswith("http://"):
+        return False
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    if host in ("127.0.0.1", "localhost", "::1"):
+        return True
+    return transport == "compose-internal" and bool(host) and "." not in host and ":" not in host
 
 
 def is_local_test_target(value: str) -> bool:
@@ -41,9 +62,10 @@ def is_local_test_target(value: str) -> bool:
 
 
 class Api:
-    def __init__(self, url: str, token: str, ca: str | None = None, opener=None):
-        if not (url.startswith("https://") or url.startswith("http://127.0.0.1") or url.startswith("http://localhost")):
-            raise SystemExit("NOVRSOC_API_URL must use https (plain http only for a loopback API)")
+    def __init__(self, url: str, token: str, ca: str | None = None, opener=None, transport: str | None = None):
+        if not api_url_allowed(url, transport):
+            raise SystemExit("NOVRSOC_API_URL must use https (plain http only for a loopback API, or a compose service "
+                             "name with NOVRSOC_API_TRANSPORT=compose-internal)")
         self.url, self.token = url.rstrip("/"), token
         ctx = ssl.create_default_context(cafile=ca) if ca else ssl.create_default_context()
         self.opener = opener or urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
@@ -102,6 +124,11 @@ def greenbone_replay(report_path: str, target: str, source_hosts=DEFAULT_REPLAY_
 
 
 def run_once(api: Api, engine: str, report: str | None, ports=DEFAULT_PORTS) -> str:
+    if engine == "disabled":   # heartbeat only: the worker reports that it is present and never claims a job
+        api.call("/heartbeat", {"sent_at": datetime.now(timezone.utc).isoformat(), "component_version": VERSION, "state": "ok",
+                                "dependencies": [{"name": "engine.disabled", "state": "unconfigured",
+                                                  "detail": "scanning disabled on this worker; no job is claimed"}]})
+        return "disabled"
     api.call("/heartbeat", {"sent_at": datetime.now(timezone.utc).isoformat(), "component_version": VERSION, "state": "ok",
                             "dependencies": [{"name": f"engine.{engine}", "state": "ok", "detail": "local test targets only"}]})
     status, claim = api.call("/claim")
@@ -124,19 +151,38 @@ def run_once(api: Api, engine: str, report: str | None, ports=DEFAULT_PORTS) -> 
         return "failed"
 
 
+def token_files(env=os.environ) -> list[str]:
+    """One credential per organization: every *.token file in NOVRSOC_VMS_TOKEN_DIR, or the single NOVRSOC_VMS_TOKEN_FILE."""
+    d = env.get("NOVRSOC_VMS_TOKEN_DIR")
+    if d:
+        files = sorted(os.path.join(d, n) for n in os.listdir(d) if n.endswith(".token"))
+        if not files:
+            raise SystemExit("NOVRSOC_VMS_TOKEN_DIR has no *.token file: issue a vms_worker identity per organization")
+        return files
+    if env.get("NOVRSOC_VMS_TOKEN_FILE"):
+        return [env["NOVRSOC_VMS_TOKEN_FILE"]]
+    raise SystemExit("set NOVRSOC_VMS_TOKEN_DIR or NOVRSOC_VMS_TOKEN_FILE")
+
+
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    with open(os.environ["NOVRSOC_VMS_TOKEN_FILE"], encoding="utf-8") as f:
-        token = f.read().strip()
-    api = Api(os.environ["NOVRSOC_API_URL"], token, os.environ.get("NOVRSOC_API_CA_CERT"))
-    engine = os.environ.get("VMS_ENGINE", "tcp_connect")
+    engine = os.environ.get("VMS_ENGINE", "disabled")
+    if engine not in ENGINES:
+        raise SystemExit(f"VMS_ENGINE must be one of {', '.join(ENGINES)}")
+    apis = []
+    for path in token_files():
+        with open(path, encoding="utf-8") as f:
+            apis.append(Api(os.environ["NOVRSOC_API_URL"], f.read().strip(), os.environ.get("NOVRSOC_API_CA_CERT"),
+                            transport=os.environ.get("NOVRSOC_API_TRANSPORT")))
     report = os.environ.get("VMS_GREENBONE_REPORT")
     ports = tuple(int(p) for p in os.environ.get("VMS_TCP_PORTS", "").split(",") if p.strip()) or DEFAULT_PORTS
     if "--once" in argv:
-        print(json.dumps({"event": "run_once", "result": run_once(api, engine, report, ports)}))
+        for api in apis:
+            print(json.dumps({"event": "run_once", "result": run_once(api, engine, report, ports)}), flush=True)
         return 0
     while True:
-        print(json.dumps({"event": "cycle", "result": run_once(api, engine, report, ports)}), flush=True)
+        for api in apis:   # each organization's credential is used only for its own heartbeat, claims and results
+            print(json.dumps({"event": "cycle", "result": run_once(api, engine, report, ports)}), flush=True)
         time.sleep(60)
 
 

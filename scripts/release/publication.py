@@ -219,6 +219,15 @@ def scan(paths: list[str]) -> list[str]:
     return [p for p in problems if tuple(p.split(": ", 1)) not in REVIEWED]
 
 
+def published_bytes(rel: str) -> bytes:
+    """The bytes a checkout holds: Git stores text with LF endings (.gitattributes `* text=auto`), so text files are
+    hashed and staged with LF, whatever the working tree on this machine uses. Binary files are taken as they are."""
+    b = (ROOT / rel).read_bytes()
+    if Path(rel).suffix in TEXT_SUFFIXES and b"\0" not in b:
+        return b.replace(b"\r\n", b"\n")
+    return b
+
+
 def manifest_lines(paths: list[str]) -> list[str]:
     lines = ["path\tsha256\tbytes"]
     for rel in paths:
@@ -226,7 +235,7 @@ def manifest_lines(paths: list[str]) -> list[str]:
             continue
         if not (ROOT / rel).exists():
             continue
-        b = (ROOT / rel).read_bytes()
+        b = published_bytes(rel)
         lines.append(f"{rel}\t{hashlib.sha256(b).hexdigest()}\t{len(b)}")
     return lines
 
@@ -244,7 +253,8 @@ def main(argv: list[str]) -> int:
         for rel in paths:
             t = dest / rel
             t.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / rel, t)
+            t.write_bytes(published_bytes(rel))
+            shutil.copystat(ROOT / rel, t)
         print(f"staged {len(paths)} files into {dest}")
         return 0
     problems = scan(paths)

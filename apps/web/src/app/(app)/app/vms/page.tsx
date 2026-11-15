@@ -1,6 +1,6 @@
 'use client';
 
-// VMS overview: scanning state (the worker runs on the owner's local host; scanning is disabled unless the installation
+// VMS overview: scanning state (the worker runs on Server 2; scanning is disabled unless the installation
 // enables it), open findings by priority and severity, remediation and scan activity, and the riskiest assets.
 import Link from 'next/link';
 import { useCallback } from 'react';
@@ -39,7 +39,7 @@ export default function VmsOverviewPage() {
                     {r && <BarList label="Findings by status" items={Object.entries(r.by_status).map(([k, v]) => ({ key: k, label: k.replace(/_/g, ' '), value: v }))} />}
                 </ChartCard>
                 <ChartCard title="Scanning" hint={r ? `${r.scans_completed_30d} scan(s) completed in 30 days` : undefined}>
-                    <ul className="text-xs space-y-1">{(status.data?.workers ?? []).length === 0 ? <li className="text-foreground-muted">No VMS worker has reported. The worker runs on the owner&apos;s local host.</li>
+                    <ul className="text-xs space-y-1">{(status.data?.workers ?? []).length === 0 ? <li className="text-foreground-muted">No VMS worker has reported. In production it runs on Server 2 (vms profile) and only sends heartbeats until scanning is approved.</li>
                         : status.data?.workers.map((w) => <li key={w.identity_name}>{w.identity_name} · v{w.component_version} · {w.state} · {w.stale ? 'stale' : 'reporting'} · {fmt(w.last_heartbeat_at)}</li>)}</ul>
                     <Link href="/app/vms/scans" className="mt-3 inline-block text-xs underline">Scopes, scans and schedules</Link>
                 </ChartCard>

@@ -48,7 +48,7 @@ export default function ScansPage() {
     return (
         <>
             <PageHeader title="Scans and schedules" icon={ScanSearch}
-                description="Scans run only inside an approved, unexpired scope, by the VMS worker on the owner's local host (never on the servers). Scope is re-checked when a scan is requested, when it is claimed and for every result." />
+                description="Scans run only inside an approved, unexpired scope, by the VMS worker on Server 2, which reaches only the API. Scope is re-checked when a scan is requested, when it is claimed and for every result." />
             {status.data && <p className="text-xs flex items-center gap-2" data-testid="vms-scanning"><StatusPill tone={status.data.scanning === 'enabled' ? 'warning' : 'neutral'} label={`Scanning ${status.data.scanning}`} /> {status.data.reason}</p>}
             {act.notice}
             <div className="grid gap-5 lg:grid-cols-2">
