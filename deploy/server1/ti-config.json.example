@@ -1,0 +1,12 @@
+{
+  "_comment": "/etc/novrsoc-ti/config.json. Disabled until a source has enabled: true. Passwords and tokens are files (0400).",
+  "api_url": "https://<api name on WireGuard>",
+  "api_ca": "/etc/novrsoc-ti/api-ca.pem",
+  "state_file": "/var/lib/novrsoc-ti/state.json",
+  "poll_seconds": 900,
+  "sources": [
+    {"name": "<vetted-feed-name>", "api_root": "https://<taxii server>/<api root>/", "collection_id": "<collection uuid>",
+     "user": "<taxii user>", "password_file": "/etc/novrsoc-ti/<feed>.password", "ca_file": null,
+     "token_file": "/etc/novrsoc-ti/<organization>.token", "enabled": false, "page_size": 100, "max_pages": 20}
+  ]
+}

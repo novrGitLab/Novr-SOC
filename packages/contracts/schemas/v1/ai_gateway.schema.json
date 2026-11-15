@@ -1,0 +1,589 @@
+{
+  "$defs": {
+    "ChatTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 16000,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "system",
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "title": "ChatTurn",
+      "type": "object"
+    },
+    "GatewayKey": {
+      "additionalProperties": false,
+      "description": "Stored view; never contains the secret.",
+      "properties": {
+        "allowed_models": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Models",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "format": "uuid",
+          "title": "Created By",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "key_id": {
+          "format": "uuid",
+          "title": "Key Id",
+          "type": "string"
+        },
+        "lane": {
+          "$ref": "#/$defs/Lane"
+        },
+        "last_used_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Used At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "org_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Required for security_analysis keys; null for general keys",
+          "title": "Org Id"
+        },
+        "prefix": {
+          "pattern": "^ngk_[0-9a-f]{8}$",
+          "title": "Prefix",
+          "type": "string"
+        },
+        "quota": {
+          "$ref": "#/$defs/Quota"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        }
+      },
+      "required": [
+        "key_id",
+        "name",
+        "prefix",
+        "lane",
+        "org_id",
+        "allowed_models",
+        "quota",
+        "created_by",
+        "created_at",
+        "expires_at"
+      ],
+      "title": "GatewayKey",
+      "type": "object"
+    },
+    "GatewayKeyCreate": {
+      "additionalProperties": false,
+      "description": "Manager action (ai_gateway:manage). The organisation is the ACTIVE organisation for analysis keys.",
+      "properties": {
+        "allowed_models": {
+          "items": {
+            "pattern": "^[a-z0-9._-]+:[a-z0-9._-]+$",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Allowed Models",
+          "type": "array"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 3,
+          "title": "Name",
+          "type": "string"
+        },
+        "purpose": {
+          "maxLength": 500,
+          "minLength": 10,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "quota": {
+          "$ref": "#/$defs/Quota"
+        },
+        "scopes": {
+          "items": {
+            "$ref": "#/$defs/KeyScope"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Scopes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "scopes",
+        "allowed_models",
+        "quota",
+        "expires_at",
+        "purpose"
+      ],
+      "title": "GatewayKeyCreate",
+      "type": "object"
+    },
+    "GatewayKeyIssued": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "key": {
+          "description": "Shown ONCE. Only its SHA-256 is stored",
+          "pattern": "^ngk_[0-9a-f]{32}\\.[A-Za-z0-9_-]{43,}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "key_id": {
+          "format": "uuid",
+          "title": "Key Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key_id",
+        "key",
+        "expires_at"
+      ],
+      "title": "GatewayKeyIssued",
+      "type": "object"
+    },
+    "GatewayKeyRevoke": {
+      "additionalProperties": false,
+      "properties": {
+        "key_id": {
+          "format": "uuid",
+          "title": "Key Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key_id",
+        "reason"
+      ],
+      "title": "GatewayKeyRevoke",
+      "type": "object"
+    },
+    "GeneralInferenceRequest": {
+      "additionalProperties": false,
+      "description": "Lane `general`. No tenant identifiers or context; the gateway does not enrich it.",
+      "properties": {
+        "max_tokens": {
+          "default": 512,
+          "maximum": 2048,
+          "minimum": 1,
+          "title": "Max Tokens",
+          "type": "integer"
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/ChatTurn"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Messages",
+          "type": "array"
+        },
+        "model": {
+          "pattern": "^[a-z0-9._-]+:[a-z0-9._-]+$",
+          "title": "Model",
+          "type": "string"
+        },
+        "temperature": {
+          "default": 0.2,
+          "maximum": 1.5,
+          "minimum": 0,
+          "title": "Temperature",
+          "type": "number"
+        }
+      },
+      "required": [
+        "model",
+        "messages"
+      ],
+      "title": "GeneralInferenceRequest",
+      "type": "object"
+    },
+    "GeneralInferenceResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "completion_tokens": {
+          "minimum": 0,
+          "title": "Completion Tokens",
+          "type": "integer"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt_tokens": {
+          "minimum": 0,
+          "title": "Prompt Tokens",
+          "type": "integer"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "model",
+        "text",
+        "prompt_tokens",
+        "completion_tokens",
+        "latency_ms"
+      ],
+      "title": "GeneralInferenceResponse",
+      "type": "object"
+    },
+    "KeyScope": {
+      "enum": [
+        "inference:general",
+        "analysis:security"
+      ],
+      "title": "KeyScope",
+      "type": "string"
+    },
+    "Lane": {
+      "enum": [
+        "general",
+        "security_analysis"
+      ],
+      "title": "Lane",
+      "type": "string"
+    },
+    "LanePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_models": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Models",
+          "type": "array"
+        },
+        "lane": {
+          "$ref": "#/$defs/Lane"
+        },
+        "max_concurrency": {
+          "description": "Shared by every caller of the lane",
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "max_input_chars": {
+          "maximum": 200000,
+          "minimum": 100,
+          "title": "Max Input Chars",
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "maximum": 8192,
+          "minimum": 16,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        },
+        "timeout_seconds": {
+          "maximum": 300,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lane",
+        "allowed_models",
+        "timeout_seconds",
+        "max_input_chars",
+        "max_output_tokens",
+        "max_concurrency"
+      ],
+      "title": "LanePolicy",
+      "type": "object"
+    },
+    "Quota": {
+      "additionalProperties": false,
+      "properties": {
+        "max_concurrency": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "requests_per_minute": {
+          "maximum": 600,
+          "minimum": 1,
+          "title": "Requests Per Minute",
+          "type": "integer"
+        },
+        "tokens_per_day": {
+          "maximum": 10000000,
+          "minimum": 1000,
+          "title": "Tokens Per Day",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "requests_per_minute",
+        "tokens_per_day",
+        "max_concurrency"
+      ],
+      "title": "Quota",
+      "type": "object"
+    },
+    "QuotaStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "key_id": {
+          "format": "uuid",
+          "title": "Key Id",
+          "type": "string"
+        },
+        "quota": {
+          "$ref": "#/$defs/Quota"
+        },
+        "requests_this_minute": {
+          "minimum": 0,
+          "title": "Requests This Minute",
+          "type": "integer"
+        },
+        "tokens_today": {
+          "minimum": 0,
+          "title": "Tokens Today",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "key_id",
+        "requests_this_minute",
+        "tokens_today",
+        "quota"
+      ],
+      "title": "QuotaStatus",
+      "type": "object"
+    },
+    "RejectReason": {
+      "enum": [
+        "key_invalid",
+        "key_revoked_or_expired",
+        "wrong_lane",
+        "model_not_allowed",
+        "rate_limited",
+        "daily_quota_exhausted",
+        "concurrency_limit",
+        "input_too_large",
+        "timeout",
+        "backend_unavailable"
+      ],
+      "title": "RejectReason",
+      "type": "string"
+    },
+    "UsageEvent": {
+      "additionalProperties": false,
+      "description": "One per gateway request (allowed or rejected). Prompt and output TEXT are never stored here;\na SHA-256 of the prompt allows correlation without retaining content.",
+      "properties": {
+        "completion_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Completion Tokens",
+          "type": "integer"
+        },
+        "key_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Key Id"
+        },
+        "lane": {
+          "$ref": "#/$defs/Lane"
+        },
+        "latency_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "model": {
+          "maxLength": 200,
+          "title": "Model",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "org_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Org Id"
+        },
+        "outcome": {
+          "enum": [
+            "ok",
+            "rejected",
+            "timeout",
+            "backend_error"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Sha256"
+        },
+        "prompt_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Prompt Tokens",
+          "type": "integer"
+        },
+        "reject_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RejectReason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Id"
+        }
+      },
+      "required": [
+        "request_id",
+        "occurred_at",
+        "lane",
+        "model",
+        "outcome"
+      ],
+      "title": "UsageEvent",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/ai_gateway.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: ai_gateway",
+  "version": "1.0.0"
+}

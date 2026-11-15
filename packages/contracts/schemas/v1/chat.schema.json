@@ -1,0 +1,835 @@
+{
+  "$defs": {
+    "ActionType": {
+      "enum": [
+        "enrich_iocs",
+        "notify_email",
+        "notify_ciso",
+        "create_task",
+        "block_ip",
+        "isolate_agent",
+        "disable_account"
+      ],
+      "title": "ActionType",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "user",
+            "service",
+            "system"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ChatCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "citation_id": {
+          "pattern": "^C[1-9][0-9]{0,3}$",
+          "title": "Citation Id",
+          "type": "string"
+        },
+        "excerpt": {
+          "maxLength": 1000,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "href": {
+          "default": "",
+          "title": "Href",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/ResourceRef"
+        }
+      },
+      "required": [
+        "citation_id",
+        "ref",
+        "label",
+        "excerpt"
+      ],
+      "title": "ChatCitation",
+      "type": "object"
+    },
+    "ChatConversationCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "default": "New conversation",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "title": "ChatConversationCreate",
+      "type": "object"
+    },
+    "ChatConversationList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChatConversationView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ChatConversationList",
+      "type": "object"
+    },
+    "ChatConversationView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "messages": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ChatMessageView"
+          },
+          "title": "Messages",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "ChatConversationView",
+      "type": "object"
+    },
+    "ChatExchange": {
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "$ref": "#/$defs/ChatMessageView"
+        },
+        "question": {
+          "$ref": "#/$defs/ChatMessageView"
+        }
+      },
+      "required": [
+        "question",
+        "answer"
+      ],
+      "title": "ChatExchange",
+      "type": "object"
+    },
+    "ChatMessageCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "title": "ChatMessageCreate",
+      "type": "object"
+    },
+    "ChatMessageView": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ChatCitation"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "nhai": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NhaiJob"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The AI-drafted answer job, when NHAI is configured"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "complete",
+            "refused"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "tools": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ChatToolCall"
+          },
+          "title": "Tools",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "content",
+        "state",
+        "created_at"
+      ],
+      "title": "ChatMessageView",
+      "type": "object"
+    },
+    "ChatToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "permission": {
+          "title": "Permission",
+          "type": "string"
+        },
+        "records": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Records",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "empty",
+            "not_permitted",
+            "unavailable"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool",
+        "permission",
+        "state"
+      ],
+      "title": "ChatToolCall",
+      "type": "object"
+    },
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "citation_id": {
+          "description": "Evidence key within one bundle",
+          "pattern": "^E[1-9][0-9]{0,3}$",
+          "title": "Citation Id",
+          "type": "string"
+        },
+        "excerpt": {
+          "maxLength": 1000,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/ResourceRef"
+        }
+      },
+      "required": [
+        "citation_id",
+        "ref",
+        "excerpt"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "HumanReview": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "accept",
+            "accept_with_edits",
+            "reject"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewer": {
+          "$ref": "#/$defs/ActorRef"
+        }
+      },
+      "required": [
+        "reviewer",
+        "decision",
+        "reviewed_at"
+      ],
+      "title": "HumanReview",
+      "type": "object"
+    },
+    "ModelRef": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{12,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Digest"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "provider": {
+          "const": "ollama_local",
+          "default": "ollama_local",
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ModelRef",
+      "type": "object"
+    },
+    "NhaiJob": {
+      "additionalProperties": false,
+      "description": "One asynchronous NHAI request. Inference runs in a separate worker; the API only queues and reads jobs.\n`result` is present only when `status` is `succeeded`; `error_code` explains every other final state.",
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "deadline_at": {
+          "format": "date-time",
+          "title": "Deadline At",
+          "type": "string"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z_]{2,40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "queued_at": {
+          "format": "date-time",
+          "title": "Queued At",
+          "type": "string"
+        },
+        "requested_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NhaiResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "timed_out"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "subject": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "task": {
+          "$ref": "#/$defs/NhaiTask"
+        }
+      },
+      "required": [
+        "id",
+        "task",
+        "subject",
+        "status",
+        "requested_by",
+        "queued_at",
+        "deadline_at",
+        "attempts"
+      ],
+      "title": "NhaiJob",
+      "type": "object"
+    },
+    "NhaiResult": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "limitations": {
+          "default": [],
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "missing_evidence": {
+          "default": [],
+          "description": "Phase 5: evidence that would change the assessment and is not in the bundle. Always includes the gaps found by the deterministic checker, whatever the model said",
+          "items": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "title": "Missing Evidence",
+          "type": "array"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelRef"
+        },
+        "recommendations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Recommendation"
+          },
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HumanReview"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "severity_assessment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SeverityAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "statements": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Statement"
+          },
+          "title": "Statements",
+          "type": "array"
+        },
+        "status": {
+          "default": "draft",
+          "enum": [
+            "draft",
+            "accepted",
+            "rejected",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "subject": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "summary": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "task": {
+          "$ref": "#/$defs/NhaiTask"
+        },
+        "unsupported_statements_dropped": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Unsupported Statements Dropped",
+          "type": "integer"
+        },
+        "validation_notes": {
+          "default": [],
+          "description": "Phase 5: every deterministic adjustment made to the model output (confidence cap, dropped statements, severity disagreement), so a reviewer sees exactly what was changed and why",
+          "items": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "title": "Validation Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "task",
+        "subject",
+        "model",
+        "summary",
+        "citations",
+        "confidence",
+        "generated_at",
+        "latency_ms"
+      ],
+      "title": "NhaiResult",
+      "type": "object"
+    },
+    "NhaiTask": {
+      "enum": [
+        "alert_explanation",
+        "behavioural_insight_summary",
+        "investigation_assistance",
+        "case_note_draft",
+        "finding_explanation",
+        "asset_summary",
+        "chat_answer"
+      ],
+      "title": "NhaiTask",
+      "type": "string"
+    },
+    "Recommendation": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "citation_ids": {
+          "items": {
+            "description": "Evidence key within one bundle",
+            "pattern": "^E[1-9][0-9]{0,3}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Citation Ids",
+          "type": "array"
+        },
+        "executes_automatically": {
+          "const": false,
+          "default": false,
+          "title": "Executes Automatically",
+          "type": "boolean"
+        },
+        "requires_human_approval": {
+          "title": "Requires Human Approval",
+          "type": "boolean"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "citation_ids",
+        "requires_human_approval"
+      ],
+      "title": "Recommendation",
+      "type": "object"
+    },
+    "ResourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 200,
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^[a-z_]{2,40}$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "ResourceRef",
+      "type": "object"
+    },
+    "SeverityAssessment": {
+      "additionalProperties": false,
+      "description": "Phase 5 (additive): the model's evidence-grounded view of an alert's severity. Advisory only: it never\nchanges a stored severity; an analyst decides.",
+      "properties": {
+        "agrees_with_stored": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agrees With Stored"
+        },
+        "citation_ids": {
+          "items": {
+            "description": "Evidence key within one bundle",
+            "pattern": "^E[1-9][0-9]{0,3}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Citation Ids",
+          "type": "array"
+        },
+        "proposed": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Proposed",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "uncertainty": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Uncertainty",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposed",
+        "rationale",
+        "citation_ids",
+        "uncertainty"
+      ],
+      "title": "SeverityAssessment",
+      "type": "object"
+    },
+    "Statement": {
+      "additionalProperties": false,
+      "properties": {
+        "citation_ids": {
+          "items": {
+            "description": "Evidence key within one bundle",
+            "pattern": "^E[1-9][0-9]{0,3}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Citation Ids",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "citation_ids"
+      ],
+      "title": "Statement",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/chat.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: chat",
+  "version": "1.0.0"
+}

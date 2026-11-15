@@ -1,0 +1,9 @@
+{
+ "_note": "TEST ADAPTER FIXTURE (development/test only). Synthetic registrations for demo brands; no DNS or WHOIS lookup was made.",
+ "registered": {
+  "devalpha.net": {"registered_at": "2026-10-30", "resolves_to": "198.51.100.40", "mx": true},
+  "dev-alpha.com": {"registered_at": "2026-11-02", "resolves_to": "198.51.100.41", "mx": false},
+  "devalpah.com": {"registered_at": "2026-11-05", "resolves_to": "203.0.113.77", "mx": true},
+  "devbeta.org": {"registered_at": "2026-09-14", "resolves_to": "192.0.2.90", "mx": false}
+ }
+}

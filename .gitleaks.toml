@@ -1,0 +1,11 @@
+# gitleaks configuration (platform-owned). Default rules plus reviewed false positives only.
+# Every entry here was reviewed in the Phase 1/2 secret-scan reports. Adding an entry needs the platform owner.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Legacy redactor: its own PEM/secret regexes and synthetic test values (reference-only, byte-identical to NovrSOC@5054be3)"
+paths = [
+  '''^reference/legacy-express-backend/src/lib/redact\.ts$''',
+  '''^reference/legacy-express-backend/src/lib/__tests__/redact\.test\.ts$''',
+]

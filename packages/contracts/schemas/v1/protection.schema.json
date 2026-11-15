@@ -1,0 +1,860 @@
+{
+  "$defs": {
+    "BrandFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "description": "e.g. crtsh, rdap, app_store, code_search, leak_site",
+          "pattern": "^[a-z0-9_.-]{2,40}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "triaged",
+            "actioned",
+            "dismissed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "subject_id": {
+          "format": "uuid",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "title": "Summary",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "id",
+        "subject_id",
+        "source",
+        "summary",
+        "severity",
+        "status",
+        "observed_at"
+      ],
+      "title": "BrandFinding",
+      "type": "object"
+    },
+    "BrandFindingList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/BrandFindingView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "BrandFindingList",
+      "type": "object"
+    },
+    "BrandFindingTriage": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "triaged",
+            "actioned",
+            "dismissed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "BrandFindingTriage",
+      "type": "object"
+    },
+    "BrandFindingView": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Evidence",
+          "type": "object"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "description": "e.g. crtsh, rdap, app_store, code_search, leak_site",
+          "pattern": "^[a-z0-9_.-]{2,40}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "triaged",
+            "actioned",
+            "dismissed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "subject_id": {
+          "format": "uuid",
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "title": "Summary",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "subject_id",
+        "source",
+        "summary",
+        "severity",
+        "status",
+        "observed_at",
+        "value"
+      ],
+      "title": "BrandFindingView",
+      "type": "object"
+    },
+    "DmarcAggregateReport": {
+      "additionalProperties": false,
+      "properties": {
+        "domain_id": {
+          "format": "uuid",
+          "title": "Domain Id",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "messages_failing": {
+          "minimum": 0,
+          "title": "Messages Failing",
+          "type": "integer"
+        },
+        "messages_total": {
+          "minimum": 0,
+          "title": "Messages Total",
+          "type": "integer"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "report_id": {
+          "maxLength": 200,
+          "title": "Report Id",
+          "type": "string"
+        },
+        "reporter": {
+          "maxLength": 200,
+          "title": "Reporter",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "domain_id",
+        "reporter",
+        "report_id",
+        "period_start",
+        "period_end",
+        "messages_total",
+        "messages_failing"
+      ],
+      "title": "DmarcAggregateReport",
+      "type": "object"
+    },
+    "DmarcRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "disposition": {
+          "title": "Disposition",
+          "type": "string"
+        },
+        "dkim": {
+          "title": "Dkim",
+          "type": "string"
+        },
+        "header_from": {
+          "title": "Header From",
+          "type": "string"
+        },
+        "source_ip": {
+          "title": "Source Ip",
+          "type": "string"
+        },
+        "spf": {
+          "title": "Spf",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_ip",
+        "count",
+        "disposition",
+        "dkim",
+        "spf",
+        "header_from"
+      ],
+      "title": "DmarcRecord",
+      "type": "object"
+    },
+    "DmarcReportList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DmarcReportView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "DmarcReportList",
+      "type": "object"
+    },
+    "DmarcReportView": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 253,
+          "minLength": 3,
+          "pattern": "^([a-z0-9](-?[a-z0-9])*\\.)+[a-z]{2,63}$",
+          "title": "Domain",
+          "type": "string"
+        },
+        "domain_id": {
+          "format": "uuid",
+          "title": "Domain Id",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "messages_failing": {
+          "minimum": 0,
+          "title": "Messages Failing",
+          "type": "integer"
+        },
+        "messages_total": {
+          "minimum": 0,
+          "title": "Messages Total",
+          "type": "integer"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "published_policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published Policy"
+        },
+        "records": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DmarcRecord"
+          },
+          "title": "Records",
+          "type": "array"
+        },
+        "report_id": {
+          "maxLength": 200,
+          "title": "Report Id",
+          "type": "string"
+        },
+        "reporter": {
+          "maxLength": 200,
+          "title": "Reporter",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "domain_id",
+        "reporter",
+        "report_id",
+        "period_start",
+        "period_end",
+        "messages_total",
+        "messages_failing",
+        "domain",
+        "source"
+      ],
+      "title": "DmarcReportView",
+      "type": "object"
+    },
+    "DmarcUpload": {
+      "additionalProperties": false,
+      "description": "An aggregate (RUA) report as XML text, uploaded by a user or the test adapter. DTDs and entities are refused.",
+      "properties": {
+        "source": {
+          "default": "upload",
+          "pattern": "^[a-z0-9_.-]{2,40}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "xml": {
+          "maxLength": 2000000,
+          "minLength": 50,
+          "title": "Xml",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xml"
+      ],
+      "title": "DmarcUpload",
+      "type": "object"
+    },
+    "EmailDomain": {
+      "additionalProperties": false,
+      "properties": {
+        "dkim_selectors_found": {
+          "default": [],
+          "items": {
+            "maxLength": 63,
+            "type": "string"
+          },
+          "title": "Dkim Selectors Found",
+          "type": "array"
+        },
+        "dmarc_policy": {
+          "anyOf": [
+            {
+              "enum": [
+                "none",
+                "quarantine",
+                "reject",
+                "missing"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dmarc Policy"
+        },
+        "domain": {
+          "maxLength": 253,
+          "minLength": 3,
+          "pattern": "^([a-z0-9](-?[a-z0-9])*\\.)+[a-z]{2,63}$",
+          "title": "Domain",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Checked At"
+        },
+        "spf_valid": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spf Valid"
+        },
+        "verification": {
+          "enum": [
+            "pending",
+            "verified",
+            "failed"
+          ],
+          "title": "Verification",
+          "type": "string"
+        },
+        "verification_txt_name": {
+          "maxLength": 200,
+          "title": "Verification Txt Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "domain",
+        "verification",
+        "verification_txt_name"
+      ],
+      "title": "EmailDomain",
+      "type": "object"
+    },
+    "EmailDomainCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 253,
+          "minLength": 3,
+          "pattern": "^([a-z0-9](-?[a-z0-9])*\\.)+[a-z]{2,63}$",
+          "title": "Domain",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "title": "EmailDomainCreate",
+      "type": "object"
+    },
+    "EmailDomainList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/EmailDomain"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "EmailDomainList",
+      "type": "object"
+    },
+    "GatewayVerdict": {
+      "additionalProperties": false,
+      "description": "Mail gateway -> API, authenticated by the gateway's service identity (replaces the shared EMAIL_PROXY_TOKEN).",
+      "properties": {
+        "message_id": {
+          "maxLength": 998,
+          "title": "Message Id",
+          "type": "string"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        },
+        "recipient_domain": {
+          "maxLength": 253,
+          "minLength": 3,
+          "pattern": "^([a-z0-9](-?[a-z0-9])*\\.)+[a-z]{2,63}$",
+          "title": "Recipient Domain",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "deliver",
+            "quarantine",
+            "reject"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "verdict_id": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Verdict Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verdict_id",
+        "message_id",
+        "recipient_domain",
+        "verdict",
+        "received_at"
+      ],
+      "title": "GatewayVerdict",
+      "type": "object"
+    },
+    "MonitoringRun": {
+      "additionalProperties": false,
+      "properties": {
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "new_findings": {
+          "default": 0,
+          "minimum": 0,
+          "title": "New Findings",
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "enum": [
+                "completed",
+                "source_unconfigured",
+                "rate_limited",
+                "failed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outcome"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "subject_id": {
+          "format": "uuid",
+          "title": "Subject Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "subject_id",
+        "started_at"
+      ],
+      "title": "MonitoringRun",
+      "type": "object"
+    },
+    "MonitoringRunList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MonitoringRun"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "MonitoringRunList",
+      "type": "object"
+    },
+    "PhishingCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "maxLength": 253,
+          "minLength": 3,
+          "pattern": "^([a-z0-9](-?[a-z0-9])*\\.)+[a-z]{2,63}$",
+          "title": "Domain",
+          "type": "string"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "resembles": {
+          "maxLength": 253,
+          "minLength": 3,
+          "pattern": "^([a-z0-9](-?[a-z0-9])*\\.)+[a-z]{2,63}$",
+          "title": "Resembles",
+          "type": "string"
+        },
+        "risk": {
+          "$ref": "#/$defs/Severity"
+        },
+        "similarity": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Similarity",
+          "type": "number"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "investigating",
+            "confirmed",
+            "dismissed",
+            "takedown_requested"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "domain",
+        "resembles",
+        "similarity",
+        "risk",
+        "status",
+        "first_seen_at"
+      ],
+      "title": "PhishingCandidate",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "WatchSubject": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/WatchSubjectType"
+        },
+        "value": {
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "value",
+        "created_at"
+      ],
+      "title": "WatchSubject",
+      "type": "object"
+    },
+    "WatchSubjectCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "consent_reference": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required for EXECUTIVE subjects (personal data, NDPA)",
+          "title": "Consent Reference"
+        },
+        "type": {
+          "$ref": "#/$defs/WatchSubjectType"
+        },
+        "value": {
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "WatchSubjectCreate",
+      "type": "object"
+    },
+    "WatchSubjectList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/WatchSubject"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "WatchSubjectList",
+      "type": "object"
+    },
+    "WatchSubjectType": {
+      "enum": [
+        "brand_name",
+        "domain",
+        "executive",
+        "social_account",
+        "mobile_app",
+        "code_repository_term"
+      ],
+      "title": "WatchSubjectType",
+      "type": "string"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/protection.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: protection",
+  "version": "1.0.0"
+}

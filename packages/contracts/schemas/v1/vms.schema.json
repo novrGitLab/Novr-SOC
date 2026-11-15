@@ -1,0 +1,2613 @@
+{
+  "$defs": {
+    "Asset": {
+      "additionalProperties": false,
+      "properties": {
+        "addresses": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SiteScopedAddress"
+          },
+          "title": "Addresses",
+          "type": "array"
+        },
+        "criticality": {
+          "$ref": "#/$defs/Criticality",
+          "default": "medium"
+        },
+        "display_name": {
+          "maxLength": 200,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "exposure": {
+          "$ref": "#/$defs/Exposure",
+          "default": "unknown"
+        },
+        "fqdns": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "title": "Fqdns",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "host",
+            "domain",
+            "web_application",
+            "network_device",
+            "cloud_resource"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "sources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AssetSourceLink"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "tags": {
+          "default": [],
+          "items": {
+            "maxLength": 40,
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "kind",
+        "display_name"
+      ],
+      "title": "Asset",
+      "type": "object"
+    },
+    "AssetSourceLink": {
+      "additionalProperties": false,
+      "properties": {
+        "external_id": {
+          "description": "e.g. Wazuh agent id '003' (unique per manager+org)",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "External Id",
+          "type": "string"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/AssetSourceType"
+        }
+      },
+      "required": [
+        "type",
+        "external_id",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "title": "AssetSourceLink",
+      "type": "object"
+    },
+    "AssetSourceType": {
+      "enum": [
+        "wazuh_agent",
+        "scanner_observation",
+        "collector_discovery",
+        "import"
+      ],
+      "title": "AssetSourceType",
+      "type": "string"
+    },
+    "Criticality": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Criticality",
+      "type": "string"
+    },
+    "Exposure": {
+      "enum": [
+        "internal",
+        "dmz",
+        "internet",
+        "unknown"
+      ],
+      "title": "Exposure",
+      "type": "string"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "cves": {
+          "default": [],
+          "items": {
+            "pattern": "^CVE-\\d{4}-\\d{4,7}$",
+            "type": "string"
+          },
+          "title": "Cves",
+          "type": "array"
+        },
+        "fingerprint": {
+          "description": "Stable per asset + check",
+          "maxLength": 128,
+          "minLength": 8,
+          "title": "Fingerprint",
+          "type": "string"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "risk": {
+          "$ref": "#/$defs/RiskScore"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "status": {
+          "$ref": "#/$defs/FindingStatus"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "asset_id",
+        "fingerprint",
+        "title",
+        "severity",
+        "status",
+        "risk",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "FindingCveIntel": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "cve_id": {
+          "title": "Cve Id",
+          "type": "string"
+        },
+        "cvss_v3": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss V3"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "epss": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Epss"
+        },
+        "kev": {
+          "default": false,
+          "title": "Kev",
+          "type": "boolean"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cve_id",
+        "source",
+        "captured_at"
+      ],
+      "title": "FindingCveIntel",
+      "type": "object"
+    },
+    "FindingStatus": {
+      "enum": [
+        "open",
+        "acknowledged",
+        "in_progress",
+        "fixed_pending_verification",
+        "verified",
+        "reopened",
+        "risk_accepted"
+      ],
+      "title": "FindingStatus",
+      "type": "string"
+    },
+    "FindingTransition": {
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {
+          "format": "uuid",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        },
+        "to_status": {
+          "$ref": "#/$defs/FindingStatus"
+        }
+      },
+      "required": [
+        "finding_id",
+        "to_status",
+        "reason"
+      ],
+      "title": "FindingTransition",
+      "type": "object"
+    },
+    "Observation": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Scanner check id, e.g. Greenbone NVT OID",
+          "title": "Check Id"
+        },
+        "cves": {
+          "default": [],
+          "items": {
+            "pattern": "^CVE-\\d{4}-\\d{4,7}$",
+            "type": "string"
+          },
+          "title": "Cves",
+          "type": "array"
+        },
+        "cvss_v3": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss V3"
+        },
+        "evidence_ref": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Ref"
+        },
+        "kind": {
+          "$ref": "#/$defs/ObservationKind"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "protocol": {
+          "anyOf": [
+            {
+              "enum": [
+                "tcp",
+                "udp"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Protocol"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Severity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "target": {
+          "$ref": "#/$defs/ScopeEntry"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        }
+      },
+      "required": [
+        "kind",
+        "target"
+      ],
+      "title": "Observation",
+      "type": "object"
+    },
+    "ObservationKind": {
+      "enum": [
+        "host",
+        "service",
+        "technology",
+        "finding"
+      ],
+      "title": "ObservationKind",
+      "type": "string"
+    },
+    "RemediationTask": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Due At"
+        },
+        "finding_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Finding Ids",
+          "type": "array"
+        },
+        "fixed_version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "From patch intelligence (OSV) when known",
+          "title": "Fixed Version"
+        },
+        "guidance": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Guidance",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "owner_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner Id"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "done",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "finding_ids",
+        "asset_id",
+        "status"
+      ],
+      "title": "RemediationTask",
+      "type": "object"
+    },
+    "RemediationTaskList": {
+      "additionalProperties": false,
+      "properties": {
+        "by_status": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "By Status",
+          "type": "object"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RemediationTaskView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "overdue": {
+          "default": 0,
+          "title": "Overdue",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "RemediationTaskList",
+      "type": "object"
+    },
+    "RemediationTaskUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "assignee_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Id"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "in_progress"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        }
+      },
+      "title": "RemediationTaskUpdate",
+      "type": "object"
+    },
+    "RemediationTaskView": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "assignee_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Id"
+        },
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "due_at": {
+          "format": "date-time",
+          "title": "Due At",
+          "type": "string"
+        },
+        "finding_id": {
+          "format": "uuid",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "finding_status": {
+          "title": "Finding Status",
+          "type": "string"
+        },
+        "finding_title": {
+          "title": "Finding Title",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "overdue": {
+          "title": "Overdue",
+          "type": "boolean"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "done",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "finding_id",
+        "finding_title",
+        "host",
+        "severity",
+        "priority",
+        "status",
+        "finding_status",
+        "due_at",
+        "overdue",
+        "note",
+        "updated_at"
+      ],
+      "title": "RemediationTaskView",
+      "type": "object"
+    },
+    "RetestRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "RetestRequest",
+      "type": "object"
+    },
+    "RiskAssetRow": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "criticality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Criticality"
+        },
+        "exposure": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exposure"
+        },
+        "kev": {
+          "title": "Kev",
+          "type": "integer"
+        },
+        "max_risk": {
+          "title": "Max Risk",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "open_findings": {
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "p1": {
+          "title": "P1",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "open_findings",
+        "max_risk",
+        "p1",
+        "kev"
+      ],
+      "title": "RiskAssetRow",
+      "type": "object"
+    },
+    "RiskScore": {
+      "additionalProperties": false,
+      "description": "Contextual 0-100 (legacy lib/riskScore.ts inputs). The formula version is part of the result.",
+      "properties": {
+        "criticality": {
+          "$ref": "#/$defs/Criticality",
+          "default": "medium"
+        },
+        "cvss": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss"
+        },
+        "epss": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Epss"
+        },
+        "exposure": {
+          "$ref": "#/$defs/Exposure",
+          "default": "unknown"
+        },
+        "formula_version": {
+          "pattern": "^\\d+\\.\\d+$",
+          "title": "Formula Version",
+          "type": "string"
+        },
+        "kev": {
+          "default": false,
+          "title": "Kev",
+          "type": "boolean"
+        },
+        "score": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Score",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "score",
+        "formula_version"
+      ],
+      "title": "RiskScore",
+      "type": "object"
+    },
+    "ScaCheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "title": "Check Id",
+          "type": "integer"
+        },
+        "compliance": {
+          "additionalProperties": {
+            "items": {
+              "maxLength": 40,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "default": {},
+          "description": "Framework -> control ids, e.g. {'cis': ['1.1.1'], 'pci_dss': ['2.2']}",
+          "propertyNames": {
+            "maxLength": 40
+          },
+          "title": "Compliance",
+          "type": "object"
+        },
+        "rationale": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "remediation": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "Remediation",
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/ScaResult"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check_id",
+        "title",
+        "result"
+      ],
+      "title": "ScaCheckResult",
+      "type": "object"
+    },
+    "ScaPolicyResult": {
+      "additionalProperties": false,
+      "description": "One SCA policy evaluation for one endpoint (Wazuh /sca/{agent_id} + /sca/{agent_id}/checks/{policy}).",
+      "properties": {
+        "agent_id": {
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "checks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScaCheckResult"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "failed": {
+          "minimum": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "not_applicable": {
+          "minimum": 0,
+          "title": "Not Applicable",
+          "type": "integer"
+        },
+        "passed": {
+          "minimum": 0,
+          "title": "Passed",
+          "type": "integer"
+        },
+        "policy_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_name": {
+          "maxLength": 200,
+          "title": "Policy Name",
+          "type": "string"
+        },
+        "scanned_at": {
+          "format": "date-time",
+          "title": "Scanned At",
+          "type": "string"
+        },
+        "score_percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Score Percent",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "asset_id",
+        "agent_id",
+        "policy_id",
+        "policy_name",
+        "scanned_at",
+        "passed",
+        "failed",
+        "not_applicable",
+        "score_percent"
+      ],
+      "title": "ScaPolicyResult",
+      "type": "object"
+    },
+    "ScaResult": {
+      "enum": [
+        "passed",
+        "failed",
+        "not_applicable"
+      ],
+      "title": "ScaResult",
+      "type": "string"
+    },
+    "ScanActivity": {
+      "enum": [
+        "discovery",
+        "ports",
+        "vuln_nuclei",
+        "vuln_openvas"
+      ],
+      "title": "ScanActivity",
+      "type": "string"
+    },
+    "ScanClaimResult": {
+      "additionalProperties": false,
+      "description": "Answer to a worker's claim. `job` is present only when a job is handed out. In this release scanning is\ndisabled by design, so the API answers `scanning_disabled` and never hands out a job.",
+      "properties": {
+        "job": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScanJobClaim"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason": {
+          "enum": [
+            "job",
+            "no_job",
+            "scanning_disabled"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "ScanClaimResult",
+      "type": "object"
+    },
+    "ScanJobClaim": {
+      "additionalProperties": false,
+      "description": "Sent to the VMS worker on claim (atomic, FOR UPDATE SKIP LOCKED). Greenbone config names are worker-side.",
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/ScanActivity"
+        },
+        "deadline_at": {
+          "format": "date-time",
+          "title": "Deadline At",
+          "type": "string"
+        },
+        "job_id": {
+          "format": "uuid",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "max_runtime_seconds": {
+          "maximum": 43200,
+          "minimum": 60,
+          "title": "Max Runtime Seconds",
+          "type": "integer"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ScopeEntry"
+          },
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "job_id",
+        "activity",
+        "targets",
+        "deadline_at",
+        "max_runtime_seconds"
+      ],
+      "title": "ScanJobClaim",
+      "type": "object"
+    },
+    "ScanJobRequest": {
+      "additionalProperties": false,
+      "description": "Human API (vms:scan). Refused unless every target is inside an active ScopeApproval allowing the activity.",
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/ScanActivity"
+        },
+        "idempotency_key": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "profile": {
+          "default": "standard",
+          "enum": [
+            "discovery",
+            "standard",
+            "full"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "scope_approval_id": {
+          "format": "uuid",
+          "title": "Scope Approval Id",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ScopeEntry"
+          },
+          "maxItems": 4096,
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "scope_approval_id",
+        "activity",
+        "targets"
+      ],
+      "title": "ScanJobRequest",
+      "type": "object"
+    },
+    "ScanResultBatch": {
+      "additionalProperties": false,
+      "description": "Worker -> API. No org field: the job (and so the organisation) comes from job_id + worker identity.",
+      "properties": {
+        "batch_id": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "job_id": {
+          "format": "uuid",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/Observation"
+          },
+          "maxItems": 5000,
+          "title": "Observations",
+          "type": "array"
+        },
+        "per_target_outcome": {
+          "additionalProperties": {
+            "enum": [
+              "completed",
+              "unreachable",
+              "refused_out_of_scope",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "default": {},
+          "title": "Per Target Outcome",
+          "type": "object"
+        }
+      },
+      "required": [
+        "batch_id",
+        "job_id",
+        "observations"
+      ],
+      "title": "ScanResultBatch",
+      "type": "object"
+    },
+    "ScanWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "end_minute": {
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "End Minute",
+          "type": "integer"
+        },
+        "start_minute": {
+          "maximum": 1439,
+          "minimum": 0,
+          "title": "Start Minute",
+          "type": "integer"
+        },
+        "timezone": {
+          "default": "Africa/Lagos",
+          "maxLength": 64,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "weekday": {
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Weekday",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "weekday",
+        "start_minute",
+        "end_minute"
+      ],
+      "title": "ScanWindow",
+      "type": "object"
+    },
+    "ScopeApproval": {
+      "additionalProperties": false,
+      "description": "An organisation-approved scope (P27 model). OpenVAS is allowed only when listed here; never by env var.",
+      "properties": {
+        "allowed_activities": {
+          "items": {
+            "$ref": "#/$defs/ScanActivity"
+          },
+          "minItems": 1,
+          "title": "Allowed Activities",
+          "type": "array"
+        },
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "format": "uuid",
+          "title": "Approved By",
+          "type": "string"
+        },
+        "authorization_reference": {
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/ScopeEntry"
+          },
+          "minItems": 1,
+          "title": "Entries",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "scan_windows": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScanWindow"
+          },
+          "title": "Scan Windows",
+          "type": "array"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "entries",
+        "allowed_activities",
+        "authorization_reference",
+        "approved_by",
+        "approved_at",
+        "valid_until"
+      ],
+      "title": "ScopeApproval",
+      "type": "object"
+    },
+    "ScopeEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "domain",
+            "ip",
+            "cidr",
+            "url"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Required for private addresses and ranges",
+          "title": "Site Id"
+        },
+        "value": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "title": "ScopeEntry",
+      "type": "object"
+    },
+    "ServiceList": {
+      "additionalProperties": false,
+      "properties": {
+        "by_product": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "By Product",
+          "type": "object"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ServiceRow"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ServiceList",
+      "type": "object"
+    },
+    "ServiceRow": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "asset_name": {
+          "title": "Asset Name",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "port": {
+          "title": "Port",
+          "type": "integer"
+        },
+        "product": {
+          "title": "Product",
+          "type": "string"
+        },
+        "protocol": {
+          "title": "Protocol",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "asset_name",
+        "port",
+        "protocol",
+        "name",
+        "product",
+        "version",
+        "source",
+        "last_seen_at"
+      ],
+      "title": "ServiceRow",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SiteScopedAddress": {
+      "additionalProperties": false,
+      "description": "An IP address is only meaningful inside a site: 10.0.0.5 at site A is not 10.0.0.5 at site B.",
+      "properties": {
+        "hostname": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hostname"
+        },
+        "ip": {
+          "title": "Ip",
+          "type": "string"
+        },
+        "site_id": {
+          "format": "uuid",
+          "title": "Site Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "site_id",
+        "ip"
+      ],
+      "title": "SiteScopedAddress",
+      "type": "object"
+    },
+    "VerificationRecord": {
+      "additionalProperties": false,
+      "description": "Verification history entry: only a completed, in-scope scan job may verify or reopen a finding.",
+      "properties": {
+        "checked_at": {
+          "format": "date-time",
+          "title": "Checked At",
+          "type": "string"
+        },
+        "evidence_ref": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Ref"
+        },
+        "finding_id": {
+          "format": "uuid",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "verified_fixed",
+            "still_present",
+            "inconclusive"
+          ],
+          "title": "Result",
+          "type": "string"
+        },
+        "scan_job_id": {
+          "format": "uuid",
+          "title": "Scan Job Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding_id",
+        "scan_job_id",
+        "result",
+        "checked_at"
+      ],
+      "title": "VerificationRecord",
+      "type": "object"
+    },
+    "VerificationRequestView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "requested_label": {
+          "title": "Requested Label",
+          "type": "string"
+        },
+        "scan_job_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scan Job Id"
+        },
+        "status": {
+          "enum": [
+            "scan_requested",
+            "blocked_scanning_disabled",
+            "blocked_no_scope",
+            "verified",
+            "still_present",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "requested_label",
+        "note",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "VerificationRequestView",
+      "type": "object"
+    },
+    "VmsFindingDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "cve_intel": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FindingCveIntel"
+          },
+          "title": "Cve Intel",
+          "type": "array"
+        },
+        "cves_without_intel": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Cves Without Intel",
+          "type": "array"
+        },
+        "finding": {
+          "$ref": "#/$defs/VmsFindingView"
+        },
+        "history": {
+          "default": [],
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "History",
+          "type": "array"
+        },
+        "remediation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RemediationTaskView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "verifications": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/VerificationRequestView"
+          },
+          "title": "Verifications",
+          "type": "array"
+        }
+      },
+      "required": [
+        "finding"
+      ],
+      "title": "VmsFindingDetail",
+      "type": "object"
+    },
+    "VmsFindingList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VmsFindingView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total"
+      ],
+      "title": "VmsFindingList",
+      "type": "object"
+    },
+    "VmsFindingView": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Consolidation: the canonical asset of the host",
+          "title": "Asset Id"
+        },
+        "asset_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Name"
+        },
+        "check_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Check Id"
+        },
+        "cves": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Cves",
+          "type": "array"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kev": {
+          "default": false,
+          "description": "Consolidation: a CVE of the finding is in the organization's KEV intelligence",
+          "title": "Kev",
+          "type": "boolean"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "occurrences": {
+          "title": "Occurrences",
+          "type": "integer"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "priority": {
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            "P4"
+          ],
+          "title": "Priority",
+          "type": "string"
+        },
+        "protocol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Protocol"
+        },
+        "remediation_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remediation Due At"
+        },
+        "risk": {
+          "$ref": "#/$defs/RiskScore"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/FindingStatus"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "host",
+        "title",
+        "severity",
+        "status",
+        "priority",
+        "risk",
+        "source",
+        "occurrences",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "title": "VmsFindingView",
+      "type": "object"
+    },
+    "VmsReport": {
+      "additionalProperties": false,
+      "properties": {
+        "by_priority": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Priority",
+          "type": "object"
+        },
+        "by_severity": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Severity",
+          "type": "object"
+        },
+        "by_status": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Status",
+          "type": "object"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "overdue_remediation": {
+          "title": "Overdue Remediation",
+          "type": "integer"
+        },
+        "scanning": {
+          "enum": [
+            "disabled",
+            "enabled"
+          ],
+          "title": "Scanning",
+          "type": "string"
+        },
+        "scans_completed_30d": {
+          "title": "Scans Completed 30D",
+          "type": "integer"
+        },
+        "top_findings": {
+          "items": {
+            "$ref": "#/$defs/VmsFindingView"
+          },
+          "title": "Top Findings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "generated_at",
+        "scanning",
+        "by_priority",
+        "by_status",
+        "by_severity",
+        "overdue_remediation",
+        "top_findings",
+        "scans_completed_30d"
+      ],
+      "title": "VmsReport",
+      "type": "object"
+    },
+    "VmsResultAck": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": {
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "new_findings": {
+          "title": "New Findings",
+          "type": "integer"
+        },
+        "observations": {
+          "title": "Observations",
+          "type": "integer"
+        },
+        "refused_out_of_scope": {
+          "title": "Refused Out Of Scope",
+          "type": "integer"
+        },
+        "replayed": {
+          "default": false,
+          "title": "Replayed",
+          "type": "boolean"
+        },
+        "updated_findings": {
+          "title": "Updated Findings",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "batch_id",
+        "observations",
+        "new_findings",
+        "updated_findings",
+        "refused_out_of_scope"
+      ],
+      "title": "VmsResultAck",
+      "type": "object"
+    },
+    "VmsRiskOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "assets": {
+          "items": {
+            "$ref": "#/$defs/RiskAssetRow"
+          },
+          "title": "Assets",
+          "type": "array"
+        },
+        "by_priority": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Priority",
+          "type": "object"
+        },
+        "by_severity": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Severity",
+          "type": "object"
+        },
+        "formula": {
+          "title": "Formula",
+          "type": "string"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "internet_facing_findings": {
+          "title": "Internet Facing Findings",
+          "type": "integer"
+        },
+        "kev_findings": {
+          "title": "Kev Findings",
+          "type": "integer"
+        },
+        "overdue": {
+          "title": "Overdue",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "generated_at",
+        "by_priority",
+        "by_severity",
+        "kev_findings",
+        "internet_facing_findings",
+        "overdue",
+        "assets",
+        "formula"
+      ],
+      "title": "VmsRiskOverview",
+      "type": "object"
+    },
+    "VmsScanCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/ScanActivity"
+        },
+        "idempotency_key": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "profile": {
+          "default": "standard",
+          "enum": [
+            "discovery",
+            "standard",
+            "full"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "maxLength": 253,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "scope_id",
+        "activity",
+        "targets"
+      ],
+      "title": "VmsScanCreate",
+      "type": "object"
+    },
+    "VmsScanList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VmsScanView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "VmsScanList",
+      "type": "object"
+    },
+    "VmsScanView": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/ScanActivity"
+        },
+        "claimed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claimed At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Outcome",
+          "type": "object"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "scope_id",
+        "activity",
+        "targets",
+        "state",
+        "created_at"
+      ],
+      "title": "VmsScanView",
+      "type": "object"
+    },
+    "VmsScheduleCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "$ref": "#/$defs/ScanActivity"
+        },
+        "cadence": {
+          "enum": [
+            "daily",
+            "weekly",
+            "monthly"
+          ],
+          "title": "Cadence",
+          "type": "string"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 3,
+          "title": "Name",
+          "type": "string"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "maxLength": 253,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "scope_id",
+        "name",
+        "activity",
+        "targets",
+        "cadence"
+      ],
+      "title": "VmsScheduleCreate",
+      "type": "object"
+    },
+    "VmsScheduleList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VmsScheduleView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "VmsScheduleList",
+      "type": "object"
+    },
+    "VmsScheduleUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "title": "VmsScheduleUpdate",
+      "type": "object"
+    },
+    "VmsScheduleView": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "title": "Activity",
+          "type": "string"
+        },
+        "cadence": {
+          "title": "Cadence",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "execution": {
+          "title": "Execution",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_job_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Job Id"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "next_run_at": {
+          "format": "date-time",
+          "title": "Next Run At",
+          "type": "string"
+        },
+        "scope_id": {
+          "format": "uuid",
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "scope_id",
+        "name",
+        "activity",
+        "targets",
+        "cadence",
+        "enabled",
+        "next_run_at",
+        "created_at",
+        "execution"
+      ],
+      "title": "VmsScheduleView",
+      "type": "object"
+    },
+    "VmsScopeCreate": {
+      "additionalProperties": false,
+      "description": "Human API (vms:scope). An approved scope is the only thing a scan may touch.",
+      "properties": {
+        "allowed_activities": {
+          "items": {
+            "$ref": "#/$defs/ScanActivity"
+          },
+          "minItems": 1,
+          "title": "Allowed Activities",
+          "type": "array"
+        },
+        "authorization_reference": {
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "entry": {
+          "$ref": "#/$defs/ScopeEntry"
+        },
+        "valid_days": {
+          "default": 30,
+          "maximum": 90,
+          "minimum": 1,
+          "title": "Valid Days",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entry",
+        "allowed_activities",
+        "authorization_reference"
+      ],
+      "title": "VmsScopeCreate",
+      "type": "object"
+    },
+    "VmsScopeList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VmsScopeView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "VmsScopeList",
+      "type": "object"
+    },
+    "VmsScopeView": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_activities": {
+          "items": {
+            "$ref": "#/$defs/ScanActivity"
+          },
+          "title": "Allowed Activities",
+          "type": "array"
+        },
+        "authorization_reference": {
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "entry": {
+          "$ref": "#/$defs/ScopeEntry"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "entry",
+        "allowed_activities",
+        "authorization_reference",
+        "valid_until",
+        "created_at"
+      ],
+      "title": "VmsScopeView",
+      "type": "object"
+    },
+    "VmsStatus": {
+      "additionalProperties": false,
+      "description": "VMS readiness for the active organization: whether scanning may run and which V2 workers have reported.",
+      "properties": {
+        "reason": {
+          "maxLength": 200,
+          "title": "Reason",
+          "type": "string"
+        },
+        "scanning": {
+          "enum": [
+            "disabled",
+            "enabled"
+          ],
+          "title": "Scanning",
+          "type": "string"
+        },
+        "workers": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/VmsWorkerStatus"
+          },
+          "title": "Workers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "scanning",
+        "reason"
+      ],
+      "title": "VmsStatus",
+      "type": "object"
+    },
+    "VmsWorkerStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "component_version": {
+          "title": "Component Version",
+          "type": "string"
+        },
+        "identity_name": {
+          "maxLength": 200,
+          "title": "Identity Name",
+          "type": "string"
+        },
+        "last_heartbeat_at": {
+          "format": "date-time",
+          "title": "Last Heartbeat At",
+          "type": "string"
+        },
+        "stale": {
+          "title": "Stale",
+          "type": "boolean"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "degraded",
+            "failing",
+            "unconfigured"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_name",
+        "last_heartbeat_at",
+        "component_version",
+        "state",
+        "stale"
+      ],
+      "title": "VmsWorkerStatus",
+      "type": "object"
+    },
+    "WazuhEndpoint": {
+      "additionalProperties": false,
+      "description": "Read model of a Wazuh agent mapped to an asset. Ownership comes from the group/source map, never the agent.",
+      "properties": {
+        "agent_id": {
+          "pattern": "^\\d{3,6}$",
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "agent_version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Version"
+        },
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "groups": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "title": "Groups",
+          "type": "array"
+        },
+        "last_keepalive_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Keepalive At"
+        },
+        "manager_id": {
+          "format": "uuid",
+          "title": "Manager Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        },
+        "os_platform": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os Platform"
+        },
+        "os_version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os Version"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "disconnected",
+            "never_connected",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "agent_id",
+        "manager_id",
+        "name",
+        "status"
+      ],
+      "title": "WazuhEndpoint",
+      "type": "object"
+    },
+    "WorkerFinish": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "failed"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "title": "WorkerFinish",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/vms.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: vms",
+  "version": "1.0.0"
+}

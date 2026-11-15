@@ -1,0 +1,13 @@
+[project]
+name = "novrsoc-contracts"
+version = "1.0.0"
+description = "NovrSOC V2 shared, versioned contracts (Pydantic v2 models; JSON Schema and TypeScript are generated)."
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.8,<3"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["python"]

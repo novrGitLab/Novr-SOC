@@ -1,0 +1,38 @@
+{
+  "name": "@novrsoc/web",
+  "version": "2.0.0-foundation.2",
+  "private": true,
+  "description": "NovrSOC web application (Next.js). Every page calls the NovrSOC API through src/foundation/api; navigation is role-aware and permissions are enforced by the API.",
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 3210",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1 -p 3210",
+    "lint": "eslint \"src/app/(app)\" src/app/login src/foundation",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-concurrency=1 \"scripts/**/*.test.mjs\"",
+    "check:nav": "node scripts/check-v2-nav.mjs",
+    "api:types": "node scripts/check-api-types.mjs --write",
+    "api:types:check": "node scripts/check-api-types.mjs"
+  },
+  "dependencies": {
+    "html2canvas": "1.4.1",
+    "jspdf": "4.2.1",
+    "lucide-react": "1.21.0",
+    "next": "16.4.6",
+    "next-themes": "0.4.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "recharts": "3.9.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "20.19.43",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.4.6",
+    "openapi-typescript": "7.10.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "_comment": "/etc/novrsoc-bridge/bridge.json (0640 root:novrsoc-bridge). No secrets inline: keys are files (0400). Listen on the WireGuard address only; TLS required off-loopback.",
+  "bridge_id": "server1-bridge",
+  "listen": "<server1 WireGuard address>",
+  "port": 8650,
+  "tls_cert": "/etc/novrsoc-bridge/tls/bridge.crt",
+  "tls_key": "/etc/novrsoc-bridge/tls/bridge.key",
+  "keys": {"server2-soar": "/etc/novrsoc-bridge/server2-soar.key"},
+  "state_db": "/var/lib/novrsoc-bridge/receipts.sqlite3",
+  "adapter": "simulated",
+  "allow_live": false,
+  "wazuh": {"url": "https://127.0.0.1:55000", "user": "novrsoc_bridge_ar", "password_file": "/etc/novrsoc-bridge/wazuh.password", "ca_file": "/etc/novrsoc-bridge/wazuh-api-ca.pem"},
+  "simulated_agents": {},
+  "actions": ["block_ip"],
+  "never_block": ["<WireGuard network CIDR>", "<Server 1 public IP>/32", "<Server 2 public IP>/32", "<owner office egress>/32"],
+  "tenants": {
+    "<organization uuid>": {"actions": ["block_ip"], "agent_groups": ["<that organization's Wazuh group>"]}
+  }
+}

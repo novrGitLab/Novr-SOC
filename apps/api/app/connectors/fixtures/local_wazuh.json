@@ -1,0 +1,56 @@
+{
+  "label": "LOCAL FIXTURE: illustrative Wazuh data for local development and automated tests. Not telemetry from any real system.",
+  "agents": [
+    {"agent_id": "001", "name": "alpha-web-01", "groups": ["nv-alpha-servers"], "status": "active",
+     "os": {"platform": "ubuntu", "name": "Ubuntu", "version": "22.04.4 LTS"}, "version": "Wazuh v4.9.2",
+     "ip": "10.10.0.11", "last_keepalive_at": "2026-11-10T08:55:00Z"},
+    {"agent_id": "002", "name": "alpha-db-01", "groups": ["nv-alpha-servers"], "status": "active",
+     "os": {"platform": "rhel", "name": "Red Hat Enterprise Linux", "version": "9.4"}, "version": "Wazuh v4.9.2",
+     "ip": "10.10.0.21", "last_keepalive_at": "2026-11-10T08:54:30Z"},
+    {"agent_id": "003", "name": "alpha-fin-ws-07", "groups": ["nv-alpha-workstations"], "status": "disconnected",
+     "os": {"platform": "windows", "name": "Microsoft Windows 11 Pro", "version": "10.0.22631"}, "version": "Wazuh v4.8.1",
+     "ip": "10.10.4.37", "last_keepalive_at": "2026-11-08T17:02:00Z"},
+    {"agent_id": "004", "name": "beta-app-01", "groups": ["nv-beta-servers"], "status": "active",
+     "os": {"platform": "debian", "name": "Debian GNU/Linux", "version": "12"}, "version": "Wazuh v4.9.2",
+     "ip": "10.10.0.11", "last_keepalive_at": "2026-11-10T08:55:10Z"},
+    {"agent_id": "005", "name": "lab-unmapped-01", "groups": ["lab-unmapped"], "status": "never_connected",
+     "os": {"platform": "freebsd", "name": "FreeBSD", "version": "14.1"}, "version": null,
+     "ip": null, "last_keepalive_at": null}
+  ],
+  "vulnerabilities": {
+    "001": {"critical": 1, "high": 4, "medium": 9, "low": 3},
+    "002": {"critical": 0, "high": 2, "medium": 5, "low": 7},
+    "003": {"critical": 2, "high": 6, "medium": 11, "low": 4},
+    "004": {"critical": 0, "high": 1, "medium": 3, "low": 2}
+  },
+  "sca": {
+    "001": [{"policy_id": "cis_ubuntu22-04", "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0",
+             "passed": 132, "failed": 58, "not_applicable": 11, "scanned_at": "2026-11-10T02:10:00Z"}],
+    "002": [{"policy_id": "cis_rhel9", "name": "CIS Red Hat Enterprise Linux 9 Benchmark v1.0.0",
+             "passed": 141, "failed": 47, "not_applicable": 9, "scanned_at": "2026-11-10T02:15:00Z"}],
+    "003": [{"policy_id": "cis_win11_enterprise_21H2", "name": "CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0",
+             "passed": 248, "failed": 197, "not_applicable": 20, "scanned_at": "2026-11-08T03:00:00Z"}],
+    "004": [{"policy_id": "cis_debian12", "name": "CIS Debian Linux 12 Benchmark v1.0.0",
+             "passed": 150, "failed": 39, "not_applicable": 6, "scanned_at": "2026-11-10T02:20:00Z"}]
+  },
+  "alerts": [
+    {"id": "fx-1731574800.1001", "timestamp": "2026-11-10T08:20:00Z",
+     "rule": {"id": "5712", "level": 10, "description": "sshd: brute force trying to get access to the system. Authentication failed.", "mitre_ids": ["T1110"]},
+     "agent": {"id": "001", "name": "alpha-web-01", "groups": ["nv-alpha-servers"]}, "src_ip": "203.0.113.45"},
+    {"id": "fx-1731575100.1002", "timestamp": "2026-11-10T08:25:00Z",
+     "rule": {"id": "31151", "level": 7, "description": "Multiple web server 400 error codes from same source ip.", "mitre_ids": ["T1595.002"]},
+     "agent": {"id": "001", "name": "alpha-web-01", "groups": ["nv-alpha-servers"]}, "src_ip": "198.51.100.23"},
+    {"id": "fx-1731575400.1003", "timestamp": "2026-11-10T08:30:00Z",
+     "rule": {"id": "92213", "level": 13, "description": "Executable file dropped in folder commonly used by malware.", "mitre_ids": ["T1105"]},
+     "agent": {"id": "003", "name": "alpha-fin-ws-07", "groups": ["nv-alpha-workstations"]}, "src_ip": null},
+    {"id": "fx-1731575700.1004", "timestamp": "2026-11-10T08:35:00Z",
+     "rule": {"id": "550", "level": 5, "description": "Integrity checksum changed.", "mitre_ids": ["T1565.001"]},
+     "agent": {"id": "002", "name": "alpha-db-01", "groups": ["nv-alpha-servers"]}, "src_ip": null},
+    {"id": "fx-1731576000.1005", "timestamp": "2026-11-10T08:40:00Z",
+     "rule": {"id": "5710", "level": 5, "description": "sshd: Attempt to login using a non-existent user", "mitre_ids": ["T1110.001"]},
+     "agent": {"id": "004", "name": "beta-app-01", "groups": ["nv-beta-servers"]}, "src_ip": "192.0.2.77"},
+    {"id": "fx-1731576300.1006", "timestamp": "2026-11-10T08:45:00Z",
+     "rule": {"id": "100002", "level": 8, "description": "Lab host alert (agent group not mapped to any organization)", "mitre_ids": []},
+     "agent": {"id": "005", "name": "lab-unmapped-01", "groups": ["lab-unmapped"]}, "src_ip": null}
+  ]
+}

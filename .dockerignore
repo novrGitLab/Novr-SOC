@@ -1,0 +1,36 @@
+# Build context for deploy/docker/*.Dockerfile is the repository root. Only what the images need goes in;
+# secrets, local state, legacy reference code and documentation never enter an image.
+**/.git
+**/.github
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/*.env.example
+**/*.pem
+**/*.key
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/*.dump
+.run/
+info.md
+reference/
+provenance/
+docs/
+apps/api/tests/
+apps/web/scripts/
+services/vms-worker/
+scripts/dev/
+scripts/e2e/
+e2e-artifacts/
+test-results/
+release/
+.claude/
+**/*.log
+coverage/

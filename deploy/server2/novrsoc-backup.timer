@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly NovrSOC V2 encrypted backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 Africa/Lagos
+Persistent=true
+
+[Install]
+WantedBy=timers.target

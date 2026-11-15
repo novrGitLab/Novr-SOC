@@ -1,0 +1,1073 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "user",
+            "service",
+            "system"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "CaseSlaView": {
+      "additionalProperties": false,
+      "properties": {
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "case_id": {
+          "format": "uuid",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "escalated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Escalated At"
+        },
+        "first_response_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Response At"
+        },
+        "reference": {
+          "title": "Reference",
+          "type": "string"
+        },
+        "resolution_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolution Due At"
+        },
+        "resolution_state": {
+          "enum": [
+            "met",
+            "on_track",
+            "at_risk",
+            "breached",
+            "no_policy"
+          ],
+          "title": "Resolution State",
+          "type": "string"
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved At"
+        },
+        "response_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Due At"
+        },
+        "response_state": {
+          "enum": [
+            "met",
+            "on_track",
+            "at_risk",
+            "breached",
+            "no_policy"
+          ],
+          "title": "Response State",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id",
+        "reference",
+        "title",
+        "severity",
+        "status",
+        "created_at",
+        "response_state",
+        "resolution_state"
+      ],
+      "title": "CaseSlaView",
+      "type": "object"
+    },
+    "EscalationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "checked": {
+          "minimum": 0,
+          "title": "Checked",
+          "type": "integer"
+        },
+        "escalated": {
+          "minimum": 0,
+          "title": "Escalated",
+          "type": "integer"
+        },
+        "notified": {
+          "minimum": 0,
+          "title": "Notified",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "checked",
+        "escalated",
+        "notified"
+      ],
+      "title": "EscalationResult",
+      "type": "object"
+    },
+    "HandoverAcknowledge": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "HandoverAcknowledge",
+      "type": "object"
+    },
+    "HandoverAlert": {
+      "additionalProperties": false,
+      "properties": {
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "rule_description": {
+          "title": "Rule Description",
+          "type": "string"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "rule_description",
+        "severity",
+        "status",
+        "observed_at"
+      ],
+      "title": "HandoverAlert",
+      "type": "object"
+    },
+    "HandoverApproval": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "requested_by": {
+          "title": "Requested By",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "action",
+        "target",
+        "requested_by",
+        "expires_at"
+      ],
+      "title": "HandoverApproval",
+      "type": "object"
+    },
+    "HandoverCase": {
+      "additionalProperties": false,
+      "properties": {
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "reference": {
+          "title": "Reference",
+          "type": "string"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reference",
+        "title",
+        "severity",
+        "status"
+      ],
+      "title": "HandoverCase",
+      "type": "object"
+    },
+    "HandoverCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "incoming_user_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Incoming User Id"
+        },
+        "shift_end": {
+          "format": "date-time",
+          "title": "Shift End",
+          "type": "string"
+        },
+        "shift_start": {
+          "format": "date-time",
+          "title": "Shift Start",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 8000,
+          "minLength": 10,
+          "title": "Summary",
+          "type": "string"
+        },
+        "watch_items": {
+          "default": [],
+          "items": {
+            "maxLength": 300,
+            "minLength": 2,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Watch Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "shift_start",
+        "shift_end",
+        "summary"
+      ],
+      "title": "HandoverCreate",
+      "type": "object"
+    },
+    "HandoverDraft": {
+      "additionalProperties": false,
+      "properties": {
+        "recipients": {
+          "items": {
+            "$ref": "#/$defs/UserRef"
+          },
+          "title": "Recipients",
+          "type": "array"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/HandoverSnapshot"
+        }
+      },
+      "required": [
+        "snapshot",
+        "recipients"
+      ],
+      "title": "HandoverDraft",
+      "type": "object"
+    },
+    "HandoverList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/HandoverView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "HandoverList",
+      "type": "object"
+    },
+    "HandoverSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "cases": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/HandoverCase"
+          },
+          "title": "Cases",
+          "type": "array"
+        },
+        "my_assignments": {
+          "default": 0,
+          "minimum": 0,
+          "title": "My Assignments",
+          "type": "integer"
+        },
+        "open_cases": {
+          "minimum": 0,
+          "title": "Open Cases",
+          "type": "integer"
+        },
+        "pending_approvals": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/HandoverApproval"
+          },
+          "title": "Pending Approvals",
+          "type": "array"
+        },
+        "sla_at_risk": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CaseSlaView"
+          },
+          "title": "Sla At Risk",
+          "type": "array"
+        },
+        "sla_breached": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Sla Breached",
+          "type": "integer"
+        },
+        "taken_at": {
+          "format": "date-time",
+          "title": "Taken At",
+          "type": "string"
+        },
+        "top_alerts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/HandoverAlert"
+          },
+          "title": "Top Alerts",
+          "type": "array"
+        },
+        "unassigned_critical_alerts": {
+          "minimum": 0,
+          "title": "Unassigned Critical Alerts",
+          "type": "integer"
+        },
+        "unresolved_alerts": {
+          "minimum": 0,
+          "title": "Unresolved Alerts",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "taken_at",
+        "unresolved_alerts",
+        "unassigned_critical_alerts",
+        "open_cases"
+      ],
+      "title": "HandoverSnapshot",
+      "type": "object"
+    },
+    "HandoverView": {
+      "additionalProperties": false,
+      "properties": {
+        "acknowledged_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Acknowledged At"
+        },
+        "acknowledged_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "acknowledgement_note": {
+          "default": "",
+          "title": "Acknowledgement Note",
+          "type": "string"
+        },
+        "author": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "incoming_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Incoming Label"
+        },
+        "incoming_user_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Incoming User Id"
+        },
+        "shift_end": {
+          "format": "date-time",
+          "title": "Shift End",
+          "type": "string"
+        },
+        "shift_start": {
+          "format": "date-time",
+          "title": "Shift Start",
+          "type": "string"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/HandoverSnapshot"
+        },
+        "status": {
+          "enum": [
+            "submitted",
+            "acknowledged"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "watch_items": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Watch Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "author",
+        "shift_start",
+        "shift_end",
+        "summary",
+        "watch_items",
+        "snapshot",
+        "status",
+        "created_at"
+      ],
+      "title": "HandoverView",
+      "type": "object"
+    },
+    "NotificationList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/NotificationView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "unread": {
+          "minimum": 0,
+          "title": "Unread",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "unread"
+      ],
+      "title": "NotificationList",
+      "type": "object"
+    },
+    "NotificationView": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string"
+        },
+        "read_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Read At"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "body",
+        "link",
+        "created_at"
+      ],
+      "title": "NotificationView",
+      "type": "object"
+    },
+    "SlaPerformance": {
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "title": "Days",
+          "type": "integer"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/SlaPerformanceRow"
+          },
+          "title": "Rows",
+          "type": "array"
+        },
+        "weekly": {
+          "items": {
+            "$ref": "#/$defs/SlaWeek"
+          },
+          "title": "Weekly",
+          "type": "array"
+        }
+      },
+      "required": [
+        "days",
+        "rows",
+        "weekly"
+      ],
+      "title": "SlaPerformance",
+      "type": "object"
+    },
+    "SlaPerformanceRow": {
+      "additionalProperties": false,
+      "properties": {
+        "cases": {
+          "minimum": 0,
+          "title": "Cases",
+          "type": "integer"
+        },
+        "median_resolution_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median Resolution Minutes"
+        },
+        "median_response_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Median Response Minutes"
+        },
+        "resolution_breached": {
+          "minimum": 0,
+          "title": "Resolution Breached",
+          "type": "integer"
+        },
+        "resolution_met": {
+          "minimum": 0,
+          "title": "Resolution Met",
+          "type": "integer"
+        },
+        "response_breached": {
+          "minimum": 0,
+          "title": "Response Breached",
+          "type": "integer"
+        },
+        "response_met": {
+          "minimum": 0,
+          "title": "Response Met",
+          "type": "integer"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "without_policy": {
+          "minimum": 0,
+          "title": "Without Policy",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "severity",
+        "cases",
+        "response_met",
+        "response_breached",
+        "resolution_met",
+        "resolution_breached",
+        "without_policy"
+      ],
+      "title": "SlaPerformanceRow",
+      "type": "object"
+    },
+    "SlaPolicyInput": {
+      "additionalProperties": false,
+      "properties": {
+        "escalate_before_minutes": {
+          "default": 0,
+          "maximum": 10080,
+          "minimum": 0,
+          "title": "Escalate Before Minutes",
+          "type": "integer"
+        },
+        "escalate_to_role": {
+          "default": "soc_manager",
+          "enum": [
+            "soc_manager",
+            "super_admin"
+          ],
+          "title": "Escalate To Role",
+          "type": "string"
+        },
+        "resolution_minutes": {
+          "maximum": 525600,
+          "minimum": 1,
+          "title": "Resolution Minutes",
+          "type": "integer"
+        },
+        "response_minutes": {
+          "maximum": 43200,
+          "minimum": 1,
+          "title": "Response Minutes",
+          "type": "integer"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "response_minutes",
+        "resolution_minutes"
+      ],
+      "title": "SlaPolicyInput",
+      "type": "object"
+    },
+    "SlaPolicyList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/SlaPolicyView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "SlaPolicyList",
+      "type": "object"
+    },
+    "SlaPolicySet": {
+      "additionalProperties": false,
+      "properties": {
+        "policies": {
+          "items": {
+            "$ref": "#/$defs/SlaPolicyInput"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Policies",
+          "type": "array"
+        }
+      },
+      "required": [
+        "policies"
+      ],
+      "title": "SlaPolicySet",
+      "type": "object"
+    },
+    "SlaPolicyView": {
+      "additionalProperties": false,
+      "properties": {
+        "escalate_before_minutes": {
+          "default": 0,
+          "maximum": 10080,
+          "minimum": 0,
+          "title": "Escalate Before Minutes",
+          "type": "integer"
+        },
+        "escalate_to_role": {
+          "default": "soc_manager",
+          "enum": [
+            "soc_manager",
+            "super_admin"
+          ],
+          "title": "Escalate To Role",
+          "type": "string"
+        },
+        "resolution_minutes": {
+          "maximum": 525600,
+          "minimum": 1,
+          "title": "Resolution Minutes",
+          "type": "integer"
+        },
+        "response_minutes": {
+          "maximum": 43200,
+          "minimum": 1,
+          "title": "Response Minutes",
+          "type": "integer"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "response_minutes",
+        "resolution_minutes",
+        "updated_at"
+      ],
+      "title": "SlaPolicyView",
+      "type": "object"
+    },
+    "SlaStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "Counts",
+          "type": "object"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CaseSlaView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "policies_configured": {
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Policies Configured",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "generated_at",
+        "policies_configured",
+        "items"
+      ],
+      "title": "SlaStatus",
+      "type": "object"
+    },
+    "SlaWeek": {
+      "additionalProperties": false,
+      "properties": {
+        "breached": {
+          "minimum": 0,
+          "title": "Breached",
+          "type": "integer"
+        },
+        "met": {
+          "minimum": 0,
+          "title": "Met",
+          "type": "integer"
+        },
+        "week_start": {
+          "format": "date",
+          "title": "Week Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "week_start",
+        "met",
+        "breached"
+      ],
+      "title": "SlaWeek",
+      "type": "object"
+    },
+    "UserRef": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role"
+      ],
+      "title": "UserRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/secops.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: secops",
+  "version": "1.0.0"
+}

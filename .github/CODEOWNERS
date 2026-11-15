@@ -1,0 +1,111 @@
+# NovrSOC code ownership.
+# PLACEHOLDER TEAM HANDLES: replace with the real GitHub teams before the first push.
+# Later rules win. Everything not listed falls back to the platform owner.
+
+*                                                   @novrsoc/platform-owner
+
+# ---- Workstream-owned paths ------------------------------------------------------------------------------
+/apps/api/app/modules/soc/                          @novrsoc/ws-a-soc-soar
+/apps/api/app/modules/soar/                         @novrsoc/ws-a-soc-soar
+/apps/api/tests/modules/soc/                        @novrsoc/ws-a-soc-soar
+/apps/api/tests/modules/soar/                       @novrsoc/ws-a-soc-soar
+/services/soar/                                     @novrsoc/ws-a-soc-soar
+/services/edge/                                     @novrsoc/ws-a-soc-soar
+/apps/api/app/soar/                                 @novrsoc/ws-a-soc-soar
+/packages/contracts/python/novrsoc_contracts/v1/soar.py        @novrsoc/ws-a-soc-soar
+/packages/contracts/python/novrsoc_contracts/v1/soc.py         @novrsoc/ws-a-soc-soar
+
+/apps/api/app/modules/vms/                          @novrsoc/ws-b-vms-greenbone
+/apps/api/tests/modules/vms/                        @novrsoc/ws-b-vms-greenbone
+/services/vms-worker/                               @novrsoc/ws-b-vms-greenbone
+/packages/contracts/python/novrsoc_contracts/v1/vms.py         @novrsoc/ws-b-vms-greenbone
+/packages/contracts/fixtures/vms/                   @novrsoc/ws-b-vms-greenbone
+
+/apps/api/app/modules/collectors/                   @novrsoc/ws-c-collector-wazuh
+/apps/api/app/modules/endpoints/                    @novrsoc/ws-c-collector-wazuh
+/apps/api/tests/modules/collectors/                 @novrsoc/ws-c-collector-wazuh
+/apps/api/tests/modules/endpoints/                  @novrsoc/ws-c-collector-wazuh
+/services/collector/                                @novrsoc/ws-c-collector-wazuh
+/packages/contracts/python/novrsoc_contracts/v1/collector.py   @novrsoc/ws-c-collector-wazuh
+/packages/contracts/python/novrsoc_contracts/v1/endpoints.py   @novrsoc/ws-c-collector-wazuh
+
+/apps/api/app/modules/email/                        @novrsoc/ws-d-email-brand
+/apps/api/app/modules/brand/                        @novrsoc/ws-d-email-brand
+/apps/api/tests/modules/email/                      @novrsoc/ws-d-email-brand
+/apps/api/tests/modules/brand/                      @novrsoc/ws-d-email-brand
+/packages/contracts/python/novrsoc_contracts/v1/protection.py  @novrsoc/ws-d-email-brand
+/apps/api/app/modules/protection/                   @novrsoc/ws-d-email-brand
+/apps/api/app/protection/                           @novrsoc/ws-d-email-brand
+/apps/api/tests/modules/protection/                 @novrsoc/ws-d-email-brand
+
+/apps/api/app/modules/reports/                      @novrsoc/ws-e-reporting-backup
+/apps/api/app/modules/backups/                      @novrsoc/ws-e-reporting-backup
+/apps/api/tests/modules/reports/                    @novrsoc/ws-e-reporting-backup
+/apps/api/tests/modules/backups/                    @novrsoc/ws-e-reporting-backup
+/services/jobs/                                     @novrsoc/ws-e-reporting-backup
+/services/backup/                                   @novrsoc/ws-e-reporting-backup
+/packages/contracts/python/novrsoc_contracts/v1/governance.py  @novrsoc/ws-e-reporting-backup
+/apps/api/app/modules/cnii/                         @novrsoc/ws-e-reporting-backup
+/apps/api/app/backup.py                             @novrsoc/ws-e-reporting-backup
+/apps/api/tests/test_backup.py                      @novrsoc/ws-e-reporting-backup
+
+/apps/api/app/modules/insights/                     @novrsoc/ws-f-insights-ai
+/apps/api/app/insights/                             @novrsoc/ws-f-insights-ai
+/apps/api/app/nhai/                                 @novrsoc/ws-f-insights-ai
+/apps/api/app/modules/nhai/                         @novrsoc/ws-f-insights-ai
+/apps/api/app/modules/ai_gateway/                   @novrsoc/ws-f-insights-ai
+/apps/api/tests/modules/insights/                   @novrsoc/ws-f-insights-ai
+/apps/api/tests/modules/nhai/                       @novrsoc/ws-f-insights-ai
+/apps/api/tests/modules/ai_gateway/                 @novrsoc/ws-f-insights-ai
+/packages/contracts/python/novrsoc_contracts/v1/insights.py    @novrsoc/ws-f-insights-ai
+/packages/contracts/python/novrsoc_contracts/v1/nhai.py        @novrsoc/ws-f-insights-ai
+/packages/contracts/python/novrsoc_contracts/v1/ai_gateway.py  @novrsoc/ws-f-insights-ai
+/packages/contracts/python/novrsoc_contracts/stix21.py         @novrsoc/ws-f-insights-ai
+/services/edge/threat_intel/                        @novrsoc/ws-f-insights-ai
+
+/apps/web/src/app/(app)/app/                        @novrsoc/ws-g-frontend
+/apps/web/src/components/features/                  @novrsoc/ws-g-frontend
+/apps/web/src/extracted-routes/                     @novrsoc/ws-g-frontend
+
+# ---- Shared foundations: platform owner ONLY (listed last so they always win) ------------------------------
+/apps/api/app/core/                                 @novrsoc/platform-owner
+/apps/api/app/auth/                                 @novrsoc/platform-owner
+/apps/api/app/authz/                                @novrsoc/platform-owner
+/apps/api/app/audit/                                @novrsoc/platform-owner
+/apps/api/app/db/                                   @novrsoc/platform-owner
+/apps/api/app/connectors/                           @novrsoc/platform-owner
+/apps/api/app/modules/__init__.py                   @novrsoc/platform-owner
+/apps/api/app/modules/admin/                        @novrsoc/platform-owner
+/apps/api/tests/modules/admin/                      @novrsoc/platform-owner
+/apps/api/app/cli.py                                @novrsoc/platform-owner
+/apps/api/app/main.py                               @novrsoc/platform-owner
+/apps/api/app/routers/                              @novrsoc/platform-owner
+/apps/api/tests/conftest.py                         @novrsoc/platform-owner
+/apps/api/tests/helpers/                            @novrsoc/platform-owner
+/apps/api/tests/modules/conftest.py                 @novrsoc/platform-owner
+/apps/api/tests/test_platform_status.py             @novrsoc/platform-owner
+/apps/api/tests/test_platform_contracts.py          @novrsoc/platform-owner
+/apps/api/tests/test_architecture.py                @novrsoc/platform-owner
+/apps/api/requirements.lock                         @novrsoc/platform-owner
+/packages/db/                                       @novrsoc/platform-owner
+/packages/contracts/python/novrsoc_contracts/v1/common.py      @novrsoc/platform-owner
+/packages/contracts/python/novrsoc_contracts/v1/platform.py    @novrsoc/platform-owner
+/packages/contracts/python/novrsoc_contracts/v1/operations.py  @novrsoc/platform-owner
+/packages/contracts/python/novrsoc_contracts/v1/__init__.py    @novrsoc/platform-owner
+/packages/contracts/baseline/                       @novrsoc/platform-owner
+/packages/contracts/openapi/                        @novrsoc/platform-owner
+/packages/contracts/schemas/                        @novrsoc/platform-owner
+/apps/web/src/foundation/                           @novrsoc/platform-owner
+/apps/web/src/app/layout.tsx                        @novrsoc/platform-owner
+/apps/web/src/app/(app)/layout.tsx                  @novrsoc/platform-owner
+/apps/web/src/app/login/                            @novrsoc/platform-owner
+/apps/web/src/proxy.ts                              @novrsoc/platform-owner
+/apps/web/next.config.ts                            @novrsoc/platform-owner
+/apps/web/package.json                              @novrsoc/platform-owner
+/apps/web/package-lock.json                         @novrsoc/platform-owner
+/deploy/                                            @novrsoc/platform-owner
+/scripts/                                           @novrsoc/platform-owner
+/.github/                                           @novrsoc/platform-owner
+/.gitignore                                         @novrsoc/platform-owner
+/.gitattributes                                     @novrsoc/platform-owner
+/.gitleaks.toml                                     @novrsoc/platform-owner

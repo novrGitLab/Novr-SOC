@@ -1,0 +1,33 @@
+# NovrSOC V2 Wazuh response execution bridge (Server 1). NOT INSTALLED. Gate G-S1 in
+# docs/public/DEPLOYMENT.md. Starts with the SIMULATED adapter; the live Wazuh adapter needs
+# "adapter": "wazuh" AND "allow_live": true in bridge.json, which is a separate, signed approval (G-S2).
+[Unit]
+Description=NovrSOC V2 response execution bridge (signed requests from the Server 2 SOAR engine only)
+After=network-online.target wazuh-manager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=novrsoc-bridge
+Group=novrsoc-bridge
+WorkingDirectory=/opt/novrsoc-v2/services/edge/response_bridge
+ExecStart=/usr/bin/python3 -m novrsoc_bridge --config /etc/novrsoc-bridge/bridge.json
+StateDirectory=novrsoc-bridge
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=128M
+
+[Install]
+WantedBy=multi-user.target

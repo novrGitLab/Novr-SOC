@@ -1,0 +1,322 @@
+{
+  "$defs": {
+    "ComponentHeartbeat": {
+      "additionalProperties": false,
+      "description": "Sent by a background component every <= 60 s. Identity (and organisation, for tenant-bound\ncomponents) comes from the authenticated machine credential.",
+      "properties": {
+        "component_version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)?$",
+          "title": "Component Version",
+          "type": "string"
+        },
+        "dependencies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DependencyCheck"
+          },
+          "maxItems": 20,
+          "title": "Dependencies",
+          "type": "array"
+        },
+        "in_flight": {
+          "default": 0,
+          "minimum": 0,
+          "title": "In Flight",
+          "type": "integer"
+        },
+        "queue_depth": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Queue Depth",
+          "type": "integer"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/HealthState"
+        }
+      },
+      "required": [
+        "sent_at",
+        "component_version",
+        "state"
+      ],
+      "title": "ComponentHeartbeat",
+      "type": "object"
+    },
+    "ComponentKind": {
+      "enum": [
+        "api",
+        "vms_worker",
+        "soar_worker",
+        "forwarder",
+        "collector",
+        "job_runner",
+        "backup_agent",
+        "ai_gateway"
+      ],
+      "title": "ComponentKind",
+      "type": "string"
+    },
+    "ComponentStatus": {
+      "additionalProperties": false,
+      "description": "Read model for Platform Health. `stale` when no heartbeat arrived within 3 intervals.",
+      "properties": {
+        "component": {
+          "$ref": "#/$defs/ComponentKind"
+        },
+        "dependencies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DependencyCheck"
+          },
+          "title": "Dependencies",
+          "type": "array"
+        },
+        "identity_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Identity Id"
+        },
+        "last_heartbeat_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Heartbeat At"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HealthState"
+            },
+            {
+              "enum": [
+                "stale",
+                "never_seen"
+              ],
+              "type": "string"
+            }
+          ],
+          "title": "State"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "component",
+        "state"
+      ],
+      "title": "ComponentStatus",
+      "type": "object"
+    },
+    "DependencyCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "description": "Never a secret, URL with credentials, or raw response body",
+          "maxLength": 200,
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z0-9_.-]{2,40}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/HealthState"
+        }
+      },
+      "required": [
+        "name",
+        "state"
+      ],
+      "title": "DependencyCheck",
+      "type": "object"
+    },
+    "HealthState": {
+      "enum": [
+        "ok",
+        "degraded",
+        "failing",
+        "unconfigured"
+      ],
+      "title": "HealthState",
+      "type": "string"
+    },
+    "JobRun": {
+      "additionalProperties": false,
+      "description": "One unit of scheduled or queued work. Unique (job_type, idempotency_key): a repeat is a no-op.",
+      "properties": {
+        "attempt": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "enum": [
+                "retryable",
+                "permanent"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure"
+        },
+        "failure_reason": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Failure Reason",
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "job_type": {
+          "pattern": "^[a-z0-9_.]{3,60}$",
+          "title": "Job Type",
+          "type": "string"
+        },
+        "max_attempts": {
+          "default": 3,
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "next_attempt_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Attempt At"
+        },
+        "org_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Set for tenant work; null only for platform-wide jobs",
+          "title": "Org Id"
+        },
+        "queued_at": {
+          "format": "date-time",
+          "title": "Queued At",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "state": {
+          "$ref": "#/$defs/JobState"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "job_type",
+        "idempotency_key",
+        "state",
+        "queued_at"
+      ],
+      "title": "JobRun",
+      "type": "object"
+    },
+    "JobState": {
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "title": "JobState",
+      "type": "string"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/operations.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: operations",
+  "version": "1.0.0"
+}

@@ -1,0 +1,895 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "user",
+            "service",
+            "system"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "ContinuityOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "completed_requests": {
+          "minimum": 0,
+          "title": "Completed Requests",
+          "type": "integer"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "not_recoverable": {
+          "minimum": 0,
+          "title": "Not Recoverable",
+          "type": "integer"
+        },
+        "open_requests": {
+          "minimum": 0,
+          "title": "Open Requests",
+          "type": "integer"
+        },
+        "plans": {
+          "minimum": 0,
+          "title": "Plans",
+          "type": "integer"
+        },
+        "plans_untested_90d": {
+          "minimum": 0,
+          "title": "Plans Untested 90D",
+          "type": "integer"
+        },
+        "platform_backups": {
+          "$ref": "#/$defs/PlatformBackupState"
+        },
+        "rpo_met": {
+          "minimum": 0,
+          "title": "Rpo Met",
+          "type": "integer"
+        },
+        "rpo_missed": {
+          "minimum": 0,
+          "title": "Rpo Missed",
+          "type": "integer"
+        },
+        "rto_met": {
+          "minimum": 0,
+          "title": "Rto Met",
+          "type": "integer"
+        },
+        "rto_missed": {
+          "minimum": 0,
+          "title": "Rto Missed",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "generated_at",
+        "platform_backups",
+        "plans",
+        "plans_untested_90d",
+        "open_requests",
+        "completed_requests",
+        "not_recoverable",
+        "rpo_met",
+        "rpo_missed",
+        "rto_met",
+        "rto_missed"
+      ],
+      "title": "ContinuityOverview",
+      "type": "object"
+    },
+    "PlatformBackupState": {
+      "additionalProperties": false,
+      "properties": {
+        "last_drill_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Drill At"
+        },
+        "last_drill_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Drill Status"
+        },
+        "last_succeeded_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Succeeded At"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "visible": {
+          "description": "False when the caller may not read platform backup history",
+          "title": "Visible",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "visible",
+        "note"
+      ],
+      "title": "PlatformBackupState",
+      "type": "object"
+    },
+    "RecoveryDecision": {
+      "additionalProperties": false,
+      "description": "assess / approve / reject / not_recoverable, by someone other than the requester (recovery:manage).",
+      "properties": {
+        "backup_reference": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Backup Reference",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "assess",
+            "approve",
+            "reject",
+            "not_recoverable"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "reason"
+      ],
+      "title": "RecoveryDecision",
+      "type": "object"
+    },
+    "RecoveryEventView": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_label": {
+          "title": "Actor Label",
+          "type": "string"
+        },
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Details",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "submitted",
+            "status_changed",
+            "note",
+            "evidence",
+            "verification"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "occurred_at",
+        "kind",
+        "actor_label",
+        "body"
+      ],
+      "title": "RecoveryEventView",
+      "type": "object"
+    },
+    "RecoveryPlanCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "backup_source": {
+          "enum": [
+            "novrsoc_platform_backup",
+            "external_provider",
+            "manual_procedure"
+          ],
+          "title": "Backup Source",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Name",
+          "type": "string"
+        },
+        "owning_unit": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Owning Unit",
+          "type": "string"
+        },
+        "procedure": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Procedure",
+          "type": "string"
+        },
+        "provider_name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Provider Name",
+          "type": "string"
+        },
+        "rpo_minutes": {
+          "anyOf": [
+            {
+              "maximum": 525600,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rpo Minutes"
+        },
+        "rto_minutes": {
+          "anyOf": [
+            {
+              "maximum": 525600,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rto Minutes"
+        },
+        "scope": {
+          "maxLength": 4000,
+          "minLength": 3,
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "scope",
+        "backup_source"
+      ],
+      "title": "RecoveryPlanCreate",
+      "type": "object"
+    },
+    "RecoveryPlanList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RecoveryPlanView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "RecoveryPlanList",
+      "type": "object"
+    },
+    "RecoveryPlanTested": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "maxLength": 2000,
+          "minLength": 3,
+          "title": "Note",
+          "type": "string"
+        },
+        "tested_at": {
+          "format": "date-time",
+          "title": "Tested At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tested_at",
+        "note"
+      ],
+      "title": "RecoveryPlanTested",
+      "type": "object"
+    },
+    "RecoveryPlanView": {
+      "additionalProperties": false,
+      "properties": {
+        "backup_source": {
+          "enum": [
+            "novrsoc_platform_backup",
+            "external_provider",
+            "manual_procedure"
+          ],
+          "title": "Backup Source",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "execution": {
+          "description": "What NovrSOC can actually do for this plan",
+          "title": "Execution",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_tested_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Tested At"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Name",
+          "type": "string"
+        },
+        "owning_unit": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Owning Unit",
+          "type": "string"
+        },
+        "procedure": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Procedure",
+          "type": "string"
+        },
+        "provider_name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Provider Name",
+          "type": "string"
+        },
+        "rpo_minutes": {
+          "anyOf": [
+            {
+              "maximum": 525600,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rpo Minutes"
+        },
+        "rto_minutes": {
+          "anyOf": [
+            {
+              "maximum": 525600,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rto Minutes"
+        },
+        "scope": {
+          "maxLength": 4000,
+          "minLength": 3,
+          "title": "Scope",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "scope",
+        "backup_source",
+        "id",
+        "created_at",
+        "updated_at",
+        "execution"
+      ],
+      "title": "RecoveryPlanView",
+      "type": "object"
+    },
+    "RecoveryProgress": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "default": [],
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "note": {
+          "maxLength": 4000,
+          "minLength": 3,
+          "title": "Note",
+          "type": "string"
+        },
+        "recovered_point": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovered Point"
+        },
+        "status": {
+          "enum": [
+            "in_progress",
+            "completed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "note"
+      ],
+      "title": "RecoveryProgress",
+      "type": "object"
+    },
+    "RecoveryRequestCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "affected_data": {
+          "maxLength": 2000,
+          "minLength": 3,
+          "title": "Affected Data",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 4000,
+          "minLength": 10,
+          "title": "Description",
+          "type": "string"
+        },
+        "loss_detected_at": {
+          "format": "date-time",
+          "title": "Loss Detected At",
+          "type": "string"
+        },
+        "plan_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Id"
+        },
+        "requested_recovery_point": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Recovery Point"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "affected_data",
+        "loss_detected_at"
+      ],
+      "title": "RecoveryRequestCreate",
+      "type": "object"
+    },
+    "RecoveryRequestList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RecoveryRequestView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "RecoveryRequestList",
+      "type": "object"
+    },
+    "RecoveryRequestView": {
+      "additionalProperties": false,
+      "properties": {
+        "achieved_rpo_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Achieved Rpo Minutes"
+        },
+        "achieved_rto_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Achieved Rto Minutes"
+        },
+        "affected_data": {
+          "title": "Affected Data",
+          "type": "string"
+        },
+        "backup_reference": {
+          "default": "",
+          "title": "Backup Reference",
+          "type": "string"
+        },
+        "backup_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "novrsoc_platform_backup",
+                "external_provider",
+                "manual_procedure"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backup Source"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decided_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActorRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "decision_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision Reason"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "events": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RecoveryEventView"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "loss_detected_at": {
+          "format": "date-time",
+          "title": "Loss Detected At",
+          "type": "string"
+        },
+        "plan_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Id"
+        },
+        "plan_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Name"
+        },
+        "recovered_point": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovered Point"
+        },
+        "requested_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "requested_recovery_point": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Recovery Point"
+        },
+        "rpo_target_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rpo Target Minutes"
+        },
+        "rto_target_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rto Target Minutes"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "status": {
+          "enum": [
+            "submitted",
+            "assessing",
+            "approved",
+            "in_progress",
+            "completed",
+            "rejected",
+            "not_recoverable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "verification": {
+          "enum": [
+            "pending",
+            "verified",
+            "failed",
+            "not_applicable"
+          ],
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "affected_data",
+        "loss_detected_at",
+        "status",
+        "requested_by",
+        "verification",
+        "created_at"
+      ],
+      "title": "RecoveryRequestView",
+      "type": "object"
+    },
+    "RecoveryVerification": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "maxLength": 2000,
+          "minLength": 5,
+          "title": "Note",
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "verified",
+            "failed",
+            "not_applicable"
+          ],
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result",
+        "note"
+      ],
+      "title": "RecoveryVerification",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/continuity.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: continuity",
+  "version": "1.0.0"
+}

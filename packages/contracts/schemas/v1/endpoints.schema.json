@@ -1,0 +1,457 @@
+{
+  "$defs": {
+    "ConnectorState": {
+      "additionalProperties": false,
+      "description": "State of one internal connector, as established by the API. Never claims a connection it has not made.",
+      "properties": {
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When reachability was last checked; null = never",
+          "title": "Checked At"
+        },
+        "connector": {
+          "enum": [
+            "wazuh_manager",
+            "wazuh_indexer",
+            "ollama"
+          ],
+          "title": "Connector",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Detail",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "unconfigured",
+            "local_fixture",
+            "connected",
+            "unavailable",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connector",
+        "state"
+      ],
+      "title": "ConnectorState",
+      "type": "object"
+    },
+    "EndpointDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "endpoint": {
+          "$ref": "#/$defs/EndpointSummary"
+        },
+        "sca": {
+          "$ref": "#/$defs/ScaSummary"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        },
+        "vulnerabilities": {
+          "$ref": "#/$defs/VulnerabilitySummary"
+        }
+      },
+      "required": [
+        "endpoint",
+        "source",
+        "vulnerabilities",
+        "sca"
+      ],
+      "title": "EndpointDetail",
+      "type": "object"
+    },
+    "EndpointInventory": {
+      "additionalProperties": false,
+      "properties": {
+        "by_status": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "By Status",
+          "type": "object"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/EndpointSummary"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "mapped_groups": {
+          "description": "Wazuh agent groups mapped to this organization",
+          "minimum": 0,
+          "title": "Mapped Groups",
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        }
+      },
+      "required": [
+        "source",
+        "items",
+        "mapped_groups"
+      ],
+      "title": "EndpointInventory",
+      "type": "object"
+    },
+    "EndpointOs": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "platform": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Platform"
+        },
+        "support": {
+          "default": "unknown",
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ],
+          "title": "Support",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "title": "EndpointOs",
+      "type": "object"
+    },
+    "EndpointSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "pattern": "^\\d{3,6}$",
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "agent_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Version"
+        },
+        "groups": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Groups",
+          "type": "array"
+        },
+        "ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ip"
+        },
+        "last_keepalive_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Keepalive At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "os": {
+          "$ref": "#/$defs/EndpointOs"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "disconnected",
+            "never_connected",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_id",
+        "name",
+        "status",
+        "groups",
+        "os"
+      ],
+      "title": "EndpointSummary",
+      "type": "object"
+    },
+    "GroupMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "group_name": {
+          "title": "Group Name",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "group_name",
+        "created_at"
+      ],
+      "title": "GroupMapping",
+      "type": "object"
+    },
+    "GroupMappingCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "group_name": {
+          "pattern": "^[A-Za-z0-9_.-]{1,128}$",
+          "title": "Group Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group_name"
+      ],
+      "title": "GroupMappingCreate",
+      "type": "object"
+    },
+    "GroupMappingList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/GroupMapping"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "GroupMappingList",
+      "type": "object"
+    },
+    "ScaPolicySummaryView": {
+      "additionalProperties": false,
+      "properties": {
+        "failed": {
+          "minimum": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "not_applicable": {
+          "minimum": 0,
+          "title": "Not Applicable",
+          "type": "integer"
+        },
+        "passed": {
+          "minimum": 0,
+          "title": "Passed",
+          "type": "integer"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "scanned_at": {
+          "format": "date-time",
+          "title": "Scanned At",
+          "type": "string"
+        },
+        "score_percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Score Percent",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "policy_id",
+        "name",
+        "passed",
+        "failed",
+        "not_applicable",
+        "score_percent",
+        "scanned_at"
+      ],
+      "title": "ScaPolicySummaryView",
+      "type": "object"
+    },
+    "ScaSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "policies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScaPolicySummaryView"
+          },
+          "title": "Policies",
+          "type": "array"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "ScaSummary",
+      "type": "object"
+    },
+    "VulnerabilitySummary": {
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Critical"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "medium": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Medium"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null when the source is unavailable; never a guessed 0",
+          "title": "Total"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "VulnerabilitySummary",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/endpoints.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: endpoints",
+  "version": "1.0.0"
+}

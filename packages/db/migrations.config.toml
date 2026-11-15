@@ -1,0 +1,22 @@
+# NovrSOC V2 migration settings (Phase 2). The runner is Alembic (packages/db/alembic.ini).
+# No database URL or secret is ever stored here.
+
+[migrations]
+tool = "alembic"
+directory = "migrations"
+schema = "novrsoc"
+ledger_table = "novrsoc.alembic_version"
+head = "0001_foundation"
+forward_only_in_production = true     # downgrades exist for development/test round-trips only
+
+[roles]
+owner = "novrsoc_owner"               # owns objects, runs migrations; never used by the API at runtime
+runtime = "novrsoc_app"               # API role: NOSUPERUSER, NOBYPASSRLS, owns nothing
+
+[target]
+url_env = "NOVRSOC_MIGRATION_DATABASE_URL"
+production_hosts_env = "NOVRSOC_PRODUCTION_DATABASE_HOSTS"
+
+[validation]
+disposable_engine = "postgres:16-alpine"   # deploy/dev/compose.yaml; tests create a throwaway database per run
+production_compatible = false              # until reconciled against the approved schema-only dump (B-02)

@@ -1,0 +1,221 @@
+# NovrSOC V2 CI (platform-owned). Inactive until the repository has an approved remote.
+# Every job uses disposable services only: no production secret, host, Wazuh, scanner or model is needed.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PGPASS_SU: ci-superuser-disposable
+  PGPASS_OWNER: ci-owner-disposable
+  PGPASS_APP: ci-app-disposable
+
+jobs:
+  api:
+    name: API, database isolation and contracts
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-superuser-disposable
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      NOVRSOC_TEST_ADMIN_DATABASE_URL: postgresql+psycopg://postgres:ci-superuser-disposable@127.0.0.1:5432/postgres
+      NOVRSOC_MIGRATION_DATABASE_URL: postgresql+psycopg://novrsoc_owner:ci-owner-disposable@127.0.0.1:5432/postgres
+      NOVRSOC_DATABASE_URL: postgresql+psycopg://novrsoc_app:ci-app-disposable@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cluster roles (same as deploy/dev/postgres/init/01-roles.sh)
+        run: |
+          PGPASSWORD=$PGPASS_SU psql -h 127.0.0.1 -U postgres -v ON_ERROR_STOP=1 \
+            -v owner_pw="$PGPASS_OWNER" -v app_pw="$PGPASS_APP" <<'SQL'
+          CREATE ROLE novrsoc_owner LOGIN PASSWORD :'owner_pw' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+          CREATE ROLE novrsoc_app   LOGIN PASSWORD :'app_pw'   NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+          ALTER ROLE novrsoc_owner SET search_path = novrsoc, public;
+          ALTER ROLE novrsoc_app   SET search_path = novrsoc, public;
+          SQL
+      - name: Install
+        run: |
+          python -m pip install --disable-pip-version-check -r apps/api/requirements.lock
+          python -m pip install --disable-pip-version-check -e packages/contracts
+      - name: API tests (auth, RBAC, RLS isolation, migrations, guards, gateway, connectors)
+        working-directory: apps/api
+        run: python -m pytest -q
+      - name: Contract tests
+        run: python -m pytest -q packages/contracts/tests
+      - name: Forwarder tests including real TLS refusal (needs cryptography from the API lock)
+        run: python -m unittest discover -s services/edge/forwarder/tests
+      - name: OpenAPI / JSON Schema generation is current
+        run: python scripts/contracts/export.py --check
+      - name: v1 compatibility (no breaking changes)
+        run: python scripts/contracts/compat.py
+      - name: Production runtime lock matches the tested lock
+        run: python scripts/release/runtime_lock.py --check
+
+  images:
+    name: Container images and deployment manifests (built, never pushed)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the two Server 2 images from the repository root
+        run: |
+          for i in api web; do
+            docker build -f deploy/docker/$i.Dockerfile --build-arg NOVRSOC_GIT_SHA=${GITHUB_SHA::7} -t novrsoc-$i:ci .
+          done
+      - name: Images start as non-root and load their code
+        run: |
+          docker run --rm novrsoc-api:ci sh -c 'test "$(id -u)" = 10001 && pg_dump --version && python -c "import app.main"'
+          docker run --rm novrsoc-web:ci sh -c 'test "$(id -u)" = 1000 && test -f server.js'
+      - name: Release preflight (publication, compose hardening, templates, Dockerfiles, dependencies)
+        run: |
+          python -m pip install --disable-pip-version-check -r apps/api/requirements.lock   # metadata for the lock check
+          python scripts/release/preflight.py --no-gitleaks
+
+  worker:
+    name: VMS worker (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - working-directory: services/vms-worker
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m unittest test_worker test_greenbone test_openvas_report test_v2_adapter
+
+  forwarder:
+    name: Server 1 edge services (forwarder, response bridge, TAXII; standard library, Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Alert forwarder
+        working-directory: services/edge/forwarder
+        run: python -m unittest discover -s tests -v
+      - name: Response execution bridge (simulated adapter, signatures, replay, tenant authorization)
+        working-directory: services/edge/response_bridge
+        run: python -m unittest discover -s tests -v
+      - name: TAXII 2.1 client and feeder against the local TAXII test server (STIX 2.1 validation)
+        run: python -m unittest discover -s services/edge/threat_intel/tests -v
+
+  web:
+    name: Web types, lint, tests, build and dependency audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - name: Generated API types match OpenAPI
+        run: npm run api:types:check
+      - run: npm run typecheck
+      - name: Lint the routed application code
+        run: npx eslint "src/app/(app)" src/app/login src/foundation
+      - run: npm test
+      - run: npm run check:nav
+      - name: Production build
+        run: npx next build
+        env:
+          NOVRSOC_API_ORIGIN: http://127.0.0.1:8000
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Dependency audit (fail on high or critical)
+        run: npm audit --audit-level=high --omit=dev
+
+  e2e:
+    name: Browser test (Web -> API -> PostgreSQL, two organisations)
+    runs-on: ubuntu-latest
+    needs: [api, web]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-superuser-disposable
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      NOVRSOC_TEST_ADMIN_DATABASE_URL: postgresql+psycopg://postgres:ci-superuser-disposable@127.0.0.1:5432/postgres
+      NOVRSOC_MIGRATION_DATABASE_URL: postgresql+psycopg://novrsoc_owner:ci-owner-disposable@127.0.0.1:5432/postgres
+      NOVRSOC_DATABASE_URL: postgresql+psycopg://novrsoc_app:ci-app-disposable@127.0.0.1:5432/postgres
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Cluster roles
+        run: |
+          PGPASSWORD=$PGPASS_SU psql -h 127.0.0.1 -U postgres -v ON_ERROR_STOP=1 \
+            -v owner_pw="$PGPASS_OWNER" -v app_pw="$PGPASS_APP" <<'SQL'
+          CREATE ROLE novrsoc_owner LOGIN PASSWORD :'owner_pw' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+          CREATE ROLE novrsoc_app   LOGIN PASSWORD :'app_pw'   NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+          ALTER ROLE novrsoc_owner SET search_path = novrsoc, public;
+          ALTER ROLE novrsoc_app   SET search_path = novrsoc, public;
+          SQL
+      - run: |
+          python -m pip install --disable-pip-version-check -r apps/api/requirements.lock
+          python -m pip install --disable-pip-version-check -e packages/contracts
+      - working-directory: apps/web
+        run: npm ci && npx next build
+        env:
+          NOVRSOC_API_ORIGIN: http://127.0.0.1:8000
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Browser test
+        run: python scripts/e2e/run_foundation_smoke.py --out e2e-artifacts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e-artifacts
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (git history; reviewed false positives in .gitleaksignore)
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /repo --redact --no-banner --exit-code 1

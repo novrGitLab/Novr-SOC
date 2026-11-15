@@ -1,0 +1,818 @@
+{
+  "$defs": {
+    "Capability": {
+      "enum": [
+        "syslog_receive",
+        "windows_event_forward",
+        "file_tail",
+        "network_discovery",
+        "scan_relay",
+        "wazuh_agent_bridge"
+      ],
+      "title": "Capability",
+      "type": "string"
+    },
+    "CollectorConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "config_version": {
+          "title": "Config Version",
+          "type": "integer"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "signature": {
+          "description": "Detached signature over the canonical JSON of this document (algorithm per ADR)",
+          "title": "Signature",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceDefinition"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "telemetry_max_batch": {
+          "default": 500,
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Telemetry Max Batch",
+          "type": "integer"
+        },
+        "telemetry_max_rate_per_minute": {
+          "default": 60000,
+          "minimum": 1,
+          "title": "Telemetry Max Rate Per Minute",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "config_version",
+        "issued_at",
+        "sources",
+        "signature"
+      ],
+      "title": "CollectorConfig",
+      "type": "object"
+    },
+    "CollectorHealth": {
+      "enum": [
+        "ok",
+        "degraded",
+        "failing"
+      ],
+      "title": "CollectorHealth",
+      "type": "string"
+    },
+    "CollectorHeartbeat": {
+      "additionalProperties": false,
+      "properties": {
+        "collector_version": {
+          "title": "Collector Version",
+          "type": "string"
+        },
+        "config_version": {
+          "minimum": 0,
+          "title": "Config Version",
+          "type": "integer"
+        },
+        "dropped_since_last": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Dropped Since Last",
+          "type": "integer"
+        },
+        "health": {
+          "$ref": "#/$defs/CollectorHealth"
+        },
+        "problems": {
+          "default": [],
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Problems",
+          "type": "array"
+        },
+        "queue_depth": {
+          "minimum": 0,
+          "title": "Queue Depth",
+          "type": "integer"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        },
+        "sources_active": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Sources Active",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sent_at",
+        "collector_version",
+        "config_version",
+        "health",
+        "queue_depth"
+      ],
+      "title": "CollectorHeartbeat",
+      "type": "object"
+    },
+    "CollectorRecord": {
+      "additionalProperties": false,
+      "description": "Stored view of a collector (internal; org_id is the identity's, never client-supplied).",
+      "properties": {
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "identity_id": {
+          "format": "uuid",
+          "title": "Identity Id",
+          "type": "string"
+        },
+        "last_heartbeat_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Heartbeat At"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "site_id": {
+          "format": "uuid",
+          "title": "Site Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "revoked"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_id",
+        "org_id",
+        "site_id",
+        "status",
+        "capabilities"
+      ],
+      "title": "CollectorRecord",
+      "type": "object"
+    },
+    "CredentialRevocation": {
+      "additionalProperties": false,
+      "description": "Operator action (human API). Effective immediately; audited.",
+      "properties": {
+        "identity_id": {
+          "format": "uuid",
+          "title": "Identity Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_id",
+        "reason"
+      ],
+      "title": "CredentialRevocation",
+      "type": "object"
+    },
+    "CredentialRotationRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id"
+      ],
+      "title": "CredentialRotationRequest",
+      "type": "object"
+    },
+    "CredentialRotationResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "machine_credential": {
+          "title": "Machine Credential",
+          "type": "string"
+        },
+        "previous_valid_until": {
+          "description": "Overlap window; the old credential stops working after this",
+          "format": "date-time",
+          "title": "Previous Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "machine_credential",
+        "previous_valid_until"
+      ],
+      "title": "CredentialRotationResponse",
+      "type": "object"
+    },
+    "DiscoveredHost": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "$ref": "#/$defs/SiteScopedAddress"
+        },
+        "mac": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{2}(:[0-9a-f]{2}){5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mac"
+        },
+        "method": {
+          "enum": [
+            "arp",
+            "icmp",
+            "tcp_connect",
+            "passive"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "open_ports": {
+          "default": [],
+          "items": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 1024,
+          "title": "Open Ports",
+          "type": "array"
+        }
+      },
+      "required": [
+        "address",
+        "observed_at",
+        "method"
+      ],
+      "title": "DiscoveredHost",
+      "type": "object"
+    },
+    "DiscoveryReport": {
+      "additionalProperties": false,
+      "properties": {
+        "hosts": {
+          "items": {
+            "$ref": "#/$defs/DiscoveredHost"
+          },
+          "maxItems": 10000,
+          "title": "Hosts",
+          "type": "array"
+        },
+        "report_id": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Report Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "report_id",
+        "hosts"
+      ],
+      "title": "DiscoveryReport",
+      "type": "object"
+    },
+    "EnrollmentGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "enrollment_code": {
+          "description": "Shown once. Single use. Expires.",
+          "title": "Enrollment Code",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "grant_id": {
+          "format": "uuid",
+          "title": "Grant Id",
+          "type": "string"
+        },
+        "site_id": {
+          "format": "uuid",
+          "title": "Site Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "grant_id",
+        "site_id",
+        "enrollment_code",
+        "expires_at"
+      ],
+      "title": "EnrollmentGrant",
+      "type": "object"
+    },
+    "EnrollmentGrantCreate": {
+      "additionalProperties": false,
+      "description": "Operator request (human API, permission service_identities:manage, active org applies).",
+      "properties": {
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "expires_in_minutes": {
+          "default": 60,
+          "maximum": 1440,
+          "minimum": 5,
+          "title": "Expires In Minutes",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "site_id": {
+          "format": "uuid",
+          "title": "Site Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "site_id",
+        "name",
+        "capabilities"
+      ],
+      "title": "EnrollmentGrantCreate",
+      "type": "object"
+    },
+    "EnrollmentRequest": {
+      "additionalProperties": false,
+      "description": "Collector -> API, authenticated by the enrollment code only. No org/site fields: they come from the grant.",
+      "properties": {
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "collector_version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)?$",
+          "title": "Collector Version",
+          "type": "string"
+        },
+        "enrollment_code": {
+          "maxLength": 256,
+          "minLength": 32,
+          "title": "Enrollment Code",
+          "type": "string"
+        },
+        "host_fingerprint": {
+          "description": "Stable host id (e.g. sha256 of machine-id); binds the credential to one host",
+          "maxLength": 128,
+          "minLength": 16,
+          "title": "Host Fingerprint",
+          "type": "string"
+        }
+      },
+      "required": [
+        "enrollment_code",
+        "collector_version",
+        "host_fingerprint",
+        "capabilities"
+      ],
+      "title": "EnrollmentRequest",
+      "type": "object"
+    },
+    "EnrollmentResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "config_version": {
+          "title": "Config Version",
+          "type": "integer"
+        },
+        "granted_capabilities": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "title": "Granted Capabilities",
+          "type": "array"
+        },
+        "identity_id": {
+          "format": "uuid",
+          "title": "Identity Id",
+          "type": "string"
+        },
+        "machine_credential": {
+          "description": "nsk_<id>.<secret>; shown once; store with 0600 permissions",
+          "title": "Machine Credential",
+          "type": "string"
+        },
+        "site_id": {
+          "format": "uuid",
+          "title": "Site Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_id",
+        "machine_credential",
+        "site_id",
+        "granted_capabilities",
+        "config_version"
+      ],
+      "title": "EnrollmentResponse",
+      "type": "object"
+    },
+    "HeartbeatAck": {
+      "additionalProperties": false,
+      "properties": {
+        "latest_config_version": {
+          "title": "Latest Config Version",
+          "type": "integer"
+        },
+        "revoked": {
+          "const": false,
+          "default": false,
+          "title": "Revoked",
+          "type": "boolean"
+        },
+        "rotate_credential_by": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rotate Credential By"
+        },
+        "server_time": {
+          "format": "date-time",
+          "title": "Server Time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "server_time",
+        "latest_config_version"
+      ],
+      "title": "HeartbeatAck",
+      "type": "object"
+    },
+    "ScanConnectivityAssignment": {
+      "additionalProperties": false,
+      "description": "Tells a collector with SCAN_RELAY which APPROVED scan jobs it may relay. Derived from VMS scope approvals.",
+      "properties": {
+        "allowed_ports": {
+          "default": [],
+          "items": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 1024,
+          "title": "Allowed Ports",
+          "type": "array"
+        },
+        "assignment_id": {
+          "format": "uuid",
+          "title": "Assignment Id",
+          "type": "string"
+        },
+        "scan_job_id": {
+          "format": "uuid",
+          "title": "Scan Job Id",
+          "type": "string"
+        },
+        "scope_approval_id": {
+          "format": "uuid",
+          "title": "Scope Approval Id",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/SiteScopedAddress"
+          },
+          "maxItems": 4096,
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        },
+        "window_start": {
+          "format": "date-time",
+          "title": "Window Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignment_id",
+        "scan_job_id",
+        "targets",
+        "window_start",
+        "window_end",
+        "scope_approval_id"
+      ],
+      "title": "ScanConnectivityAssignment",
+      "type": "object"
+    },
+    "SiteScopedAddress": {
+      "additionalProperties": false,
+      "description": "An IP address is only meaningful inside a site: 10.0.0.5 at site A is not 10.0.0.5 at site B.",
+      "properties": {
+        "hostname": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hostname"
+        },
+        "ip": {
+          "title": "Ip",
+          "type": "string"
+        },
+        "site_id": {
+          "format": "uuid",
+          "title": "Site Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "site_id",
+        "ip"
+      ],
+      "title": "SiteScopedAddress",
+      "type": "object"
+    },
+    "SourceDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_senders": {
+          "default": [],
+          "description": "CIDRs within the collector's site allowed to send; empty = none",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Allowed Senders",
+          "type": "array"
+        },
+        "listen_port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listen Port"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "source_id": {
+          "format": "uuid",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "syslog_udp",
+            "syslog_tcp",
+            "syslog_tls",
+            "file",
+            "windows_event"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "type"
+      ],
+      "title": "SourceDefinition",
+      "type": "object"
+    },
+    "TelemetryAck": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {
+          "minimum": 0,
+          "title": "Accepted",
+          "type": "integer"
+        },
+        "batch_id": {
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "duplicates": {
+          "minimum": 0,
+          "title": "Duplicates",
+          "type": "integer"
+        },
+        "durable": {
+          "const": true,
+          "default": true,
+          "description": "An ack is only sent once the batch is durably stored",
+          "title": "Durable",
+          "type": "boolean"
+        },
+        "quarantined": {
+          "description": "Stored but not attributable (e.g. sender outside the site's networks)",
+          "minimum": 0,
+          "title": "Quarantined",
+          "type": "integer"
+        },
+        "rejected": {
+          "minimum": 0,
+          "title": "Rejected",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "batch_id",
+        "accepted",
+        "duplicates",
+        "rejected",
+        "quarantined"
+      ],
+      "title": "TelemetryAck",
+      "type": "object"
+    },
+    "TelemetryBatch": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/TelemetryEvent"
+          },
+          "maxItems": 1000,
+          "minItems": 1,
+          "title": "Events",
+          "type": "array"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "batch_id",
+        "sent_at",
+        "events"
+      ],
+      "title": "TelemetryBatch",
+      "type": "object"
+    },
+    "TelemetryEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "description": "Collector-unique id; dedupe key with the identity",
+          "maxLength": 128,
+          "minLength": 8,
+          "title": "Event Id",
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "syslog_rfc5424",
+            "syslog_rfc3164",
+            "cef",
+            "leef",
+            "json",
+            "windows_xml"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "raw": {
+          "description": "Raw event, capped at 32 KB (legacy ingest cap)",
+          "maxLength": 32768,
+          "title": "Raw",
+          "type": "string"
+        },
+        "sender": {
+          "$ref": "#/$defs/SiteScopedAddress"
+        },
+        "source_id": {
+          "format": "uuid",
+          "title": "Source Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "observed_at",
+        "source_id",
+        "sender",
+        "format",
+        "raw"
+      ],
+      "title": "TelemetryEvent",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/collector.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: collector",
+  "version": "1.0.0"
+}

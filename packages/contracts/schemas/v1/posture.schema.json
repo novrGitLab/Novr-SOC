@@ -1,0 +1,582 @@
+{
+  "$defs": {
+    "CompliancePolicyRow": {
+      "additionalProperties": false,
+      "properties": {
+        "average_score": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Average Score"
+        },
+        "endpoints": {
+          "minimum": 0,
+          "title": "Endpoints",
+          "type": "integer"
+        },
+        "failed_checks": {
+          "minimum": 0,
+          "title": "Failed Checks",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "passed_checks": {
+          "minimum": 0,
+          "title": "Passed Checks",
+          "type": "integer"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "name",
+        "endpoints",
+        "failed_checks",
+        "passed_checks"
+      ],
+      "title": "CompliancePolicyRow",
+      "type": "object"
+    },
+    "ComplianceView": {
+      "additionalProperties": false,
+      "properties": {
+        "endpoints_assessed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Endpoints Assessed",
+          "type": "integer"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "policies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CompliancePolicyRow"
+          },
+          "title": "Policies",
+          "type": "array"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "ComplianceView",
+      "type": "object"
+    },
+    "ConnectorState": {
+      "additionalProperties": false,
+      "description": "State of one internal connector, as established by the API. Never claims a connection it has not made.",
+      "properties": {
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When reachability was last checked; null = never",
+          "title": "Checked At"
+        },
+        "connector": {
+          "enum": [
+            "wazuh_manager",
+            "wazuh_indexer",
+            "ollama"
+          ],
+          "title": "Connector",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Detail",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "unconfigured",
+            "local_fixture",
+            "connected",
+            "unavailable",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connector",
+        "state"
+      ],
+      "title": "ConnectorState",
+      "type": "object"
+    },
+    "ControlArea": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "measures": {
+          "items": {
+            "$ref": "#/$defs/Measure"
+          },
+          "title": "Measures",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "description",
+        "measures"
+      ],
+      "title": "ControlArea",
+      "type": "object"
+    },
+    "ExecutiveOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "assets_by_criticality": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "Assets By Criticality",
+          "type": "object"
+        },
+        "findings_by_severity": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "Findings By Severity",
+          "type": "object"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "incident_trend": {
+          "items": {
+            "$ref": "#/$defs/TrendPoint"
+          },
+          "title": "Incident Trend",
+          "type": "array"
+        },
+        "kpis": {
+          "items": {
+            "$ref": "#/$defs/Measure"
+          },
+          "title": "Kpis",
+          "type": "array"
+        },
+        "measures": {
+          "items": {
+            "$ref": "#/$defs/Measure"
+          },
+          "title": "Measures",
+          "type": "array"
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string"
+        },
+        "priorities": {
+          "items": {
+            "$ref": "#/$defs/Priority"
+          },
+          "title": "Priorities",
+          "type": "array"
+        },
+        "remediation_by_state": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "Remediation By State",
+          "type": "object"
+        },
+        "score": {
+          "$ref": "#/$defs/PostureScore"
+        },
+        "sources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ConnectorState"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "vulnerability_trend": {
+          "items": {
+            "$ref": "#/$defs/TrendPoint"
+          },
+          "title": "Vulnerability Trend",
+          "type": "array"
+        }
+      },
+      "required": [
+        "generated_at",
+        "organization",
+        "score",
+        "kpis",
+        "measures",
+        "vulnerability_trend",
+        "incident_trend",
+        "priorities"
+      ],
+      "title": "ExecutiveOverview",
+      "type": "object"
+    },
+    "Measure": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Denominator"
+        },
+        "evidence_href": {
+          "default": "",
+          "title": "Evidence Href",
+          "type": "string"
+        },
+        "formula": {
+          "default": "",
+          "title": "Formula",
+          "type": "string"
+        },
+        "higher_is_better": {
+          "default": true,
+          "title": "Higher Is Better",
+          "type": "boolean"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "numerator": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Numerator"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "unavailable",
+            "not_permitted"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "unit": {
+          "enum": [
+            "percent",
+            "count",
+            "minutes",
+            "score"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "weight": {
+          "default": 0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "unit",
+        "state"
+      ],
+      "title": "Measure",
+      "type": "object"
+    },
+    "PostureAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "areas": {
+          "items": {
+            "$ref": "#/$defs/ControlArea"
+          },
+          "title": "Areas",
+          "type": "array"
+        },
+        "compliance": {
+          "$ref": "#/$defs/ComplianceView"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/PostureGap"
+          },
+          "title": "Gaps",
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "remediation_trend": {
+          "items": {
+            "$ref": "#/$defs/TrendPoint"
+          },
+          "title": "Remediation Trend",
+          "type": "array"
+        },
+        "score": {
+          "$ref": "#/$defs/PostureScore"
+        }
+      },
+      "required": [
+        "generated_at",
+        "score",
+        "areas",
+        "gaps",
+        "compliance",
+        "remediation_trend"
+      ],
+      "title": "PostureAssessment",
+      "type": "object"
+    },
+    "PostureGap": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "href": {
+          "title": "Href",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "detail",
+        "severity",
+        "href"
+      ],
+      "title": "PostureGap",
+      "type": "object"
+    },
+    "PostureScore": {
+      "additionalProperties": false,
+      "properties": {
+        "contributing": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Contributing",
+          "type": "array"
+        },
+        "coverage_percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Coverage Percent",
+          "type": "integer"
+        },
+        "excluded": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded",
+          "type": "array"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "insufficient_data"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "coverage_percent",
+        "method"
+      ],
+      "title": "PostureScore",
+      "type": "object"
+    },
+    "Priority": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "href": {
+          "title": "Href",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "title",
+        "detail",
+        "severity",
+        "href"
+      ],
+      "title": "Priority",
+      "type": "object"
+    },
+    "TrendPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "period_start": {
+          "format": "date",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "values": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Values",
+          "type": "object"
+        }
+      },
+      "required": [
+        "period_start",
+        "values"
+      ],
+      "title": "TrendPoint",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/posture.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: posture",
+  "version": "1.0.0"
+}

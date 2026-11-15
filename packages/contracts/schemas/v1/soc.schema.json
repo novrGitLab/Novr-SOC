@@ -1,0 +1,1194 @@
+{
+  "$defs": {
+    "AlertDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_groups": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Agent Groups",
+          "type": "array"
+        },
+        "agent_id": {
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "agent_name": {
+          "title": "Agent Name",
+          "type": "string"
+        },
+        "asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Consolidation: the canonical asset of the alert's agent",
+          "title": "Asset Id"
+        },
+        "assignee_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Id"
+        },
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The case this alert is linked to, if any (the most recently linked one when several)",
+          "title": "Case Id"
+        },
+        "external_id": {
+          "title": "External Id",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "mitre_techniques": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mitre Techniques",
+          "type": "array"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "raw": {
+          "additionalProperties": true,
+          "title": "Raw",
+          "type": "object"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        },
+        "rule_description": {
+          "title": "Rule Description",
+          "type": "string"
+        },
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_level": {
+          "title": "Rule Level",
+          "type": "integer"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "enum": [
+            "wazuh",
+            "local_fixture"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "src_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Src Ip"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "acknowledged",
+            "in_progress",
+            "closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "status_reason": {
+          "title": "Status Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "external_id",
+        "rule_id",
+        "rule_level",
+        "rule_description",
+        "severity",
+        "agent_id",
+        "agent_name",
+        "src_ip",
+        "mitre_techniques",
+        "observed_at",
+        "received_at",
+        "status",
+        "agent_groups",
+        "status_reason",
+        "raw"
+      ],
+      "title": "AlertDetail",
+      "type": "object"
+    },
+    "AlertEvidence": {
+      "additionalProperties": false,
+      "description": "The original alert document for one stored alert, as read from its source by the API (never by the browser).\n`source.state` says where it came from: `connected` (read live from the Wazuh indexer just now), `local_fixture`\n(the stored fixture copy, labelled), or an unavailable state with `document` null. Secrets are redacted.",
+      "properties": {
+        "alert_id": {
+          "format": "uuid",
+          "title": "Alert Id",
+          "type": "string"
+        },
+        "document": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document"
+        },
+        "external_id": {
+          "title": "External Id",
+          "type": "string"
+        },
+        "redacted": {
+          "default": true,
+          "title": "Redacted",
+          "type": "boolean"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        }
+      },
+      "required": [
+        "alert_id",
+        "external_id",
+        "source",
+        "retrieved_at"
+      ],
+      "title": "AlertEvidence",
+      "type": "object"
+    },
+    "AlertIngestBatch": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts": {
+          "items": {
+            "$ref": "#/$defs/WazuhAlertIn"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Alerts",
+          "type": "array"
+        },
+        "batch_id": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Batch Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "batch_id",
+        "alerts"
+      ],
+      "title": "AlertIngestBatch",
+      "type": "object"
+    },
+    "AlertIngestResult": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {
+          "minimum": 0,
+          "title": "Accepted",
+          "type": "integer"
+        },
+        "batch_id": {
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "duplicates": {
+          "minimum": 0,
+          "title": "Duplicates",
+          "type": "integer"
+        },
+        "durable": {
+          "const": true,
+          "default": true,
+          "title": "Durable",
+          "type": "boolean"
+        },
+        "quarantined": {
+          "minimum": 0,
+          "title": "Quarantined",
+          "type": "integer"
+        },
+        "replayed": {
+          "default": false,
+          "description": "Phase 5: True when this batch_id was already acknowledged; the stored acknowledgement is returned and nothing is ingested again",
+          "title": "Replayed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "batch_id",
+        "accepted",
+        "duplicates",
+        "quarantined"
+      ],
+      "title": "AlertIngestResult",
+      "type": "object"
+    },
+    "AlertList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/StoredAlert"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "AlertList",
+      "type": "object"
+    },
+    "AlertStatusUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "acknowledged",
+            "in_progress",
+            "closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "AlertStatusUpdate",
+      "type": "object"
+    },
+    "AssignmentRequest": {
+      "additionalProperties": false,
+      "description": "Assign (or, with null, unassign) an alert or a case. The assignee must be a member of the organization.",
+      "properties": {
+        "assignee_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Id"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "AssignmentRequest",
+      "type": "object"
+    },
+    "CaseDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_count": {
+          "minimum": 0,
+          "title": "Alert Count",
+          "type": "integer"
+        },
+        "alerts": {
+          "items": {
+            "$ref": "#/$defs/StoredAlert"
+          },
+          "title": "Alerts",
+          "type": "array"
+        },
+        "assignee_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Id"
+        },
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Closed At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "first_response_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Response At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "reference": {
+          "description": "Human reference, e.g. CASE-000042",
+          "title": "Reference",
+          "type": "string"
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved At"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "sla_resolution_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sla Resolution Due At"
+        },
+        "sla_response_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Consolidation: from the SLA policy when the case was created",
+          "title": "Sla Response Due At"
+        },
+        "sla_state": {
+          "default": "no_policy",
+          "enum": [
+            "met",
+            "on_track",
+            "at_risk",
+            "breached",
+            "no_policy"
+          ],
+          "title": "Sla State",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "resolved",
+            "closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "timeline": {
+          "items": {
+            "$ref": "#/$defs/CaseEvent"
+          },
+          "title": "Timeline",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reference",
+        "title",
+        "severity",
+        "status",
+        "source",
+        "alert_count",
+        "created_at",
+        "updated_at",
+        "alerts",
+        "timeline"
+      ],
+      "title": "CaseDetail",
+      "type": "object"
+    },
+    "CaseEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_label": {
+          "title": "Actor Label",
+          "type": "string"
+        },
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "created",
+            "note",
+            "status_changed",
+            "alert_linked",
+            "assigned",
+            "remediation",
+            "evidence",
+            "sla_escalated",
+            "closure",
+            "severity_changed"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "occurred_at",
+        "kind",
+        "actor_label",
+        "body"
+      ],
+      "title": "CaseEvent",
+      "type": "object"
+    },
+    "CaseList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CaseSummary"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "CaseList",
+      "type": "object"
+    },
+    "CaseNoteCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        },
+        "kind": {
+          "default": "note",
+          "description": "Consolidation: remediation and evidence notes are typed timeline entries",
+          "enum": [
+            "note",
+            "remediation",
+            "evidence"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "body"
+      ],
+      "title": "CaseNoteCreate",
+      "type": "object"
+    },
+    "CaseStatusUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "resolved",
+            "closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "CaseStatusUpdate",
+      "type": "object"
+    },
+    "CaseSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_count": {
+          "minimum": 0,
+          "title": "Alert Count",
+          "type": "integer"
+        },
+        "assignee_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Id"
+        },
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "first_response_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Response At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "reference": {
+          "description": "Human reference, e.g. CASE-000042",
+          "title": "Reference",
+          "type": "string"
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved At"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "sla_resolution_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sla Resolution Due At"
+        },
+        "sla_response_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Consolidation: from the SLA policy when the case was created",
+          "title": "Sla Response Due At"
+        },
+        "sla_state": {
+          "default": "no_policy",
+          "enum": [
+            "met",
+            "on_track",
+            "at_risk",
+            "breached",
+            "no_policy"
+          ],
+          "title": "Sla State",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "resolved",
+            "closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reference",
+        "title",
+        "severity",
+        "status",
+        "source",
+        "alert_count",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "CaseSummary",
+      "type": "object"
+    },
+    "ConnectorState": {
+      "additionalProperties": false,
+      "description": "State of one internal connector, as established by the API. Never claims a connection it has not made.",
+      "properties": {
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When reachability was last checked; null = never",
+          "title": "Checked At"
+        },
+        "connector": {
+          "enum": [
+            "wazuh_manager",
+            "wazuh_indexer",
+            "ollama"
+          ],
+          "title": "Connector",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Detail",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "unconfigured",
+            "local_fixture",
+            "connected",
+            "unavailable",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connector",
+        "state"
+      ],
+      "title": "ConnectorState",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "StoredAlert": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "agent_name": {
+          "title": "Agent Name",
+          "type": "string"
+        },
+        "asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Consolidation: the canonical asset of the alert's agent",
+          "title": "Asset Id"
+        },
+        "assignee_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Id"
+        },
+        "assignee_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignee Label"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The case this alert is linked to, if any (the most recently linked one when several)",
+          "title": "Case Id"
+        },
+        "external_id": {
+          "title": "External Id",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "mitre_techniques": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mitre Techniques",
+          "type": "array"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        },
+        "rule_description": {
+          "title": "Rule Description",
+          "type": "string"
+        },
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_level": {
+          "title": "Rule Level",
+          "type": "integer"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "enum": [
+            "wazuh",
+            "local_fixture"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "src_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Src Ip"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "acknowledged",
+            "in_progress",
+            "closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "external_id",
+        "rule_id",
+        "rule_level",
+        "rule_description",
+        "severity",
+        "agent_id",
+        "agent_name",
+        "src_ip",
+        "mitre_techniques",
+        "observed_at",
+        "received_at",
+        "status"
+      ],
+      "title": "StoredAlert",
+      "type": "object"
+    },
+    "WazuhAgentRef": {
+      "additionalProperties": false,
+      "properties": {
+        "groups": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z0-9_.-]{1,128}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Groups",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^\\d{3,6}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "WazuhAgentRef",
+      "type": "object"
+    },
+    "WazuhAlertIn": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/WazuhAgentRef"
+        },
+        "id": {
+          "description": "Wazuh alert id; dedupe key per organization",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "raw": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Original alert; stored capped at 32 KB",
+          "title": "Raw",
+          "type": "object"
+        },
+        "rule": {
+          "$ref": "#/$defs/WazuhRule"
+        },
+        "src_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Ip"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "rule",
+        "agent"
+      ],
+      "title": "WazuhAlertIn",
+      "type": "object"
+    },
+    "WazuhRule": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 20,
+          "title": "Id",
+          "type": "string"
+        },
+        "level": {
+          "maximum": 16,
+          "minimum": 0,
+          "title": "Level",
+          "type": "integer"
+        },
+        "mitre_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^T\\d{4}(\\.\\d{3})?$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Mitre Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "level"
+      ],
+      "title": "WazuhRule",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/soc.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: soc",
+  "version": "1.0.0"
+}

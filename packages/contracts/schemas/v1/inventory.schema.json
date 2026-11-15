@@ -1,0 +1,2556 @@
+{
+  "$defs": {
+    "ActionType": {
+      "enum": [
+        "enrich_iocs",
+        "notify_email",
+        "notify_ciso",
+        "create_task",
+        "block_ip",
+        "isolate_agent",
+        "disable_account"
+      ],
+      "title": "ActionType",
+      "type": "string"
+    },
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "user",
+            "service",
+            "system"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "AssetAlertRef": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "rule_description": {
+          "title": "Rule Description",
+          "type": "string"
+        },
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "rule_id",
+        "rule_description",
+        "severity",
+        "status",
+        "observed_at",
+        "source"
+      ],
+      "title": "AssetAlertRef",
+      "type": "object"
+    },
+    "AssetCaseRef": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "reference": {
+          "title": "Reference",
+          "type": "string"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reference",
+        "title",
+        "severity",
+        "status",
+        "created_at"
+      ],
+      "title": "AssetCaseRef",
+      "type": "object"
+    },
+    "AssetCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "default": "unclassified",
+          "enum": [
+            "server",
+            "workstation",
+            "network",
+            "domain",
+            "web",
+            "cloud",
+            "iot",
+            "unclassified"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "criticality": {
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Criticality",
+          "type": "string"
+        },
+        "display_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "exposure": {
+          "default": "unknown",
+          "enum": [
+            "internet_facing",
+            "internal",
+            "unknown"
+          ],
+          "title": "Exposure",
+          "type": "string"
+        },
+        "fqdn": {
+          "anyOf": [
+            {
+              "maxLength": 253,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fqdn"
+        },
+        "hostname": {
+          "anyOf": [
+            {
+              "maxLength": 253,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hostname"
+        },
+        "ip": {
+          "anyOf": [
+            {
+              "maxLength": 45,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ip"
+        },
+        "kind": {
+          "enum": [
+            "host",
+            "domain",
+            "web_application",
+            "network_device",
+            "cloud_resource"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "owner": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Owner",
+          "type": "string"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        },
+        "tags": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9_.-]{0,39}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "display_name"
+      ],
+      "title": "AssetCreate",
+      "type": "object"
+    },
+    "AssetDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts": {
+          "items": {
+            "$ref": "#/$defs/AssetAlertRef"
+          },
+          "title": "Alerts",
+          "type": "array"
+        },
+        "asset": {
+          "$ref": "#/$defs/AssetSummary"
+        },
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/AssetCaseRef"
+          },
+          "title": "Cases",
+          "type": "array"
+        },
+        "cnii": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cnii"
+        },
+        "detection_note": {
+          "description": "How Wazuh vulnerability detection and VMS findings relate on this asset",
+          "title": "Detection Note",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/AssetEventView"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/AssetFindingRef"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "identifiers": {
+          "items": {
+            "$ref": "#/$defs/AssetIdentifierView"
+          },
+          "title": "Identifiers",
+          "type": "array"
+        },
+        "intel": {
+          "items": {
+            "$ref": "#/$defs/AssetIntelRef"
+          },
+          "title": "Intel",
+          "type": "array"
+        },
+        "nhai_jobs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/NhaiJob"
+          },
+          "title": "Nhai Jobs",
+          "type": "array"
+        },
+        "services": {
+          "items": {
+            "$ref": "#/$defs/AssetServiceView"
+          },
+          "title": "Services",
+          "type": "array"
+        },
+        "soar_runs": {
+          "items": {
+            "$ref": "#/$defs/AssetSoarRef"
+          },
+          "title": "Soar Runs",
+          "type": "array"
+        },
+        "trend": {
+          "items": {
+            "$ref": "#/$defs/AssetTrendPoint"
+          },
+          "title": "Trend",
+          "type": "array"
+        },
+        "wazuh": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WazuhAgentContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "asset",
+        "identifiers",
+        "services",
+        "detection_note",
+        "findings",
+        "alerts",
+        "cases",
+        "soar_runs",
+        "intel",
+        "events",
+        "trend"
+      ],
+      "title": "AssetDetail",
+      "type": "object"
+    },
+    "AssetEventView": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_label": {
+          "title": "Actor Label",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Details",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "discovered",
+            "identifier_added",
+            "identifier_conflict",
+            "updated",
+            "service_seen",
+            "merged",
+            "retired",
+            "reclassified"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "occurred_at",
+        "kind",
+        "source",
+        "actor_label"
+      ],
+      "title": "AssetEventView",
+      "type": "object"
+    },
+    "AssetFindingRef": {
+      "additionalProperties": false,
+      "properties": {
+        "cves": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Cves",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string"
+        },
+        "risk_score": {
+          "title": "Risk Score",
+          "type": "integer"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "status",
+        "priority",
+        "risk_score",
+        "last_seen_at"
+      ],
+      "title": "AssetFindingRef",
+      "type": "object"
+    },
+    "AssetIdentifierView": {
+      "additionalProperties": false,
+      "properties": {
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "wazuh_agent",
+            "hostname",
+            "fqdn",
+            "ip",
+            "mac",
+            "domain",
+            "url",
+            "cloud_id",
+            "serial"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "site_key": {
+          "default": "",
+          "title": "Site Key",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "sources",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "title": "AssetIdentifierView",
+      "type": "object"
+    },
+    "AssetIntelRef": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_id": {
+          "format": "uuid",
+          "title": "Alert Id",
+          "type": "string"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "integer"
+        },
+        "indicator_type": {
+          "title": "Indicator Type",
+          "type": "string"
+        },
+        "indicator_value": {
+          "title": "Indicator Value",
+          "type": "string"
+        },
+        "match_id": {
+          "format": "uuid",
+          "title": "Match Id",
+          "type": "string"
+        },
+        "matched_at": {
+          "format": "date-time",
+          "title": "Matched At",
+          "type": "string"
+        },
+        "verdict": {
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_id",
+        "alert_id",
+        "indicator_type",
+        "indicator_value",
+        "confidence",
+        "verdict",
+        "matched_at"
+      ],
+      "title": "AssetIntelRef",
+      "type": "object"
+    },
+    "AssetList": {
+      "additionalProperties": false,
+      "properties": {
+        "by_criticality": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "By Criticality",
+          "type": "object"
+        },
+        "by_kind": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "By Kind",
+          "type": "object"
+        },
+        "by_monitoring": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "title": "By Monitoring",
+          "type": "object"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AssetSummary"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "AssetList",
+      "type": "object"
+    },
+    "AssetMerge": {
+      "additionalProperties": false,
+      "description": "Merge `source_asset_id` INTO the asset in the path: identifiers, services, findings and alerts move; the source\nasset is retired with merged_into set. Audited; cannot be undone automatically.",
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        },
+        "source_asset_id": {
+          "format": "uuid",
+          "title": "Source Asset Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_asset_id",
+        "reason"
+      ],
+      "title": "AssetMerge",
+      "type": "object"
+    },
+    "AssetMonitoring": {
+      "additionalProperties": false,
+      "properties": {
+        "cnii_designated": {
+          "default": false,
+          "title": "Cnii Designated",
+          "type": "boolean"
+        },
+        "last_vms_scan_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Vms Scan At"
+        },
+        "state": {
+          "description": "monitored: a Wazuh agent AND a VMS scan in 30 days; partial: one of them; unmonitored: neither",
+          "enum": [
+            "monitored",
+            "partial",
+            "unmonitored"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "wazuh_agent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wazuh Agent Id"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "AssetMonitoring",
+      "type": "object"
+    },
+    "AssetRetire": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "AssetRetire",
+      "type": "object"
+    },
+    "AssetServiceView": {
+      "additionalProperties": false,
+      "properties": {
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "port": {
+          "title": "Port",
+          "type": "integer"
+        },
+        "product": {
+          "title": "Product",
+          "type": "string"
+        },
+        "protocol": {
+          "title": "Protocol",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "port",
+        "protocol",
+        "name",
+        "product",
+        "version",
+        "source",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "title": "AssetServiceView",
+      "type": "object"
+    },
+    "AssetSoarRef": {
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "format": "uuid",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "string"
+        },
+        "playbook_name": {
+          "title": "Playbook Name",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "case_id",
+        "playbook_name",
+        "state",
+        "mode",
+        "created_at"
+      ],
+      "title": "AssetSoarRef",
+      "type": "object"
+    },
+    "AssetSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "enum": [
+            "server",
+            "workstation",
+            "network",
+            "domain",
+            "web",
+            "cloud",
+            "iot",
+            "unclassified"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "critical_findings": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Critical Findings",
+          "type": "integer"
+        },
+        "criticality": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Criticality",
+          "type": "string"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "exposure": {
+          "enum": [
+            "internet_facing",
+            "internal",
+            "unknown"
+          ],
+          "title": "Exposure",
+          "type": "string"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "fqdn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fqdn"
+        },
+        "hostname": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hostname"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "host",
+            "domain",
+            "web_application",
+            "network_device",
+            "cloud_resource"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "merged_into": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merged Into"
+        },
+        "monitoring": {
+          "$ref": "#/$defs/AssetMonitoring"
+        },
+        "open_alerts": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Open Alerts",
+          "type": "integer"
+        },
+        "open_findings": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "os_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os Name"
+        },
+        "os_platform": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os Platform"
+        },
+        "os_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os Version"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "primary_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Ip"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        },
+        "site_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Name"
+        },
+        "sources": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "retired"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tags": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "display_name",
+        "classification",
+        "criticality",
+        "exposure",
+        "owner",
+        "status",
+        "monitoring",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "title": "AssetSummary",
+      "type": "object"
+    },
+    "AssetTrendPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts": {
+          "minimum": 0,
+          "title": "Alerts",
+          "type": "integer"
+        },
+        "new_findings": {
+          "minimum": 0,
+          "title": "New Findings",
+          "type": "integer"
+        },
+        "resolved_findings": {
+          "minimum": 0,
+          "title": "Resolved Findings",
+          "type": "integer"
+        },
+        "week_start": {
+          "format": "date",
+          "title": "Week Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "week_start",
+        "alerts",
+        "new_findings",
+        "resolved_findings"
+      ],
+      "title": "AssetTrendPoint",
+      "type": "object"
+    },
+    "AssetUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "anyOf": [
+            {
+              "enum": [
+                "server",
+                "workstation",
+                "network",
+                "domain",
+                "web",
+                "cloud",
+                "iot",
+                "unclassified"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Classification"
+        },
+        "criticality": {
+          "anyOf": [
+            {
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Criticality"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "exposure": {
+          "anyOf": [
+            {
+              "enum": [
+                "internet_facing",
+                "internal",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exposure"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_.-]{0,39}$",
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tags"
+        }
+      },
+      "title": "AssetUpdate",
+      "type": "object"
+    },
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "citation_id": {
+          "description": "Evidence key within one bundle",
+          "pattern": "^E[1-9][0-9]{0,3}$",
+          "title": "Citation Id",
+          "type": "string"
+        },
+        "excerpt": {
+          "maxLength": 1000,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/ResourceRef"
+        }
+      },
+      "required": [
+        "citation_id",
+        "ref",
+        "excerpt"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "CollectorCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization_reference": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "interval_minutes": {
+          "default": 1440,
+          "maximum": 10080,
+          "minimum": 15,
+          "title": "Interval Minutes",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "wazuh_sync",
+            "network_discovery",
+            "cloud_inventory",
+            "manual_import"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "settings": {
+          "default": {},
+          "patternProperties": {
+            "^[a-z_]{2,40}$": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "title": "Settings",
+          "type": "object"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        }
+      },
+      "required": [
+        "name",
+        "kind"
+      ],
+      "title": "CollectorCreate",
+      "type": "object"
+    },
+    "CollectorList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CollectorView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "CollectorList",
+      "type": "object"
+    },
+    "CollectorUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization_reference": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorization Reference"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled"
+        },
+        "interval_minutes": {
+          "anyOf": [
+            {
+              "maximum": 10080,
+              "minimum": 15,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval Minutes"
+        },
+        "settings": {
+          "anyOf": [
+            {
+              "patternProperties": {
+                "^[a-z_]{2,40}$": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "items": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Settings"
+        }
+      },
+      "title": "CollectorUpdate",
+      "type": "object"
+    },
+    "CollectorView": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization_reference": {
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "execution": {
+          "description": "What actually runs for this collector in this installation",
+          "title": "Execution",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "interval_minutes": {
+          "title": "Interval Minutes",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "wazuh_sync",
+            "network_discovery",
+            "cloud_inventory",
+            "manual_import"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Outcome"
+        },
+        "last_run_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Run At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Settings",
+          "type": "object"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "enabled",
+        "interval_minutes",
+        "authorization_reference",
+        "created_at",
+        "execution"
+      ],
+      "title": "CollectorView",
+      "type": "object"
+    },
+    "ConflictList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ConflictView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ConflictList",
+      "type": "object"
+    },
+    "ConflictView": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "asset_name": {
+          "title": "Asset Name",
+          "type": "string"
+        },
+        "bound_to_asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound To Asset Id"
+        },
+        "bound_to_asset_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bound To Asset Name"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "integer"
+        },
+        "identifier_kind": {
+          "title": "Identifier Kind",
+          "type": "string"
+        },
+        "identifier_value": {
+          "title": "Identifier Value",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "asset_id",
+        "asset_name",
+        "occurred_at",
+        "identifier_kind",
+        "identifier_value",
+        "source"
+      ],
+      "title": "ConflictView",
+      "type": "object"
+    },
+    "ConnectorState": {
+      "additionalProperties": false,
+      "description": "State of one internal connector, as established by the API. Never claims a connection it has not made.",
+      "properties": {
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When reachability was last checked; null = never",
+          "title": "Checked At"
+        },
+        "connector": {
+          "enum": [
+            "wazuh_manager",
+            "wazuh_indexer",
+            "ollama"
+          ],
+          "title": "Connector",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Detail",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "unconfigured",
+            "local_fixture",
+            "connected",
+            "unavailable",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connector",
+        "state"
+      ],
+      "title": "ConnectorState",
+      "type": "object"
+    },
+    "HumanReview": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "accept",
+            "accept_with_edits",
+            "reject"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewer": {
+          "$ref": "#/$defs/ActorRef"
+        }
+      },
+      "required": [
+        "reviewer",
+        "decision",
+        "reviewed_at"
+      ],
+      "title": "HumanReview",
+      "type": "object"
+    },
+    "ModelRef": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{12,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Digest"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "provider": {
+          "const": "ollama_local",
+          "default": "ollama_local",
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ModelRef",
+      "type": "object"
+    },
+    "NhaiJob": {
+      "additionalProperties": false,
+      "description": "One asynchronous NHAI request. Inference runs in a separate worker; the API only queues and reads jobs.\n`result` is present only when `status` is `succeeded`; `error_code` explains every other final state.",
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "deadline_at": {
+          "format": "date-time",
+          "title": "Deadline At",
+          "type": "string"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z_]{2,40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "queued_at": {
+          "format": "date-time",
+          "title": "Queued At",
+          "type": "string"
+        },
+        "requested_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NhaiResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "timed_out"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "subject": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "task": {
+          "$ref": "#/$defs/NhaiTask"
+        }
+      },
+      "required": [
+        "id",
+        "task",
+        "subject",
+        "status",
+        "requested_by",
+        "queued_at",
+        "deadline_at",
+        "attempts"
+      ],
+      "title": "NhaiJob",
+      "type": "object"
+    },
+    "NhaiResult": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "limitations": {
+          "default": [],
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "missing_evidence": {
+          "default": [],
+          "description": "Phase 5: evidence that would change the assessment and is not in the bundle. Always includes the gaps found by the deterministic checker, whatever the model said",
+          "items": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "title": "Missing Evidence",
+          "type": "array"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelRef"
+        },
+        "recommendations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Recommendation"
+          },
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HumanReview"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "severity_assessment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SeverityAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "statements": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Statement"
+          },
+          "title": "Statements",
+          "type": "array"
+        },
+        "status": {
+          "default": "draft",
+          "enum": [
+            "draft",
+            "accepted",
+            "rejected",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "subject": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "summary": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "task": {
+          "$ref": "#/$defs/NhaiTask"
+        },
+        "unsupported_statements_dropped": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Unsupported Statements Dropped",
+          "type": "integer"
+        },
+        "validation_notes": {
+          "default": [],
+          "description": "Phase 5: every deterministic adjustment made to the model output (confidence cap, dropped statements, severity disagreement), so a reviewer sees exactly what was changed and why",
+          "items": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "title": "Validation Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "task",
+        "subject",
+        "model",
+        "summary",
+        "citations",
+        "confidence",
+        "generated_at",
+        "latency_ms"
+      ],
+      "title": "NhaiResult",
+      "type": "object"
+    },
+    "NhaiTask": {
+      "enum": [
+        "alert_explanation",
+        "behavioural_insight_summary",
+        "investigation_assistance",
+        "case_note_draft",
+        "finding_explanation",
+        "asset_summary",
+        "chat_answer"
+      ],
+      "title": "NhaiTask",
+      "type": "string"
+    },
+    "Recommendation": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "citation_ids": {
+          "items": {
+            "description": "Evidence key within one bundle",
+            "pattern": "^E[1-9][0-9]{0,3}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Citation Ids",
+          "type": "array"
+        },
+        "executes_automatically": {
+          "const": false,
+          "default": false,
+          "title": "Executes Automatically",
+          "type": "boolean"
+        },
+        "requires_human_approval": {
+          "title": "Requires Human Approval",
+          "type": "boolean"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "citation_ids",
+        "requires_human_approval"
+      ],
+      "title": "Recommendation",
+      "type": "object"
+    },
+    "ResourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 200,
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^[a-z_]{2,40}$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "ResourceRef",
+      "type": "object"
+    },
+    "ScaPolicySummaryView": {
+      "additionalProperties": false,
+      "properties": {
+        "failed": {
+          "minimum": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "not_applicable": {
+          "minimum": 0,
+          "title": "Not Applicable",
+          "type": "integer"
+        },
+        "passed": {
+          "minimum": 0,
+          "title": "Passed",
+          "type": "integer"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "scanned_at": {
+          "format": "date-time",
+          "title": "Scanned At",
+          "type": "string"
+        },
+        "score_percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Score Percent",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "policy_id",
+        "name",
+        "passed",
+        "failed",
+        "not_applicable",
+        "score_percent",
+        "scanned_at"
+      ],
+      "title": "ScaPolicySummaryView",
+      "type": "object"
+    },
+    "ScaSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "policies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScaPolicySummaryView"
+          },
+          "title": "Policies",
+          "type": "array"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "ScaSummary",
+      "type": "object"
+    },
+    "SeverityAssessment": {
+      "additionalProperties": false,
+      "description": "Phase 5 (additive): the model's evidence-grounded view of an alert's severity. Advisory only: it never\nchanges a stored severity; an analyst decides.",
+      "properties": {
+        "agrees_with_stored": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agrees With Stored"
+        },
+        "citation_ids": {
+          "items": {
+            "description": "Evidence key within one bundle",
+            "pattern": "^E[1-9][0-9]{0,3}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Citation Ids",
+          "type": "array"
+        },
+        "proposed": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Proposed",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "uncertainty": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Uncertainty",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposed",
+        "rationale",
+        "citation_ids",
+        "uncertainty"
+      ],
+      "title": "SeverityAssessment",
+      "type": "object"
+    },
+    "Statement": {
+      "additionalProperties": false,
+      "properties": {
+        "citation_ids": {
+          "items": {
+            "description": "Evidence key within one bundle",
+            "pattern": "^E[1-9][0-9]{0,3}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Citation Ids",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "citation_ids"
+      ],
+      "title": "Statement",
+      "type": "object"
+    },
+    "SyncRunList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/SyncRunView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "SyncRunList",
+      "type": "object"
+    },
+    "SyncRunView": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "title": "Conflicts",
+          "type": "integer"
+        },
+        "created": {
+          "title": "Created",
+          "type": "integer"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "observed": {
+          "title": "Observed",
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "source_unconfigured",
+            "source_unavailable",
+            "failed"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "requested_label": {
+          "title": "Requested Label",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "source_state": {
+          "title": "Source State",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "updated": {
+          "title": "Updated",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "source_state",
+        "started_at",
+        "outcome",
+        "observed",
+        "created",
+        "updated",
+        "conflicts",
+        "detail",
+        "requested_label"
+      ],
+      "title": "SyncRunView",
+      "type": "object"
+    },
+    "VulnerabilitySummary": {
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Critical"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "medium": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Medium"
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null when the source is unavailable; never a guessed 0",
+          "title": "Total"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "VulnerabilitySummary",
+      "type": "object"
+    },
+    "WazuhAgentContext": {
+      "additionalProperties": false,
+      "description": "What the Wazuh connector reports for the asset's agent. `source` says where it came from (local fixture, live,\nunconfigured or unavailable). Wazuh vulnerability detection is a separate method from VMS scanning.",
+      "properties": {
+        "agent_id": {
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "agent_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Version"
+        },
+        "groups": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Groups",
+          "type": "array"
+        },
+        "last_keepalive_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Keepalive At"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "sca": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScaSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "$ref": "#/$defs/ConnectorState"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "vulnerabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VulnerabilitySummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "source",
+        "agent_id"
+      ],
+      "title": "WazuhAgentContext",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/inventory.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: inventory",
+  "version": "1.0.0"
+}

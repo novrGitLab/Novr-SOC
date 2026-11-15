@@ -1,0 +1,76 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Secrets and local configuration: never committed
+.env
+.env.*
+!.env.example
+!*.env.example
+deploy/dev/.env
+*.pem
+*.key
+
+# Local databases and dumps (Phase 2 uses a disposable PostgreSQL on tmpfs; nothing should land here)
+*.sqlite
+*.db
+*.dump
+*.sql.gz
+pgdata/
+schema-dumps/
+
+# Phase 1 archive snapshots of ANOTHER repository's uncommitted work.
+# Kept on disk as provenance; deliberately not committed to the V2 repository
+# (they contain the legacy SOAR engine and legacy env templates). Archive them separately.
+provenance/snapshots/
+
+# Local test artefacts
+test-results/
+playwright-report/
+
+# Local preview runtime (PID files, logs) from scripts/dev/Start-NovrSOC.ps1
+.run/
+
+# The owner's private notes in the working directory: never published
+/info.md
+
+# Deployment state on a server checkout: compose interpolation values and backups (templates are *.example)
+deploy/server*/.env
+*.nvsb
+
+# More local artefacts and credentials
+*.sqlite3
+*.log
+*.p12
+*.pfx
+coverage/
+apps/web/next.config.compiled.js
+dev-credentials.json
+first-admin.txt
+*.token
+.claude/
+
+# Public repository guard. The public repository is built from release/PUBLIC_ALLOWLIST.txt only
+# (scripts/release/publication.py --stage <empty dir>). If a repository is created in this working tree instead,
+# these never belong in it: legacy reference code, provenance, engineering documents and local demonstrations.
+/reference/
+/provenance/
+/docs/*
+!/docs/public/
+/apps/web/docs/
+/apps/web/EXTRACTION_STATUS.md
+/scripts/dev/demo/
+/scripts/dev/seed_demo.py
+/scripts/git/
+/scripts/provenance/

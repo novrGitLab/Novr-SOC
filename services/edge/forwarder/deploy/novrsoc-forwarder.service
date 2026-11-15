@@ -1,0 +1,36 @@
+# NovrSOC V2 alert forwarder (Server 1, next to the Wazuh indexer). NOT INSTALLED: see README.md and
+# docs/public/DEPLOYMENT.md. Approval gate G-A2 must be signed before this unit is enabled.
+[Unit]
+Description=NovrSOC V2 alert forwarder (Wazuh indexer -> NovrSOC API), forwarding only
+After=network-online.target wazuh-indexer.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=novrsoc-forwarder
+Group=novrsoc-forwarder
+EnvironmentFile=/etc/novrsoc-forwarder/forwarder.env
+ExecStart=/usr/bin/python3 -m novrsoc_forwarder
+WorkingDirectory=/opt/novrsoc-forwarder
+StateDirectory=novrsoc-forwarder
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=30
+# 78 = configuration or credential problem (revoked token, batch_id conflict, unreadable cursor): do not loop.
+RestartPreventExitStatus=78
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=256M
+CPUQuota=25%
+
+[Install]
+WantedBy=multi-user.target

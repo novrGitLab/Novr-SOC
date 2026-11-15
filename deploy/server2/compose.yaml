@@ -1,0 +1,189 @@
+# NovrSOC V2, Server 2 (application host): PostgreSQL 16, migrations, API (with the SOAR engine, approvals
+# and audit), the background jobs worker, web. NOT DEPLOYED. Ordered procedure: docs/public/DEPLOYMENT.md.
+#
+#   cd /opt/novrsoc-v2/deploy/server2
+#   cp compose.env.example .env            # image tag, config directory, bind addresses (no secrets)
+#   docker compose config -q               # validate
+#   docker compose up -d                   # postgres -> migrate (one shot) -> api (check-env first) -> jobs, web
+#
+# Host NGINX (nginx-novrsoc.conf) terminates TLS and proxies to the two loopback ports below. Nothing else is
+# published: PostgreSQL is on an internal network with no port. A WireGuard-only TLS listener for the Server 1 NHAI
+# worker is part of gate G-F2 and is not in this file.
+#
+# Secrets never live in this file or in Git:
+#   ${NOVRSOC_CONFIG_DIR}/api.env, migrate.env, backup.env    0600 root:root (read by Docker, not the container)
+#   ${NOVRSOC_CONFIG_DIR}/secrets/pg_*_password               0400 uid 70 (the image's postgres user reads them)
+#   ${NOVRSOC_CONFIG_DIR}/files/                              0400 uid 10001: bridge key, bridge CA, backup key
+name: novrsoc
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 256
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+x-api-image: &api-image
+  image: novrsoc-api:${NOVRSOC_IMAGE_TAG:?set NOVRSOC_IMAGE_TAG (git short sha of the reviewed release) in .env}
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: novrsoc
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_superuser_password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    secrets: [pg_superuser_password, pg_owner_password, pg_app_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks: [db]
+    shm_size: 256m
+    mem_limit: 2g
+    # The entrypoint needs to own its data directory and drop to the postgres user; nothing more.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d novrsoc"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "5"}
+
+  migrate:
+    <<: [*hardening, *api-image]
+    restart: "no"
+    working_dir: /srv/novrsoc/packages/db
+    command: ["alembic", "upgrade", "head"]
+    env_file: ["${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/migrate.env"]
+    networks: [db]
+    tmpfs: ["/tmp:size=16m"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    <<: [*hardening, *api-image]
+    restart: unless-stopped
+    # check-env validates settings, the database (as the API role), the migration head and every adapter; a FAIL
+    # stops the container before it serves anything.
+    command: ["sh", "-c", "python -m app.cli check-env && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --no-server-header"]
+    env_file: ["${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/api.env"]
+    environment:
+      # X-Forwarded-For is trusted only from the host NGINX (via the published loopback port) and the web container.
+      FORWARDED_ALLOW_IPS: ${NOVRSOC_APP_SUBNET:-172.30.10.0/24}
+    volumes:
+      - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/files:/run/novrsoc:ro
+    ports: ["${NOVRSOC_API_BIND:-127.0.0.1:8000}:8000"]
+    networks: [db, app]
+    tmpfs: ["/tmp:size=64m"]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+  # Background jobs worker: SLA escalation, due schedules (scans only where scanning is enabled), CNII check bookkeeping,
+  # approval expiry, asset links. Runs as the API's database role; it never executes a response action.
+  jobs:
+    <<: [*hardening, *api-image]
+    restart: unless-stopped
+    command: ["python", "-m", "app.jobs"]
+    env_file: ["${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/api.env"]
+    environment:
+      NOVRSOC_JOBS_INTERVAL_SECONDS: "60"
+    volumes:
+      - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/files:/run/novrsoc:ro
+    networks: [db]
+    tmpfs: ["/tmp:size=32m"]
+    mem_limit: 512m
+    depends_on:
+      api: {condition: service_healthy}
+
+  web:
+    <<: *hardening
+    image: novrsoc-web:${NOVRSOC_IMAGE_TAG:?set NOVRSOC_IMAGE_TAG in .env}
+    restart: unless-stopped
+    ports: ["${NOVRSOC_WEB_BIND:-127.0.0.1:3210}:3210"]
+    networks: [app]
+    tmpfs: ["/tmp:size=32m", "/srv/web/.next/cache:size=64m,uid=1000,gid=1000"]
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3210/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      api: {condition: service_healthy}
+
+  # ---- operator jobs (profile "ops"; never started by `up`) --------------------------------------------------
+  # docker compose --profile ops run --rm backup          (the host timer novrsoc-backup.timer runs this nightly)
+  backup:
+    <<: [*hardening, *api-image]
+    profiles: [ops]
+    restart: "no"
+    command: ["python", "-m", "app.cli", "backup", "--out-dir", "/backups", "--key-file", "/run/novrsoc/backup.key", "--target-label", "server2"]
+    env_file: ["${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/backup.env"]
+    volumes:
+      - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/files:/run/novrsoc:ro
+      - ${NOVRSOC_BACKUP_DIR:-/var/backups/novrsoc-v2}:/backups
+    networks: [db]
+    tmpfs: ["/tmp:size=64m"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  # docker compose --profile ops run --rm restore-drill --file /backups/<file>.nvsb
+  # Restores into a DISPOSABLE database (created and dropped by the drill) with the superuser, then checks it.
+  restore-drill:
+    <<: [*hardening, *api-image]
+    profiles: [ops]
+    restart: "no"
+    entrypoint: ["python", "-m", "app.cli", "restore-drill", "--key-file", "/run/novrsoc/backup.key"]
+    env_file: ["${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/backup.env"]
+    volumes:
+      - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/files:/run/novrsoc:ro
+      - ${NOVRSOC_BACKUP_DIR:-/var/backups/novrsoc-v2}:/backups:ro
+    networks: [db]
+    tmpfs: ["/tmp:size=256m"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  # docker compose --profile ops run --rm -v /root/novrsoc-bootstrap:/out operator bootstrap-platform --email <owner> --out /out/first-admin.txt
+  # Also: create-service-identity / revoke-service-identity / check-env. Uses the schema-owner connection.
+  operator:
+    <<: [*hardening, *api-image]
+    profiles: [ops]
+    restart: "no"
+    entrypoint: ["python", "-m", "app.cli"]
+    env_file: ["${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/migrate.env"]
+    networks: [db]
+    tmpfs: ["/tmp:size=16m"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+networks:
+  db:
+    internal: true          # no route out: only postgres, migrate, api and operator jobs
+  app:
+    ipam:
+      config: [{subnet: "${NOVRSOC_APP_SUBNET:-172.30.10.0/24}"}]
+
+volumes:
+  pgdata: {}
+
+secrets:
+  pg_superuser_password: {file: "${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/secrets/pg_superuser_password"}
+  pg_owner_password: {file: "${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/secrets/pg_owner_password"}
+  pg_app_password: {file: "${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/secrets/pg_app_password"}

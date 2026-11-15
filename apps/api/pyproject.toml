@@ -1,0 +1,29 @@
+[project]
+name = "novrsoc-api"
+version = "2.0.0.dev1"
+description = "NovrSOC V2 API (FastAPI). Phase 2 foundation: auth, tenancy, permissions, audit, sites."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.30,<1",
+  "pydantic>=2.8,<3",
+  "pydantic-settings>=2.4,<3",
+  "sqlalchemy>=2.0.30,<2.1",
+  "psycopg[binary]>=3.2,<4",
+  "alembic>=1.13,<2",
+  "bcrypt>=4.2,<6",
+  "httpx>=0.27,<1",        # SOAR bridge client (app/soar/bridge_client.py), live Wazuh clients
+  "cryptography>=43",      # encrypted backups (app/backup.py, AES-256-GCM)
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0.3,<10",
+  "openapi-spec-validator>=0.7,<1",
+  "jsonschema>=4.23,<5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["db: needs the disposable PostgreSQL (NOVRSOC_TEST_ADMIN_DATABASE_URL)"]

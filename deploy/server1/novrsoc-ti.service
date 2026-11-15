@@ -1,0 +1,30 @@
+# NovrSOC V2 Threat Insights service: TAXII 2.1 client + STIX 2.1 normalization (Server 1). NOT INSTALLED.
+# Idle until a source is configured AND enabled in config.json (gate G-T1, docs/public/DEPLOYMENT.md). Each source delivers with the
+# organization-bound ti_feeder identity of ONE organization.
+[Unit]
+Description=NovrSOC V2 Threat Insights (TAXII 2.1 feeder, organization-scoped)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=novrsoc-ti
+Group=novrsoc-ti
+WorkingDirectory=/opt/novrsoc-v2/services/edge/threat_intel
+Environment=PYTHONPATH=/opt/novrsoc-v2/packages/contracts/python
+ExecStart=/usr/bin/python3 -m novrsoc_ti --config /etc/novrsoc-ti/config.json
+StateDirectory=novrsoc-ti
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=60
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_INET6
+LockPersonality=true
+MemoryMax=256M
+CPUQuota=25%
+
+[Install]
+WantedBy=multi-user.target

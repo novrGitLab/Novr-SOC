@@ -1,0 +1,30 @@
+# NovrSOC V2 — DISPOSABLE local development database.
+#
+#   python scripts/dev/bootstrap_env.py          # writes deploy/dev/.env and apps/api/.env with random local passwords
+#   docker compose -f deploy/dev/compose.yaml --env-file deploy/dev/.env up -d
+#
+# Data lives on tmpfs: stopping the container destroys it. Bound to 127.0.0.1 only, port 55432
+# (5432 is left alone for anything else on this machine). Never point this at production data.
+name: novrsoc-v2-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: novrsoc-v2-dev-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${NOVRSOC_DEV_PG_SUPERUSER_PASSWORD:?run scripts/dev/bootstrap_env.py}
+      POSTGRES_DB: novrsoc_v2_dev
+      NOVRSOC_OWNER_PASSWORD: ${NOVRSOC_DEV_OWNER_PASSWORD:?run scripts/dev/bootstrap_env.py}
+      NOVRSOC_APP_PASSWORD: ${NOVRSOC_DEV_APP_PASSWORD:?run scripts/dev/bootstrap_env.py}
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d novrsoc_v2_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

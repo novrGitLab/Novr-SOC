@@ -1,0 +1,14 @@
+# Encrypted nightly logical backup (Server 2), started by novrsoc-backup.timer. NOT INSTALLED.
+# Runs the compose "backup" job (pg_dump 16 as the schema owner, AES-256-GCM, SHA-256 recorded in backup_runs).
+# The key (${NOVRSOC_CONFIG_DIR}/files/backup.key, 0400 uid 10001) has a copy in the owner's offline vault; the
+# encrypted files are copied OFF the server separately (owner procedure). Weekly: `docker compose --profile ops run --rm
+# restore-drill --file /backups/<latest>` into a disposable database.
+[Unit]
+Description=NovrSOC V2 encrypted backup (docker compose job)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/novrsoc-v2/deploy/server2
+ExecStart=/usr/bin/docker compose --profile ops run --rm --no-TTY backup

@@ -1,0 +1,1713 @@
+{
+  "$defs": {
+    "ActorLinkCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "association": {
+          "enum": [
+            "verified",
+            "suspected"
+          ],
+          "title": "Association",
+          "type": "string"
+        },
+        "link_type": {
+          "enum": [
+            "indicator",
+            "cve",
+            "case",
+            "alert",
+            "asset"
+          ],
+          "title": "Link Type",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 2000,
+          "minLength": 3,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "ref_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Ref Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "link_type",
+        "ref_id",
+        "association",
+        "rationale"
+      ],
+      "title": "ActorLinkCreate",
+      "type": "object"
+    },
+    "ActorLinkView": {
+      "additionalProperties": false,
+      "properties": {
+        "association": {
+          "enum": [
+            "verified",
+            "suspected"
+          ],
+          "title": "Association",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_label": {
+          "title": "Created Label",
+          "type": "string"
+        },
+        "exists": {
+          "description": "False when the linked record is no longer visible in this organization",
+          "title": "Exists",
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "link_type": {
+          "enum": [
+            "indicator",
+            "cve",
+            "case",
+            "alert",
+            "asset"
+          ],
+          "title": "Link Type",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 2000,
+          "minLength": 3,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "ref_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Ref Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "link_type",
+        "ref_id",
+        "association",
+        "rationale",
+        "id",
+        "created_label",
+        "created_at",
+        "exists"
+      ],
+      "title": "ActorLinkView",
+      "type": "object"
+    },
+    "ActorSource": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "published": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published"
+        },
+        "url": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ActorSource",
+      "type": "object"
+    },
+    "BehaviouralSignal": {
+      "additionalProperties": false,
+      "description": "A deviation from the organisation's own baseline (behavioural analytics, BUILD LATER).",
+      "properties": {
+        "baseline": {
+          "title": "Baseline",
+          "type": "number"
+        },
+        "entity": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "metric": {
+          "pattern": "^[a-z0-9_.]{2,80}$",
+          "title": "Metric",
+          "type": "string"
+        },
+        "model_version": {
+          "maxLength": 40,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "observed": {
+          "title": "Observed",
+          "type": "number"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        },
+        "window_start": {
+          "format": "date-time",
+          "title": "Window Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "entity",
+        "metric",
+        "baseline",
+        "observed",
+        "window_start",
+        "window_end",
+        "model_version"
+      ],
+      "title": "BehaviouralSignal",
+      "type": "object"
+    },
+    "CorrelationGroup": {
+      "additionalProperties": false,
+      "description": "Alerts of ONE organization that share a basis within a window.",
+      "properties": {
+        "alert_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Alert Ids",
+          "type": "array"
+        },
+        "basis": {
+          "enum": [
+            "shared_observable",
+            "same_agent_and_rule"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 300,
+          "title": "Key",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "max_severity": {
+          "$ref": "#/$defs/Severity"
+        }
+      },
+      "required": [
+        "key",
+        "basis",
+        "alert_ids",
+        "first_seen_at",
+        "last_seen_at",
+        "max_severity"
+      ],
+      "title": "CorrelationGroup",
+      "type": "object"
+    },
+    "CorrelationList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CorrelationGroup"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "window_hours": {
+          "title": "Window Hours",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "window_hours",
+        "items"
+      ],
+      "title": "CorrelationList",
+      "type": "object"
+    },
+    "CveImport": {
+      "additionalProperties": false,
+      "description": "Import CVE intelligence from a file the analyst obtained (records, or a CISA KEV catalog JSON document).\nNovrSOC does not fetch feeds itself here; the Server 1 feeder can deliver STIX vulnerabilities.",
+      "properties": {
+        "kev_catalog": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kev Catalog"
+        },
+        "records": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CveRecordIn"
+          },
+          "maxItems": 5000,
+          "title": "Records",
+          "type": "array"
+        },
+        "source": {
+          "maxLength": 80,
+          "minLength": 2,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "CveImport",
+      "type": "object"
+    },
+    "CveImportResult": {
+      "additionalProperties": false,
+      "properties": {
+        "imported": {
+          "title": "Imported",
+          "type": "integer"
+        },
+        "skipped": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Skipped",
+          "type": "array"
+        }
+      },
+      "required": [
+        "imported"
+      ],
+      "title": "CveImportResult",
+      "type": "object"
+    },
+    "CveIntelList": {
+      "additionalProperties": false,
+      "properties": {
+        "finding_cves_without_intel": {
+          "default": [],
+          "description": "CVEs in open findings with no intelligence record",
+          "items": {
+            "type": "string"
+          },
+          "title": "Finding Cves Without Intel",
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CveIntelView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "CveIntelList",
+      "type": "object"
+    },
+    "CveIntelView": {
+      "additionalProperties": false,
+      "properties": {
+        "actors": {
+          "default": [],
+          "description": "Actors linked to the CVE in this organization, with their association",
+          "items": {
+            "type": "string"
+          },
+          "title": "Actors",
+          "type": "array"
+        },
+        "affected_assets": {
+          "minimum": 0,
+          "title": "Affected Assets",
+          "type": "integer"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "cve_id": {
+          "title": "Cve Id",
+          "type": "string"
+        },
+        "cvss_v3": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss V3"
+        },
+        "cvss_vector": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss Vector"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "epss": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Epss"
+        },
+        "kev": {
+          "title": "Kev",
+          "type": "boolean"
+        },
+        "kev_added": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kev Added"
+        },
+        "open_findings": {
+          "description": "This organization's open VMS findings that name the CVE",
+          "minimum": 0,
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "published": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published"
+        },
+        "snapshots": {
+          "minimum": 1,
+          "title": "Snapshots",
+          "type": "integer"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cve_id",
+        "kev",
+        "description",
+        "source",
+        "captured_at",
+        "snapshots",
+        "open_findings",
+        "affected_assets"
+      ],
+      "title": "CveIntelView",
+      "type": "object"
+    },
+    "CveRecordIn": {
+      "additionalProperties": false,
+      "properties": {
+        "cve_id": {
+          "pattern": "^CVE-\\d{4}-\\d{4,7}$",
+          "title": "Cve Id",
+          "type": "string"
+        },
+        "cvss_v3": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss V3"
+        },
+        "cvss_vector": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss Vector"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 4000,
+          "title": "Description",
+          "type": "string"
+        },
+        "epss": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Epss"
+        },
+        "kev": {
+          "default": false,
+          "title": "Kev",
+          "type": "boolean"
+        },
+        "kev_added": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kev Added"
+        },
+        "published": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published"
+        }
+      },
+      "required": [
+        "cve_id"
+      ],
+      "title": "CveRecordIn",
+      "type": "object"
+    },
+    "FeedRun": {
+      "additionalProperties": false,
+      "properties": {
+        "collection": {
+          "title": "Collection",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "indicators_imported": {
+          "title": "Indicators Imported",
+          "type": "integer"
+        },
+        "objects_received": {
+          "title": "Objects Received",
+          "type": "integer"
+        },
+        "objects_stored": {
+          "title": "Objects Stored",
+          "type": "integer"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        },
+        "rejected": {
+          "title": "Rejected",
+          "type": "integer"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "collection",
+        "objects_received",
+        "objects_stored",
+        "indicators_imported",
+        "rejected",
+        "received_at"
+      ],
+      "title": "FeedRun",
+      "type": "object"
+    },
+    "FeedRunList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/FeedRun"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "FeedRunList",
+      "type": "object"
+    },
+    "Indicator": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "integer"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "source": {
+          "pattern": "^[a-z0-9_.-]{2,60}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "tlp": {
+          "$ref": "#/$defs/Tlp"
+        },
+        "type": {
+          "$ref": "#/$defs/IndicatorType"
+        },
+        "value": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value",
+        "tlp",
+        "source",
+        "first_seen_at",
+        "confidence"
+      ],
+      "title": "Indicator",
+      "type": "object"
+    },
+    "IndicatorContext": {
+      "additionalProperties": false,
+      "properties": {
+        "indicator": {
+          "$ref": "#/$defs/IndicatorRecord"
+        },
+        "related": {
+          "items": {
+            "$ref": "#/$defs/RelatedObject"
+          },
+          "title": "Related",
+          "type": "array"
+        }
+      },
+      "required": [
+        "indicator",
+        "related"
+      ],
+      "title": "IndicatorContext",
+      "type": "object"
+    },
+    "IndicatorImport": {
+      "additionalProperties": false,
+      "description": "Either plain indicators or a STIX 2.1 bundle (only `indicator` objects with a single-comparison pattern on a\nsupported observable are accepted; anything else is reported as skipped, never guessed).",
+      "properties": {
+        "indicators": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Indicator"
+          },
+          "maxItems": 5000,
+          "title": "Indicators",
+          "type": "array"
+        },
+        "source": {
+          "pattern": "^[a-z0-9_.-]{2,60}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "stix_bundle": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stix Bundle"
+        },
+        "tlp": {
+          "$ref": "#/$defs/Tlp",
+          "default": "amber"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "IndicatorImport",
+      "type": "object"
+    },
+    "IndicatorImportResult": {
+      "additionalProperties": false,
+      "properties": {
+        "imported": {
+          "minimum": 0,
+          "title": "Imported",
+          "type": "integer"
+        },
+        "skipped": {
+          "default": [],
+          "items": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "title": "Skipped",
+          "type": "array"
+        },
+        "unchanged": {
+          "minimum": 0,
+          "title": "Unchanged",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "imported",
+        "unchanged"
+      ],
+      "title": "IndicatorImportResult",
+      "type": "object"
+    },
+    "IndicatorList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/IndicatorRecord"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "IndicatorList",
+      "type": "object"
+    },
+    "IndicatorProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "imported_at": {
+          "format": "date-time",
+          "title": "Imported At",
+          "type": "string"
+        },
+        "imported_by": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Imported By",
+          "type": "string"
+        },
+        "source": {
+          "pattern": "^[a-z0-9_.-]{2,60}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "source_ref": {
+          "default": "",
+          "description": "The source's own id (e.g. a STIX id or feed record)",
+          "maxLength": 200,
+          "title": "Source Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "imported_at"
+      ],
+      "title": "IndicatorProvenance",
+      "type": "object"
+    },
+    "IndicatorRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "integer"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/IndicatorProvenance"
+        },
+        "stix_id": {
+          "pattern": "^indicator--[0-9a-f-]{36}$",
+          "title": "Stix Id",
+          "type": "string"
+        },
+        "tlp": {
+          "$ref": "#/$defs/Tlp"
+        },
+        "type": {
+          "$ref": "#/$defs/IndicatorType"
+        },
+        "valid_from": {
+          "format": "date-time",
+          "title": "Valid From",
+          "type": "string"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        },
+        "value": {
+          "description": "Normalized value used for matching",
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "value",
+        "tlp",
+        "confidence",
+        "valid_from",
+        "stix_id",
+        "provenance"
+      ],
+      "title": "IndicatorRecord",
+      "type": "object"
+    },
+    "IndicatorType": {
+      "enum": [
+        "ipv4",
+        "ipv6",
+        "domain",
+        "url",
+        "sha256",
+        "cve"
+      ],
+      "title": "IndicatorType",
+      "type": "string"
+    },
+    "InsightFeedback": {
+      "additionalProperties": false,
+      "properties": {
+        "match_id": {
+          "format": "uuid",
+          "title": "Match Id",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Note",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "true_positive",
+            "false_positive",
+            "benign"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_id",
+        "verdict"
+      ],
+      "title": "InsightFeedback",
+      "type": "object"
+    },
+    "InsightMatch": {
+      "additionalProperties": false,
+      "description": "An indicator matched against THIS organisation's evidence.",
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "indicator": {
+          "$ref": "#/$defs/Indicator"
+        },
+        "matched": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "matched_at": {
+          "format": "date-time",
+          "title": "Matched At",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "verdict": {
+          "default": "unreviewed",
+          "enum": [
+            "unreviewed",
+            "true_positive",
+            "false_positive",
+            "benign"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "indicator",
+        "matched",
+        "matched_at",
+        "severity"
+      ],
+      "title": "InsightMatch",
+      "type": "object"
+    },
+    "InsightMatchList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/InsightMatchView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "InsightMatchList",
+      "type": "object"
+    },
+    "InsightMatchView": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_id": {
+          "format": "uuid",
+          "title": "Alert Id",
+          "type": "string"
+        },
+        "confidence": {
+          "$ref": "#/$defs/MatchConfidence"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "indicator": {
+          "$ref": "#/$defs/IndicatorRecord"
+        },
+        "matched_at": {
+          "format": "date-time",
+          "title": "Matched At",
+          "type": "string"
+        },
+        "observable": {
+          "$ref": "#/$defs/Observable"
+        },
+        "verdict": {
+          "enum": [
+            "unreviewed",
+            "true_positive",
+            "false_positive",
+            "benign"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "indicator",
+        "alert_id",
+        "observable",
+        "matched_at",
+        "confidence",
+        "verdict"
+      ],
+      "title": "InsightMatchView",
+      "type": "object"
+    },
+    "MatchConfidence": {
+      "additionalProperties": false,
+      "description": "How the match confidence was computed (deterministic policy, explained).",
+      "properties": {
+        "band": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Band",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "score": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Score",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "score",
+        "band",
+        "reasons"
+      ],
+      "title": "MatchConfidence",
+      "type": "object"
+    },
+    "MatchRunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts_scanned": {
+          "minimum": 0,
+          "title": "Alerts Scanned",
+          "type": "integer"
+        },
+        "new_matches": {
+          "minimum": 0,
+          "title": "New Matches",
+          "type": "integer"
+        },
+        "observables": {
+          "minimum": 0,
+          "title": "Observables",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "alerts_scanned",
+        "observables",
+        "new_matches"
+      ],
+      "title": "MatchRunResult",
+      "type": "object"
+    },
+    "Observable": {
+      "additionalProperties": false,
+      "description": "A normalized value extracted deterministically from one stored alert.",
+      "properties": {
+        "source_field": {
+          "pattern": "^[A-Za-z0-9_.\\[\\]]{1,80}$",
+          "title": "Source Field",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/IndicatorType"
+        },
+        "value": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value",
+        "source_field"
+      ],
+      "title": "Observable",
+      "type": "object"
+    },
+    "RelatedObject": {
+      "additionalProperties": false,
+      "properties": {
+        "edge": {
+          "enum": [
+            "outgoing",
+            "incoming"
+          ],
+          "title": "Edge",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "relationship_type": {
+          "title": "Relationship Type",
+          "type": "string"
+        },
+        "stix_id": {
+          "title": "Stix Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stix_id",
+        "type",
+        "name",
+        "relationship_type",
+        "edge"
+      ],
+      "title": "RelatedObject",
+      "type": "object"
+    },
+    "ResourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 200,
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "pattern": "^[a-z_]{2,40}$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "ResourceRef",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SnapshotCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "cvss",
+            "ioc"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Reason",
+          "type": "string"
+        },
+        "subject": {
+          "description": "A CVE id, or an indicator id",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "subject"
+      ],
+      "title": "SnapshotCreate",
+      "type": "object"
+    },
+    "SnapshotList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/SnapshotView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "SnapshotList",
+      "type": "object"
+    },
+    "SnapshotView": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "captured_label": {
+          "title": "Captured Label",
+          "type": "string"
+        },
+        "content": {
+          "additionalProperties": true,
+          "title": "Content",
+          "type": "object"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "cvss",
+            "ioc"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "subject": {
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "subject",
+        "content",
+        "sha256",
+        "reason",
+        "captured_label",
+        "captured_at"
+      ],
+      "title": "SnapshotView",
+      "type": "object"
+    },
+    "StixIngest": {
+      "additionalProperties": false,
+      "description": "A STIX 2.1 bundle for the organization: uploaded by a user, or delivered by the Server 1 TAXII feeder (its\norganization-bound ti_feeder identity decides the organization; the body has none).",
+      "properties": {
+        "bundle": {
+          "additionalProperties": true,
+          "title": "Bundle",
+          "type": "object"
+        },
+        "collection": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Collection",
+          "type": "string"
+        },
+        "source": {
+          "pattern": "^[a-z0-9_.-]{2,60}$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "bundle"
+      ],
+      "title": "StixIngest",
+      "type": "object"
+    },
+    "StixIngestResult": {
+      "additionalProperties": false,
+      "properties": {
+        "indicators_imported": {
+          "minimum": 0,
+          "title": "Indicators Imported",
+          "type": "integer"
+        },
+        "objects_received": {
+          "minimum": 0,
+          "title": "Objects Received",
+          "type": "integer"
+        },
+        "objects_stored": {
+          "minimum": 0,
+          "title": "Objects Stored",
+          "type": "integer"
+        },
+        "rejected": {
+          "default": [],
+          "items": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "title": "Rejected",
+          "type": "array"
+        },
+        "relationships": {
+          "minimum": 0,
+          "title": "Relationships",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "objects_received",
+        "objects_stored",
+        "indicators_imported",
+        "relationships"
+      ],
+      "title": "StixIngestResult",
+      "type": "object"
+    },
+    "ThreatActorCreate": {
+      "additionalProperties": false,
+      "description": "An actor profile. `verified` needs at least one cited source; `unknown` attribution carries confidence 0.\nNothing is pre-loaded; NovrSOC never names an actor on its own.",
+      "properties": {
+        "aliases": {
+          "default": [],
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Aliases",
+          "type": "array"
+        },
+        "attribution": {
+          "enum": [
+            "verified",
+            "suspected",
+            "unknown"
+          ],
+          "title": "Attribution",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "integer"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Description",
+          "type": "string"
+        },
+        "first_seen": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Seen"
+        },
+        "last_seen": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Seen"
+        },
+        "motivations": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Motivations",
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "sources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ActorSource"
+          },
+          "maxItems": 50,
+          "title": "Sources",
+          "type": "array"
+        },
+        "target_regions": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Target Regions",
+          "type": "array"
+        },
+        "target_sectors": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Target Sectors",
+          "type": "array"
+        },
+        "techniques": {
+          "default": [],
+          "items": {
+            "pattern": "^T\\d{4}(\\.\\d{3})?$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Techniques",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "attribution"
+      ],
+      "title": "ThreatActorCreate",
+      "type": "object"
+    },
+    "ThreatActorList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ThreatActorView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ThreatActorList",
+      "type": "object"
+    },
+    "ThreatActorView": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "default": [],
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Aliases",
+          "type": "array"
+        },
+        "attribution": {
+          "enum": [
+            "verified",
+            "suspected",
+            "unknown"
+          ],
+          "title": "Attribution",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_label": {
+          "title": "Created Label",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 8000,
+          "title": "Description",
+          "type": "string"
+        },
+        "first_seen": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Seen"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_seen": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Seen"
+        },
+        "links": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ActorLinkView"
+          },
+          "title": "Links",
+          "type": "array"
+        },
+        "motivations": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Motivations",
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "observed_in_organization": {
+          "default": false,
+          "description": "True only when a VERIFIED link ties the actor to this organization's own records",
+          "title": "Observed In Organization",
+          "type": "boolean"
+        },
+        "sources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ActorSource"
+          },
+          "maxItems": 50,
+          "title": "Sources",
+          "type": "array"
+        },
+        "target_regions": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Target Regions",
+          "type": "array"
+        },
+        "target_sectors": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Target Sectors",
+          "type": "array"
+        },
+        "techniques": {
+          "default": [],
+          "items": {
+            "pattern": "^T\\d{4}(\\.\\d{3})?$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Techniques",
+          "type": "array"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "attribution",
+        "id",
+        "created_label",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "ThreatActorView",
+      "type": "object"
+    },
+    "Tlp": {
+      "enum": [
+        "clear",
+        "green",
+        "amber",
+        "amber_strict",
+        "red"
+      ],
+      "title": "Tlp",
+      "type": "string"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/insights.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: insights",
+  "version": "1.0.0"
+}

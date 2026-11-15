@@ -1,0 +1,1160 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "user",
+            "service",
+            "system"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "BillingOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "organizations": {
+          "items": {
+            "$ref": "#/$defs/OrgBillingRow"
+          },
+          "title": "Organizations",
+          "type": "array"
+        },
+        "payment_provider": {
+          "const": "not_configured",
+          "default": "not_configured",
+          "title": "Payment Provider",
+          "type": "string"
+        },
+        "plans": {
+          "items": {
+            "$ref": "#/$defs/BillingPlanView"
+          },
+          "title": "Plans",
+          "type": "array"
+        }
+      },
+      "required": [
+        "note",
+        "plans",
+        "organizations"
+      ],
+      "title": "BillingOverview",
+      "type": "object"
+    },
+    "BillingPlanCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "billing_interval": {
+          "default": "monthly",
+          "enum": [
+            "monthly",
+            "annual"
+          ],
+          "title": "Billing Interval",
+          "type": "string"
+        },
+        "code": {
+          "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "currency": {
+          "default": "NGN",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Description",
+          "type": "string"
+        },
+        "features": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Features",
+          "type": "array"
+        },
+        "max_assets": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Assets"
+        },
+        "max_users": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Users"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "price_minor": {
+          "description": "Price in the currency's minor unit (kobo, cents)",
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "title": "Price Minor",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "price_minor"
+      ],
+      "title": "BillingPlanCreate",
+      "type": "object"
+    },
+    "BillingPlanUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "active"
+      ],
+      "title": "BillingPlanUpdate",
+      "type": "object"
+    },
+    "BillingPlanView": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "billing_interval": {
+          "default": "monthly",
+          "enum": [
+            "monthly",
+            "annual"
+          ],
+          "title": "Billing Interval",
+          "type": "string"
+        },
+        "code": {
+          "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "currency": {
+          "default": "NGN",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Description",
+          "type": "string"
+        },
+        "features": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Features",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "max_assets": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Assets"
+        },
+        "max_users": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Users"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "price_minor": {
+          "description": "Price in the currency's minor unit (kobo, cents)",
+          "maximum": 1000000000000,
+          "minimum": 0,
+          "title": "Price Minor",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "price_minor",
+        "id",
+        "active",
+        "created_at"
+      ],
+      "title": "BillingPlanView",
+      "type": "object"
+    },
+    "ComponentHealth": {
+      "additionalProperties": false,
+      "properties": {
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checked At"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "degraded",
+            "failing",
+            "unconfigured",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "state",
+        "detail"
+      ],
+      "title": "ComponentHealth",
+      "type": "object"
+    },
+    "DataExportCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "enum": [
+            "alerts",
+            "cases",
+            "vms_findings",
+            "assets",
+            "audit_events",
+            "ti_indicators"
+          ],
+          "title": "Dataset",
+          "type": "string"
+        },
+        "expires_in_days": {
+          "default": 7,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Expires In Days",
+          "type": "integer"
+        },
+        "format": {
+          "default": "csv",
+          "enum": [
+            "csv",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "justification": {
+          "maxLength": 1000,
+          "minLength": 10,
+          "title": "Justification",
+          "type": "string"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "recipient": {
+          "description": "Who receives the export (organization or role)",
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Recipient",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dataset",
+        "period_start",
+        "period_end",
+        "justification",
+        "recipient"
+      ],
+      "title": "DataExportCreate",
+      "type": "object"
+    },
+    "DataExportList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DataExportView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "max_rows": {
+          "title": "Max Rows",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "max_rows"
+      ],
+      "title": "DataExportList",
+      "type": "object"
+    },
+    "DataExportView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dataset": {
+          "enum": [
+            "alerts",
+            "cases",
+            "vms_findings",
+            "assets",
+            "audit_events",
+            "ti_indicators"
+          ],
+          "title": "Dataset",
+          "type": "string"
+        },
+        "downloads": {
+          "title": "Downloads",
+          "type": "integer"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "csv",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "justification": {
+          "title": "Justification",
+          "type": "string"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "recipient": {
+          "title": "Recipient",
+          "type": "string"
+        },
+        "requested_by": {
+          "$ref": "#/$defs/ActorRef"
+        },
+        "row_count": {
+          "title": "Row Count",
+          "type": "integer"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "available",
+            "expired",
+            "revoked"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "truncated": {
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "dataset",
+        "format",
+        "period_start",
+        "period_end",
+        "justification",
+        "recipient",
+        "row_count",
+        "truncated",
+        "sha256",
+        "requested_by",
+        "created_at",
+        "expires_at",
+        "downloads",
+        "state"
+      ],
+      "title": "DataExportView",
+      "type": "object"
+    },
+    "MembershipGrant": {
+      "additionalProperties": false,
+      "description": "Give an existing user of the active organization access to another organization (assignment).",
+      "properties": {
+        "access_scope": {
+          "enum": [
+            "operations",
+            "reporting"
+          ],
+          "title": "Access Scope",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org_id",
+        "access_scope"
+      ],
+      "title": "MembershipGrant",
+      "type": "object"
+    },
+    "MembershipList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MembershipView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "user_id": {
+          "format": "uuid",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "items"
+      ],
+      "title": "MembershipList",
+      "type": "object"
+    },
+    "MembershipView": {
+      "additionalProperties": false,
+      "properties": {
+        "access_scope": {
+          "title": "Access Scope",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "org_name": {
+          "title": "Org Name",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org_id",
+        "org_name",
+        "role",
+        "access_scope"
+      ],
+      "title": "MembershipView",
+      "type": "object"
+    },
+    "OnboardingStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "next_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Step"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "org_slug": {
+          "maxLength": 63,
+          "minLength": 2,
+          "pattern": "^[a-z0-9][a-z0-9-]{1,62}$",
+          "title": "Org Slug",
+          "type": "string"
+        },
+        "steps": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Steps",
+          "type": "object"
+        }
+      },
+      "required": [
+        "org_id",
+        "org_slug",
+        "steps"
+      ],
+      "title": "OnboardingStatus",
+      "type": "object"
+    },
+    "OrgAnalyticsRow": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts_7d": {
+          "title": "Alerts 7D",
+          "type": "integer"
+        },
+        "assets": {
+          "title": "Assets",
+          "type": "integer"
+        },
+        "critical_findings": {
+          "title": "Critical Findings",
+          "type": "integer"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_alert_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Alert At"
+        },
+        "open_alerts": {
+          "title": "Open Alerts",
+          "type": "integer"
+        },
+        "open_cases": {
+          "title": "Open Cases",
+          "type": "integer"
+        },
+        "open_findings": {
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "org_name": {
+          "title": "Org Name",
+          "type": "string"
+        },
+        "plan_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Code"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "subscription_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subscription Status"
+        },
+        "users": {
+          "title": "Users",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "org_id",
+        "org_name",
+        "kind",
+        "status",
+        "users",
+        "assets",
+        "alerts_7d",
+        "open_alerts",
+        "open_cases",
+        "open_findings",
+        "critical_findings"
+      ],
+      "title": "OrgAnalyticsRow",
+      "type": "object"
+    },
+    "OrgBillingRow": {
+      "additionalProperties": false,
+      "properties": {
+        "assets": {
+          "minimum": 0,
+          "title": "Assets",
+          "type": "integer"
+        },
+        "max_assets": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Assets"
+        },
+        "max_users": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Users"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "org_name": {
+          "title": "Org Name",
+          "type": "string"
+        },
+        "over_limit": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Over Limit",
+          "type": "array"
+        },
+        "plan_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Code"
+        },
+        "plan_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Name"
+        },
+        "renews_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Renews At"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "users": {
+          "minimum": 0,
+          "title": "Users",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "org_id",
+        "org_name",
+        "assets",
+        "users"
+      ],
+      "title": "OrgBillingRow",
+      "type": "object"
+    },
+    "PlatformAnalytics": {
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "organizations": {
+          "items": {
+            "$ref": "#/$defs/OrgAnalyticsRow"
+          },
+          "title": "Organizations",
+          "type": "array"
+        },
+        "totals": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Totals",
+          "type": "object"
+        }
+      },
+      "required": [
+        "generated_at",
+        "organizations",
+        "totals"
+      ],
+      "title": "PlatformAnalytics",
+      "type": "object"
+    },
+    "PlatformHealth": {
+      "additionalProperties": false,
+      "properties": {
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ComponentHealth"
+          },
+          "title": "Components",
+          "type": "array"
+        },
+        "failures_24h": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Failures 24H",
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "queues": {
+          "additionalProperties": true,
+          "title": "Queues",
+          "type": "object"
+        },
+        "workers": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Workers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "generated_at",
+        "components",
+        "queues",
+        "workers",
+        "failures_24h"
+      ],
+      "title": "PlatformHealth",
+      "type": "object"
+    },
+    "QuarantineSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "by_reason": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Reason",
+          "type": "object"
+        },
+        "last_24h": {
+          "minimum": 0,
+          "title": "Last 24H",
+          "type": "integer"
+        },
+        "unmapped_groups": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unmapped Groups",
+          "type": "array"
+        }
+      },
+      "required": [
+        "last_24h",
+        "by_reason",
+        "unmapped_groups"
+      ],
+      "title": "QuarantineSummary",
+      "type": "object"
+    },
+    "SubscriptionSet": {
+      "additionalProperties": false,
+      "properties": {
+        "notes": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Notes",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "plan_id": {
+          "format": "uuid",
+          "title": "Plan Id",
+          "type": "string"
+        },
+        "renews_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Renews At"
+        },
+        "status": {
+          "enum": [
+            "trial",
+            "active",
+            "past_due",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org_id",
+        "plan_id",
+        "status"
+      ],
+      "title": "SubscriptionSet",
+      "type": "object"
+    },
+    "TeamCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Description",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "TeamCreate",
+      "type": "object"
+    },
+    "TeamList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/TeamView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "TeamList",
+      "type": "object"
+    },
+    "TeamMemberAdd": {
+      "additionalProperties": false,
+      "properties": {
+        "team_role": {
+          "default": "member",
+          "enum": [
+            "lead",
+            "member"
+          ],
+          "title": "Team Role",
+          "type": "string"
+        },
+        "user_id": {
+          "format": "uuid",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id"
+      ],
+      "title": "TeamMemberAdd",
+      "type": "object"
+    },
+    "TeamMemberView": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        },
+        "team_role": {
+          "enum": [
+            "lead",
+            "member"
+          ],
+          "title": "Team Role",
+          "type": "string"
+        },
+        "user_id": {
+          "format": "uuid",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "email",
+        "role",
+        "team_role"
+      ],
+      "title": "TeamMemberView",
+      "type": "object"
+    },
+    "TeamView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/TeamMemberView"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "members",
+        "created_at"
+      ],
+      "title": "TeamView",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/administration.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: administration",
+  "version": "1.0.0"
+}

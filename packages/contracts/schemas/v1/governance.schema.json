@@ -1,0 +1,1742 @@
+{
+  "$defs": {
+    "BackupAgentReport": {
+      "additionalProperties": false,
+      "description": "Backup agent -> API, authenticated by its service identity (replaces the unauthenticated legacy route).",
+      "properties": {
+        "job": {
+          "$ref": "#/$defs/BackupJob"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Note",
+          "type": "string"
+        },
+        "report_id": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Report Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "report_id",
+        "job"
+      ],
+      "title": "BackupAgentReport",
+      "type": "object"
+    },
+    "BackupJob": {
+      "additionalProperties": false,
+      "properties": {
+        "encrypted": {
+          "const": true,
+          "default": true,
+          "title": "Encrypted",
+          "type": "boolean"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/BackupKind"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "size_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size Bytes"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "succeeded",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "target": {
+          "description": "External object-storage location label, never on Server 2",
+          "maxLength": 200,
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "started_at",
+        "status",
+        "target"
+      ],
+      "title": "BackupJob",
+      "type": "object"
+    },
+    "BackupKind": {
+      "enum": [
+        "logical_dump",
+        "wal_archive"
+      ],
+      "title": "BackupKind",
+      "type": "string"
+    },
+    "CniiAuthorizationCreate": {
+      "additionalProperties": false,
+      "description": "The record that authorizes monitoring of designated CNII assets. Without an active one, nothing is monitored.",
+      "properties": {
+        "document_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Sha256"
+        },
+        "issuing_authority": {
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Issuing Authority",
+          "type": "string"
+        },
+        "reference": {
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Reference",
+          "type": "string"
+        },
+        "scope_description": {
+          "maxLength": 4000,
+          "minLength": 3,
+          "title": "Scope Description",
+          "type": "string"
+        },
+        "sectors": {
+          "items": {
+            "enum": [
+              "power",
+              "water",
+              "ict",
+              "finance",
+              "health",
+              "publicadmin",
+              "education",
+              "defence",
+              "transport",
+              "food",
+              "safety",
+              "industrial",
+              "mines"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sectors",
+          "type": "array"
+        },
+        "valid_from": {
+          "format": "date-time",
+          "title": "Valid From",
+          "type": "string"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference",
+        "issuing_authority",
+        "scope_description",
+        "sectors",
+        "valid_from",
+        "valid_until"
+      ],
+      "title": "CniiAuthorizationCreate",
+      "type": "object"
+    },
+    "CniiAuthorizationList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CniiAuthorizationView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "CniiAuthorizationList",
+      "type": "object"
+    },
+    "CniiAuthorizationRevoke": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "CniiAuthorizationRevoke",
+      "type": "object"
+    },
+    "CniiAuthorizationView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "document_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Sha256"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "issuing_authority": {
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Issuing Authority",
+          "type": "string"
+        },
+        "monitored_assets": {
+          "default": 0,
+          "title": "Monitored Assets",
+          "type": "integer"
+        },
+        "recorded_by": {
+          "title": "Recorded By",
+          "type": "string"
+        },
+        "reference": {
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Reference",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "revoked_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked Reason"
+        },
+        "scope_description": {
+          "maxLength": 4000,
+          "minLength": 3,
+          "title": "Scope Description",
+          "type": "string"
+        },
+        "sectors": {
+          "items": {
+            "enum": [
+              "power",
+              "water",
+              "ict",
+              "finance",
+              "health",
+              "publicadmin",
+              "education",
+              "defence",
+              "transport",
+              "food",
+              "safety",
+              "industrial",
+              "mines"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sectors",
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "not_yet_valid",
+            "expired",
+            "revoked"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "valid_from": {
+          "format": "date-time",
+          "title": "Valid From",
+          "type": "string"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference",
+        "issuing_authority",
+        "scope_description",
+        "sectors",
+        "valid_from",
+        "valid_until",
+        "id",
+        "state",
+        "recorded_by",
+        "created_at"
+      ],
+      "title": "CniiAuthorizationView",
+      "type": "object"
+    },
+    "CniiCheckView": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "availability",
+            "vulnerability_scan"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "up",
+            "down",
+            "degraded",
+            "not_run"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "observed_at",
+        "outcome",
+        "detail",
+        "source"
+      ],
+      "title": "CniiCheckView",
+      "type": "object"
+    },
+    "CniiDesignation": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "granted_at": {
+          "format": "date-time",
+          "title": "Granted At",
+          "type": "string"
+        },
+        "granted_by": {
+          "format": "uuid",
+          "title": "Granted By",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "scope_org_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Scope Org Ids"
+        },
+        "sectors": {
+          "items": {
+            "enum": [
+              "power",
+              "water",
+              "ict",
+              "finance",
+              "health",
+              "publicadmin",
+              "education",
+              "defence",
+              "transport",
+              "food",
+              "safety",
+              "industrial",
+              "mines"
+            ],
+            "type": "string"
+          },
+          "title": "Sectors",
+          "type": "array"
+        },
+        "user_id": {
+          "format": "uuid",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "user_id",
+        "sectors",
+        "scope_org_ids",
+        "granted_by",
+        "granted_at",
+        "expires_at"
+      ],
+      "title": "CniiDesignation",
+      "type": "object"
+    },
+    "CniiDesignationGrant": {
+      "additionalProperties": false,
+      "description": "Granted by a super_admin (platform). Audited. Always expires.",
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        },
+        "scope_org_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None = every organisation in those sectors",
+          "title": "Scope Org Ids"
+        },
+        "sectors": {
+          "items": {
+            "enum": [
+              "power",
+              "water",
+              "ict",
+              "finance",
+              "health",
+              "publicadmin",
+              "education",
+              "defence",
+              "transport",
+              "food",
+              "safety",
+              "industrial",
+              "mines"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sectors",
+          "type": "array"
+        },
+        "user_id": {
+          "format": "uuid",
+          "title": "User Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "sectors",
+        "reason",
+        "expires_at"
+      ],
+      "title": "CniiDesignationGrant",
+      "type": "object"
+    },
+    "CniiDesignationList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CniiDesignation"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "CniiDesignationList",
+      "type": "object"
+    },
+    "CniiDesignationRevoke": {
+      "additionalProperties": false,
+      "properties": {
+        "designation_id": {
+          "format": "uuid",
+          "title": "Designation Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "designation_id",
+        "reason"
+      ],
+      "title": "CniiDesignationRevoke",
+      "type": "object"
+    },
+    "CniiMonitoredAssetCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "authorization_id": {
+          "format": "uuid",
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "monitoring": {
+          "default": "both",
+          "enum": [
+            "availability",
+            "vulnerability",
+            "both"
+          ],
+          "title": "Monitoring",
+          "type": "string"
+        },
+        "owning_unit": {
+          "maxLength": 200,
+          "minLength": 2,
+          "title": "Owning Unit",
+          "type": "string"
+        },
+        "sector": {
+          "enum": [
+            "power",
+            "water",
+            "ict",
+            "finance",
+            "health",
+            "publicadmin",
+            "education",
+            "defence",
+            "transport",
+            "food",
+            "safety",
+            "industrial",
+            "mines"
+          ],
+          "title": "Sector",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "authorization_id",
+        "sector",
+        "owning_unit"
+      ],
+      "title": "CniiMonitoredAssetCreate",
+      "type": "object"
+    },
+    "CniiMonitoredAssetList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CniiMonitoredAssetView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "CniiMonitoredAssetList",
+      "type": "object"
+    },
+    "CniiMonitoredAssetStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "title": "CniiMonitoredAssetStatus",
+      "type": "object"
+    },
+    "CniiMonitoredAssetView": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "asset_kind": {
+          "title": "Asset Kind",
+          "type": "string"
+        },
+        "asset_name": {
+          "title": "Asset Name",
+          "type": "string"
+        },
+        "authorization_id": {
+          "format": "uuid",
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "authorization_reference": {
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "authorization_state": {
+          "enum": [
+            "active",
+            "not_yet_valid",
+            "expired",
+            "revoked"
+          ],
+          "title": "Authorization State",
+          "type": "string"
+        },
+        "availability_30d": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of recorded availability checks that were up; None when no check was recorded",
+          "title": "Availability 30D"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "critical_findings": {
+          "title": "Critical Findings",
+          "type": "integer"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_check": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CniiCheckView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "monitoring": {
+          "enum": [
+            "availability",
+            "vulnerability",
+            "both"
+          ],
+          "title": "Monitoring",
+          "type": "string"
+        },
+        "open_findings": {
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "owning_unit": {
+          "title": "Owning Unit",
+          "type": "string"
+        },
+        "schedules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CniiScheduleView"
+          },
+          "title": "Schedules",
+          "type": "array"
+        },
+        "sector": {
+          "enum": [
+            "power",
+            "water",
+            "ict",
+            "finance",
+            "health",
+            "publicadmin",
+            "education",
+            "defence",
+            "transport",
+            "food",
+            "safety",
+            "industrial",
+            "mines"
+          ],
+          "title": "Sector",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "asset_id",
+        "asset_name",
+        "asset_kind",
+        "authorization_id",
+        "authorization_reference",
+        "authorization_state",
+        "sector",
+        "owning_unit",
+        "monitoring",
+        "status",
+        "open_findings",
+        "critical_findings",
+        "created_at"
+      ],
+      "title": "CniiMonitoredAssetView",
+      "type": "object"
+    },
+    "CniiOrgProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "criticality": {
+          "enum": [
+            "vital",
+            "high",
+            "moderate"
+          ],
+          "title": "Criticality",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "org_name": {
+          "title": "Org Name",
+          "type": "string"
+        },
+        "sectors": {
+          "items": {
+            "enum": [
+              "power",
+              "water",
+              "ict",
+              "finance",
+              "health",
+              "publicadmin",
+              "education",
+              "defence",
+              "transport",
+              "food",
+              "safety",
+              "industrial",
+              "mines"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sectors",
+          "type": "array"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org_id",
+        "sectors",
+        "criticality",
+        "org_name",
+        "updated_at"
+      ],
+      "title": "CniiOrgProfile",
+      "type": "object"
+    },
+    "CniiOrgProfileList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CniiOrgProfile"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "CniiOrgProfileList",
+      "type": "object"
+    },
+    "CniiOrgProfileSet": {
+      "additionalProperties": false,
+      "properties": {
+        "criticality": {
+          "enum": [
+            "vital",
+            "high",
+            "moderate"
+          ],
+          "title": "Criticality",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "sectors": {
+          "items": {
+            "enum": [
+              "power",
+              "water",
+              "ict",
+              "finance",
+              "health",
+              "publicadmin",
+              "education",
+              "defence",
+              "transport",
+              "food",
+              "safety",
+              "industrial",
+              "mines"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sectors",
+          "type": "array"
+        }
+      },
+      "required": [
+        "org_id",
+        "sectors",
+        "criticality"
+      ],
+      "title": "CniiOrgProfileSet",
+      "type": "object"
+    },
+    "CniiOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "authorizations_active": {
+          "title": "Authorizations Active",
+          "type": "integer"
+        },
+        "authorizations_expiring_30d": {
+          "title": "Authorizations Expiring 30D",
+          "type": "integer"
+        },
+        "availability_checks_30d": {
+          "title": "Availability Checks 30D",
+          "type": "integer"
+        },
+        "by_sector": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Sector",
+          "type": "object"
+        },
+        "critical_findings": {
+          "title": "Critical Findings",
+          "type": "integer"
+        },
+        "designation_sectors": {
+          "items": {
+            "enum": [
+              "power",
+              "water",
+              "ict",
+              "finance",
+              "health",
+              "publicadmin",
+              "education",
+              "defence",
+              "transport",
+              "food",
+              "safety",
+              "industrial",
+              "mines"
+            ],
+            "type": "string"
+          },
+          "title": "Designation Sectors",
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "monitored_assets": {
+          "title": "Monitored Assets",
+          "type": "integer"
+        },
+        "open_findings": {
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "probe": {
+          "description": "Whether an availability probe is configured in this installation",
+          "title": "Probe",
+          "type": "string"
+        },
+        "suspended_assets": {
+          "title": "Suspended Assets",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "generated_at",
+        "designation_sectors",
+        "authorizations_active",
+        "authorizations_expiring_30d",
+        "monitored_assets",
+        "suspended_assets",
+        "by_sector",
+        "open_findings",
+        "critical_findings",
+        "availability_checks_30d",
+        "probe"
+      ],
+      "title": "CniiOverview",
+      "type": "object"
+    },
+    "CniiScheduleSet": {
+      "additionalProperties": false,
+      "properties": {
+        "check_kind": {
+          "enum": [
+            "availability",
+            "vulnerability_scan"
+          ],
+          "title": "Check Kind",
+          "type": "string"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "interval_minutes": {
+          "maximum": 43200,
+          "minimum": 5,
+          "title": "Interval Minutes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "check_kind",
+        "interval_minutes"
+      ],
+      "title": "CniiScheduleSet",
+      "type": "object"
+    },
+    "CniiScheduleView": {
+      "additionalProperties": false,
+      "properties": {
+        "check_kind": {
+          "enum": [
+            "availability",
+            "vulnerability_scan"
+          ],
+          "title": "Check Kind",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "execution": {
+          "title": "Execution",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "interval_minutes": {
+          "title": "Interval Minutes",
+          "type": "integer"
+        },
+        "last_run_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Run At"
+        },
+        "next_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Due At"
+        }
+      },
+      "required": [
+        "id",
+        "check_kind",
+        "interval_minutes",
+        "enabled",
+        "execution"
+      ],
+      "title": "CniiScheduleView",
+      "type": "object"
+    },
+    "CniiSectorOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "designation_expires_at": {
+          "format": "date-time",
+          "title": "Designation Expires At",
+          "type": "string"
+        },
+        "designation_id": {
+          "format": "uuid",
+          "title": "Designation Id",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CniiSectorRow"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "sector": {
+          "enum": [
+            "power",
+            "water",
+            "ict",
+            "finance",
+            "health",
+            "publicadmin",
+            "education",
+            "defence",
+            "transport",
+            "food",
+            "safety",
+            "industrial",
+            "mines"
+          ],
+          "title": "Sector",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sector",
+        "designation_id",
+        "designation_expires_at",
+        "items"
+      ],
+      "title": "CniiSectorOverview",
+      "type": "object"
+    },
+    "CniiSectorRow": {
+      "additionalProperties": false,
+      "properties": {
+        "critical_alerts_7d": {
+          "title": "Critical Alerts 7D",
+          "type": "integer"
+        },
+        "criticality": {
+          "enum": [
+            "vital",
+            "high",
+            "moderate"
+          ],
+          "title": "Criticality",
+          "type": "string"
+        },
+        "open_alerts": {
+          "title": "Open Alerts",
+          "type": "integer"
+        },
+        "open_cases": {
+          "title": "Open Cases",
+          "type": "integer"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "org_name": {
+          "title": "Org Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org_id",
+        "org_name",
+        "criticality",
+        "open_alerts",
+        "critical_alerts_7d",
+        "open_cases"
+      ],
+      "title": "CniiSectorRow",
+      "type": "object"
+    },
+    "ReportArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "data_states": {
+          "additionalProperties": {
+            "enum": [
+              "ok",
+              "empty",
+              "integration_unconfigured",
+              "error",
+              "local_fixture",
+              "not_permitted"
+            ],
+            "type": "string"
+          },
+          "default": {},
+          "description": "Honest state of each section's data source, shown in the report",
+          "title": "Data States",
+          "type": "object"
+        },
+        "format": {
+          "enum": [
+            "pdf",
+            "csv",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "generating",
+            "ready",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ReportType"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "status",
+        "period_start",
+        "period_end",
+        "format",
+        "created_at"
+      ],
+      "title": "ReportArtifact",
+      "type": "object"
+    },
+    "ReportDetail": {
+      "additionalProperties": false,
+      "description": "Phase 4: a generated report with its sections. Unavailable sources are listed as such, never as zero.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "data_states": {
+          "additionalProperties": {
+            "enum": [
+              "ok",
+              "empty",
+              "integration_unconfigured",
+              "error",
+              "local_fixture",
+              "not_permitted"
+            ],
+            "type": "string"
+          },
+          "default": {},
+          "description": "Honest state of each section's data source, shown in the report",
+          "title": "Data States",
+          "type": "object"
+        },
+        "failure_reason": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Failure Reason",
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "pdf",
+            "csv",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "sections": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReportSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "generating",
+            "ready",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ReportType"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "status",
+        "period_start",
+        "period_end",
+        "format",
+        "created_at"
+      ],
+      "title": "ReportDetail",
+      "type": "object"
+    },
+    "ReportList": {
+      "additionalProperties": false,
+      "description": "Phase 4: the organization's report history (newest first).",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ReportArtifact"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ReportList",
+      "type": "object"
+    },
+    "ReportRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "default": "pdf",
+          "enum": [
+            "pdf",
+            "csv",
+            "json"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ReportType"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "type",
+        "period_start",
+        "period_end"
+      ],
+      "title": "ReportRequest",
+      "type": "object"
+    },
+    "ReportSchedule": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "cron": {
+          "pattern": "^[0-9*/,\\- ]{9,64}$",
+          "title": "Cron",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "recipient_user_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Recipient User Ids",
+          "type": "array"
+        },
+        "timezone": {
+          "default": "Africa/Lagos",
+          "maxLength": 64,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ReportType"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "cron",
+        "recipient_user_ids"
+      ],
+      "title": "ReportSchedule",
+      "type": "object"
+    },
+    "ReportSection": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Section figures; empty whenever state is not ok/local_fixture",
+          "title": "Data",
+          "type": "object"
+        },
+        "key": {
+          "pattern": "^[a-z_]{2,40}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Note",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "ok",
+            "empty",
+            "integration_unconfigured",
+            "error",
+            "local_fixture",
+            "not_permitted"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "state"
+      ],
+      "title": "ReportSection",
+      "type": "object"
+    },
+    "ReportType": {
+      "enum": [
+        "vms_executive",
+        "vms_technical",
+        "soc_monthly",
+        "compliance_sca",
+        "email_security",
+        "cnii_sector",
+        "organization_summary",
+        "executive",
+        "secops",
+        "threat_intel",
+        "brand_protection",
+        "sla",
+        "audit"
+      ],
+      "title": "ReportType",
+      "type": "string"
+    },
+    "RestoreDrillRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "backup_job_id": {
+          "format": "uuid",
+          "title": "Backup Job Id",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "description": "Client-chosen key; a repeat with the same key returns the first result",
+          "maxLength": 128,
+          "minLength": 16,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "target": {
+          "const": "disposable_instance",
+          "default": "disposable_instance",
+          "description": "The only allowed target; restoring over live data is out of contract",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "backup_job_id"
+      ],
+      "title": "RestoreDrillRequest",
+      "type": "object"
+    },
+    "RestoreDrillResult": {
+      "additionalProperties": false,
+      "properties": {
+        "backup_job_id": {
+          "format": "uuid",
+          "title": "Backup Job Id",
+          "type": "string"
+        },
+        "duration_seconds": {
+          "minimum": 0,
+          "title": "Duration Seconds",
+          "type": "integer"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "restored_tables": {
+          "minimum": 0,
+          "title": "Restored Tables",
+          "type": "integer"
+        },
+        "row_count_checks_passed": {
+          "title": "Row Count Checks Passed",
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "succeeded",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "backup_job_id",
+        "status",
+        "restored_tables",
+        "row_count_checks_passed",
+        "duration_seconds",
+        "finished_at"
+      ],
+      "title": "RestoreDrillResult",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/governance.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: governance",
+  "version": "1.0.0"
+}

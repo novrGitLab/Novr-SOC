@@ -1,0 +1,1338 @@
+{
+  "$defs": {
+    "AdminOrg": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "platform",
+            "client"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name",
+        "kind",
+        "status",
+        "created_at"
+      ],
+      "title": "AdminOrg",
+      "type": "object"
+    },
+    "AdminOrgCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "slug": {
+          "pattern": "^[a-z0-9][a-z0-9-]{1,62}$",
+          "title": "Slug",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "name"
+      ],
+      "title": "AdminOrgCreate",
+      "type": "object"
+    },
+    "AdminOrgList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AdminOrg"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "AdminOrgList",
+      "type": "object"
+    },
+    "AdminUser": {
+      "additionalProperties": false,
+      "properties": {
+        "access_scope": {
+          "enum": [
+            "home",
+            "operations",
+            "reporting"
+          ],
+          "title": "Access Scope",
+          "type": "string"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_login_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Login At"
+        },
+        "locked": {
+          "title": "Locked",
+          "type": "boolean"
+        },
+        "role": {
+          "enum": [
+            "super_admin",
+            "soc_manager",
+            "analyst",
+            "executive",
+            "portal_user"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "disabled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "display_name",
+        "status",
+        "role",
+        "access_scope",
+        "locked"
+      ],
+      "title": "AdminUser",
+      "type": "object"
+    },
+    "AdminUserCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "access_scope": {
+          "default": "home",
+          "enum": [
+            "home",
+            "operations",
+            "reporting"
+          ],
+          "title": "Access Scope",
+          "type": "string"
+        },
+        "display_name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "email": {
+          "maxLength": 254,
+          "minLength": 3,
+          "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+          "title": "Email",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "super_admin",
+            "soc_manager",
+            "analyst",
+            "executive",
+            "portal_user"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "role"
+      ],
+      "title": "AdminUserCreate",
+      "type": "object"
+    },
+    "AdminUserCreated": {
+      "additionalProperties": false,
+      "description": "The temporary password is shown ONCE, here; it is stored only as a hash.",
+      "properties": {
+        "temporary_password": {
+          "title": "Temporary Password",
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/$defs/AdminUser"
+        }
+      },
+      "required": [
+        "user",
+        "temporary_password"
+      ],
+      "title": "AdminUserCreated",
+      "type": "object"
+    },
+    "AdminUserList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AdminUser"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "AdminUserList",
+      "type": "object"
+    },
+    "AuditEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Actor Id"
+        },
+        "actor_label": {
+          "title": "Actor Label",
+          "type": "string"
+        },
+        "actor_type": {
+          "enum": [
+            "user",
+            "service",
+            "system"
+          ],
+          "title": "Actor Type",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Consolidation: the event's recorded details (never secrets)",
+          "title": "Details",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "org_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Org Id"
+        },
+        "outcome": {
+          "enum": [
+            "success",
+            "denied",
+            "failure"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "resource_id": {
+          "title": "Resource Id",
+          "type": "string"
+        },
+        "resource_type": {
+          "title": "Resource Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "occurred_at",
+        "org_id",
+        "actor_type",
+        "actor_id",
+        "actor_label",
+        "action",
+        "outcome",
+        "resource_type",
+        "resource_id",
+        "request_id"
+      ],
+      "title": "AuditEvent",
+      "type": "object"
+    },
+    "AuditEventList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AuditEvent"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "AuditEventList",
+      "type": "object"
+    },
+    "BackupRunList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/BackupRunView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "BackupRunList",
+      "type": "object"
+    },
+    "BackupRunView": {
+      "additionalProperties": false,
+      "properties": {
+        "encrypted": {
+          "title": "Encrypted",
+          "type": "boolean"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "logical_dump",
+            "wal_archive"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_drill_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Drill At"
+        },
+        "last_drill_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "succeeded",
+                "failed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Drill Status"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "size_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size Bytes"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "succeeded",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "started_at",
+        "status",
+        "target",
+        "encrypted"
+      ],
+      "title": "BackupRunView",
+      "type": "object"
+    },
+    "CniiAccessResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "active_org_id": {
+          "format": "uuid",
+          "title": "Active Org Id",
+          "type": "string"
+        },
+        "designation_id": {
+          "format": "uuid",
+          "title": "Designation Id",
+          "type": "string"
+        },
+        "note": {
+          "default": "Access check only. CNII data endpoints are not built in Phase 2.",
+          "title": "Note",
+          "type": "string"
+        },
+        "sector": {
+          "maxLength": 200,
+          "title": "Sector",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sector",
+        "designation_id",
+        "active_org_id"
+      ],
+      "title": "CniiAccessResponse",
+      "type": "object"
+    },
+    "ConnectorState": {
+      "additionalProperties": false,
+      "description": "State of one internal connector, as established by the API. Never claims a connection it has not made.",
+      "properties": {
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When reachability was last checked; null = never",
+          "title": "Checked At"
+        },
+        "connector": {
+          "enum": [
+            "wazuh_manager",
+            "wazuh_indexer",
+            "ollama"
+          ],
+          "title": "Connector",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Detail",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "unconfigured",
+            "local_fixture",
+            "connected",
+            "unavailable",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connector",
+        "state"
+      ],
+      "title": "ConnectorState",
+      "type": "object"
+    },
+    "HealthResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "service": {
+          "title": "Service",
+          "type": "string"
+        },
+        "status": {
+          "const": "ok",
+          "title": "Status",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "service",
+        "version"
+      ],
+      "title": "HealthResponse",
+      "type": "object"
+    },
+    "LoginRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "maxLength": 254,
+          "minLength": 3,
+          "title": "Email",
+          "type": "string"
+        },
+        "password": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Password",
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "password"
+      ],
+      "title": "LoginRequest",
+      "type": "object"
+    },
+    "LoginResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "csrf_token": {
+          "description": "Send back as X-CSRF-Token on POST/PUT/PATCH/DELETE (also set as a cookie)",
+          "title": "Csrf Token",
+          "type": "string"
+        },
+        "session": {
+          "$ref": "#/$defs/SessionInfo"
+        }
+      },
+      "required": [
+        "session",
+        "csrf_token"
+      ],
+      "title": "LoginResponse",
+      "type": "object"
+    },
+    "MembershipSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "access_scope": {
+          "enum": [
+            "home",
+            "operations",
+            "reporting"
+          ],
+          "title": "Access Scope",
+          "type": "string"
+        },
+        "org": {
+          "$ref": "#/$defs/OrgSummary"
+        },
+        "role": {
+          "enum": [
+            "super_admin",
+            "soc_manager",
+            "analyst",
+            "executive",
+            "portal_user"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org",
+        "role",
+        "access_scope"
+      ],
+      "title": "MembershipSummary",
+      "type": "object"
+    },
+    "ModuleState": {
+      "additionalProperties": false,
+      "description": "Phase 4: what a product module can do right now, as the API knows it.",
+      "properties": {
+        "key": {
+          "pattern": "^[a-z_]{2,40}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "title": "Label",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Note",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "live",
+            "not_available",
+            "restricted"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "state"
+      ],
+      "title": "ModuleState",
+      "type": "object"
+    },
+    "OrgList": {
+      "additionalProperties": false,
+      "properties": {
+        "all_organizations": {
+          "description": "True for super_admin: the list is every active organisation",
+          "title": "All Organizations",
+          "type": "boolean"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/OrgSummary"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items",
+        "all_organizations"
+      ],
+      "title": "OrgList",
+      "type": "object"
+    },
+    "OrgSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name"
+      ],
+      "title": "OrgSummary",
+      "type": "object"
+    },
+    "PasswordChangeRequest": {
+      "additionalProperties": false,
+      "description": "POST /api/v1/auth/password. The new password must differ from the current one; other sessions are revoked.",
+      "properties": {
+        "current_password": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Current Password",
+          "type": "string"
+        },
+        "new_password": {
+          "maxLength": 1024,
+          "minLength": 12,
+          "title": "New Password",
+          "type": "string"
+        }
+      },
+      "required": [
+        "current_password",
+        "new_password"
+      ],
+      "title": "PasswordChangeRequest",
+      "type": "object"
+    },
+    "PlatformStatus": {
+      "additionalProperties": false,
+      "description": "Phase 4 dashboard readiness. Connector states come from configuration and real checks only.",
+      "properties": {
+        "connectors": {
+          "items": {
+            "$ref": "#/$defs/ConnectorState"
+          },
+          "title": "Connectors",
+          "type": "array"
+        },
+        "database": {
+          "enum": [
+            "ok",
+            "unavailable"
+          ],
+          "title": "Database",
+          "type": "string"
+        },
+        "migration": {
+          "maxLength": 200,
+          "title": "Migration",
+          "type": "string"
+        },
+        "modules": {
+          "items": {
+            "$ref": "#/$defs/ModuleState"
+          },
+          "title": "Modules",
+          "type": "array"
+        }
+      },
+      "required": [
+        "database",
+        "migration",
+        "connectors",
+        "modules"
+      ],
+      "title": "PlatformStatus",
+      "type": "object"
+    },
+    "ReadinessCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "ok"
+      ],
+      "title": "ReadinessCheck",
+      "type": "object"
+    },
+    "ReadinessResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ReadinessCheck"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "not_ready"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "checks"
+      ],
+      "title": "ReadinessResponse",
+      "type": "object"
+    },
+    "ServiceIdentityCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "collector",
+            "vms_worker",
+            "forwarder",
+            "email_gateway",
+            "backup_agent",
+            "ti_feeder"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "scopes": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z_]+:[a-z_]+$",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Scopes",
+          "type": "array"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "title": "ServiceIdentityCreate",
+      "type": "object"
+    },
+    "ServiceIdentityIssued": {
+      "additionalProperties": false,
+      "description": "The credential (nsk_...) is shown ONCE, here; only its SHA-256 is stored.",
+      "properties": {
+        "credential": {
+          "title": "Credential",
+          "type": "string"
+        },
+        "identity": {
+          "$ref": "#/$defs/ServiceIdentityView"
+        }
+      },
+      "required": [
+        "identity",
+        "credential"
+      ],
+      "title": "ServiceIdentityIssued",
+      "type": "object"
+    },
+    "ServiceIdentityList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ServiceIdentityView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ServiceIdentityList",
+      "type": "object"
+    },
+    "ServiceIdentityView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "collector",
+            "vms_worker",
+            "forwarder",
+            "email_gateway",
+            "backup_agent",
+            "ti_feeder"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_used_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Used At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "scopes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Scopes",
+          "type": "array"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "revoked"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "scopes",
+        "status",
+        "created_at"
+      ],
+      "title": "ServiceIdentityView",
+      "type": "object"
+    },
+    "ServiceWhoAmI": {
+      "additionalProperties": false,
+      "description": "GET /api/v1/service/whoami. Everything here comes from the identity record, nothing from the request.",
+      "properties": {
+        "identity_id": {
+          "format": "uuid",
+          "title": "Identity Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "collector",
+            "vms_worker",
+            "forwarder",
+            "email_gateway",
+            "backup_agent"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "scopes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Scopes",
+          "type": "array"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Site Id"
+        }
+      },
+      "required": [
+        "identity_id",
+        "org_id",
+        "site_id",
+        "kind",
+        "scopes"
+      ],
+      "title": "ServiceWhoAmI",
+      "type": "object"
+    },
+    "SessionInfo": {
+      "additionalProperties": false,
+      "description": "GET /api/v1/auth/me. Permissions are those of the home role, applied to the active organisation.",
+      "properties": {
+        "active_org": {
+          "$ref": "#/$defs/OrgSummary"
+        },
+        "cross_org": {
+          "title": "Cross Org",
+          "type": "boolean"
+        },
+        "home_org": {
+          "$ref": "#/$defs/OrgSummary"
+        },
+        "memberships": {
+          "items": {
+            "$ref": "#/$defs/MembershipSummary"
+          },
+          "title": "Memberships",
+          "type": "array"
+        },
+        "password_change_required": {
+          "default": false,
+          "description": "The account still has a temporary password: every route except /auth/me, /auth/password and /auth/logout answers 403 password_change_required until it is changed",
+          "title": "Password Change Required",
+          "type": "boolean"
+        },
+        "permissions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Permissions",
+          "type": "array"
+        },
+        "role": {
+          "enum": [
+            "super_admin",
+            "soc_manager",
+            "analyst",
+            "executive",
+            "portal_user"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/$defs/UserSummary"
+        }
+      },
+      "required": [
+        "user",
+        "role",
+        "home_org",
+        "active_org",
+        "cross_org",
+        "permissions",
+        "memberships"
+      ],
+      "title": "SessionInfo",
+      "type": "object"
+    },
+    "Site": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "network_cidrs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Network Cidrs",
+          "type": "array"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "name",
+        "description",
+        "network_cidrs",
+        "created_at"
+      ],
+      "title": "Site",
+      "type": "object"
+    },
+    "SiteCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Description",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "network_cidrs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Network Cidrs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "SiteCreate",
+      "type": "object"
+    },
+    "SiteList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Site"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "SiteList",
+      "type": "object"
+    },
+    "UserStatusUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "active",
+            "disabled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "UserStatusUpdate",
+      "type": "object"
+    },
+    "UserSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "display_name"
+      ],
+      "title": "UserSummary",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/platform.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: platform",
+  "version": "1.0.0"
+}

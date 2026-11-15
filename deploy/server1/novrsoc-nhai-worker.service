@@ -1,0 +1,34 @@
+# NovrSOC V2 NHAI worker (Server 1, next to the local model runtime). NOT INSTALLED.
+# Approval gate G-F2 in docs/public/DEPLOYMENT.md must be signed first (it depends on
+# a dedicated least-privilege database role for this worker).
+[Unit]
+Description=NovrSOC V2 NHAI worker (asynchronous, evidence-grounded drafts; never executes actions)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=novrsoc-nhai
+Group=novrsoc-nhai
+EnvironmentFile=/etc/novrsoc-nhai/nhai-worker.env
+WorkingDirectory=/opt/novrsoc-v2/apps/api
+ExecStart=/opt/novrsoc-v2/apps/api/.venv/bin/python -m app.nhai.worker
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+# Ollama has its own 5 GiB ceiling; the worker itself is small.
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target
