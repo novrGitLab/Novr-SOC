@@ -275,6 +275,7 @@ deploy/server2/nginx-novrsoc.conf
 deploy/server2/novrsoc-backup.service
 deploy/server2/novrsoc-backup.timer
 deploy/server2/postgres-init/01-roles.sh
+deploy/server2/postgres-init/02-nhai-role.sh
 docs/public/ARCHITECTURE.md
 docs/public/DEPLOYMENT.md
 docs/public/LOCAL_DEVELOPMENT.md

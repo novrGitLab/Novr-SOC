@@ -11,6 +11,7 @@
 # second run) -> production-path checks (scripts/release/rehearsal_checks.py) -> VMS worker (identity, heartbeat,
 # scanning disabled, network isolation) -> encrypted backup -> restore drill
 # into a disposable database -> rollback guard (downgrade to 0010, i.e. 0011-0016: check-env must FAIL; upgrade back) ->
+# upgrade of an existing 0015 installation without the novrsoc_nhai role (refusal, 02-nhai-role.sh, 0016, data intact) ->
 # container hardening inspection -> teardown.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
@@ -53,7 +54,10 @@ print("secrets generated (not printed); images tag", tag)
 EOF
 
 echo "== docker compose config"; "${DC[@]}" config -q && echo "valid"
-echo "== up"; "${DC[@]}" up -d --wait --wait-timeout 300 2>&1 | quiet
+echo "== up"
+if ! "${DC[@]}" up -d --wait --wait-timeout 300 2>&1 | quiet; then
+  "${DC[@]}" ps -a --format '{{.Service}}: {{.State}} {{.Status}}'; "${DC[@]}" logs --tail 300 migrate api 2>&1 | grep -v 'alembic.runtime.plugins'; exit 1
+fi
 "${DC[@]}" ps -a --format '{{.Service}}: {{.State}} {{.Status}}'
 "${DC[@]}" logs api 2>/dev/null | grep -E '(OK|FAIL)  ' || true
 
@@ -85,7 +89,7 @@ docker network inspect novrsoc-rehearsal_vms --format 'vms network internal={{.I
 if "${DC[@]}" exec -T vms-worker python -c "import socket; socket.create_connection(('postgres', 5432), 3)" >/dev/null 2>&1; then
   echo "FAIL  the VMS worker reaches the database"; exit 1; else echo "PASS  the VMS worker cannot reach the database"; fi
 "${DC[@]}" exec -T vms-worker python -c "import socket; socket.create_connection(('api', 8000), 3)" \
-  && echo "PASS  the VMS worker reaches the API on the internal network"
+  && echo "PASS  the VMS worker reaches the API on the internal network" || { echo "FAIL  the VMS worker cannot reach the API"; exit 1; }
 
 echo "== backup and restore drill"
 "${DC[@]}" --profile ops run --rm --no-TTY backup 2>&1 | quiet
@@ -101,6 +105,48 @@ if grep -E 'FAIL' <<<"$guard"; then
 else echo "FAIL  check-env accepted a mismatched schema"; exit 1; fi
 "${DC[@]}" run --rm --no-TTY --no-deps migrate alembic upgrade head >/dev/null 2>&1
 "${DC[@]}" run --rm --no-TTY --no-deps api python -m app.cli check-env 2>/dev/null | grep -E 'database'
+
+echo "== upgrade of an existing 0015 installation (persistent volume; initdb scripts do not rerun)"
+# Recreate exactly what a 0015 production volume holds: the schema at 0015 with its data, and NO novrsoc_nhai role
+# (the 0015 initdb script never created it). Then run the documented upgrade (docs/public/DEPLOYMENT.md §5).
+"${DC[@]}" --profile vms stop vms-worker web jobs api 2>&1 | quiet
+"${DC[@]}" run --rm --no-TTY --no-deps migrate alembic downgrade 0015_admin_exports_chat >/dev/null 2>&1
+pg "REVOKE CONNECT ON DATABASE novrsoc FROM novrsoc_nhai; DROP ROLE novrsoc_nhai;" >/dev/null
+fingerprint() {
+  pg "SELECT md5(string_agg(x, '|' ORDER BY x)) FROM (
+        SELECT 'u:' || id || email || coalesce(password_hash, '') || status AS x FROM novrsoc.users
+        UNION ALL SELECT 'o:' || id || slug || name FROM novrsoc.organizations
+        UNION ALL SELECT 'm:' || user_id || org_id || role_key FROM novrsoc.memberships
+        UNION ALL SELECT 's:' || id || encode(secret_hash, 'hex') || status FROM novrsoc.service_identities
+        UNION ALL SELECT 'a:' || count(*) FROM novrsoc.audit_events) t" | tr -d '[:space:]'
+}
+before=$(fingerprint)
+[ "$(pg "SELECT version_num FROM novrsoc.alembic_version" | tr -d '[:space:]')" = "0015_admin_exports_chat" ] \
+  && [ "$(pg "SELECT count(*) FROM pg_roles WHERE rolname = 'novrsoc_nhai'" | tr -d '[:space:]')" = "0" ] \
+  && echo "PASS  starting point: schema 0015, data present, no novrsoc_nhai role ($before)" \
+  || { echo "FAIL  could not recreate the 0015 starting point"; exit 1; }
+if "${DC[@]}" run --rm --no-TTY --no-deps migrate >"$WORK/migrate-norole.log" 2>&1; then
+  echo "FAIL  0016 was applied without the role"; exit 1; fi
+grep -q "role novrsoc_nhai is missing" "$WORK/migrate-norole.log" \
+  && [ "$(pg "SELECT version_num FROM novrsoc.alembic_version" | tr -d '[:space:]')" = "0015_admin_exports_chat" ] \
+  && [ "$(fingerprint)" = "$before" ] \
+  && echo "PASS  without the role, 0016 is refused with a clear message and the database stays at 0015, unchanged" \
+  || { echo "FAIL  the refused migration changed something:"; tail -5 "$WORK/migrate-norole.log"; exit 1; }
+"${DC[@]}" exec -T postgres sh /docker-entrypoint-initdb.d/02-nhai-role.sh 2>&1 | grep -E "NOTICE|novrsoc_nhai" | sed 's/^/      /'
+again=$("${DC[@]}" exec -T postgres sh /docker-entrypoint-initdb.d/02-nhai-role.sh 2>&1)
+grep -q "already exists: unchanged" <<<"$again" && echo "PASS  02-nhai-role.sh is idempotent (a second run changes nothing)" \
+  || { echo "FAIL  second run of 02-nhai-role.sh: $again"; exit 1; }
+"${DC[@]}" --profile vms up -d --wait --wait-timeout 300 2>&1 | quiet
+after=$(fingerprint)
+[ "$(pg "SELECT version_num FROM novrsoc.alembic_version" | tr -d '[:space:]')" = "0016_nhai_worker_role" ] \
+  && echo "PASS  upgraded to 0016_nhai_worker_role" || { echo "FAIL  not at 0016"; exit 1; }
+[ "$after" = "$before" ] && echo "PASS  users, password hashes, organizations, memberships, machine credentials and audit history unchanged" \
+  || { echo "FAIL  data changed during the upgrade ($before -> $after)"; exit 1; }
+[ "$(pg "SELECT rolcanlogin::text || rolsuper::text || rolbypassrls::text FROM pg_roles WHERE rolname = 'novrsoc_nhai'" | tr -d '[:space:]')" = "falsefalsefalse" ] \
+  && [ "$(pg "SELECT count(*) FROM information_schema.column_privileges WHERE grantee = 'novrsoc_nhai'" | tr -d '[:space:]')" -gt 0 ] \
+  && echo "PASS  novrsoc_nhai exists NOLOGIN with the 0016 grants" || { echo "FAIL  novrsoc_nhai attributes or grants"; exit 1; }
+ready=$(curl -fsS http://127.0.0.1:18000/readyz || true)
+grep -q '"ready"' <<<"$ready" && echo "PASS  the API is ready on the upgraded database" || { echo "FAIL  readyz: $ready"; exit 1; }
 
 echo "== container hardening"
 for c in $("${DC[@]}" ps -q); do

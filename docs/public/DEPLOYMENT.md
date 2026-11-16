@@ -151,6 +151,60 @@ The audit log records `PLATFORM_BOOTSTRAPPED` and `PASSWORD_CHANGED`. The comman
 3. Run `docker compose up -d --wait`. The API refuses to start unless the schema is at the head its image ships.
 4. Keep the previous images until the release is accepted.
 
+**Upgrading an existing installation to migration 0016 (`novrsoc_nhai` role)**
+
+Migration 0016 grants privileges to the `novrsoc_nhai` role. A role is a cluster object that the schema owner cannot
+create, and initdb scripts never rerun on an existing volume. So an installation at 0015 creates the role once with the
+idempotent `postgres-init/02-nhai-role.sh` before it migrates. Without the role, 0016 is refused with
+`role novrsoc_nhai is missing`, and the database stays at 0015, unchanged.
+
+Nothing in this procedure deletes or rewrites data. It keeps users, password hashes, organizations, memberships,
+machine credentials and history. The role is created NOLOGIN, and no password is set.
+
+```sh
+cd /opt/novrsoc-v2/deploy/server2              # the new release is in place; postgres keeps running
+# 0. Record the starting point
+docker compose exec -T postgres sh -c 'PGPASSWORD=$(cat /run/secrets/pg_superuser_password) psql -U postgres -d novrsoc -tAc "SELECT version_num FROM novrsoc.alembic_version"'
+#    expected: 0015_admin_exports_chat
+# 1. Fresh encrypted backup, checked by a restore drill; copy it off the host (and take a provider snapshot)
+docker compose --profile ops run --rm backup
+docker compose --profile ops run --rm restore-drill --file /backups/<newest file>
+# 2. Build the new images under a new tag (keep the current ones for rollback)
+for i in api web vms-worker; do docker build -f ../docker/$i.Dockerfile -t novrsoc-$i:<new tag> ../..; done
+# 3. Create the role (idempotent; postgres mounts postgres-init/ read-only, so the new script is already visible)
+docker compose exec -T postgres sh /docker-entrypoint-initdb.d/02-nhai-role.sh
+#    expected: "created role novrsoc_nhai (NOLOGIN)", then  novrsoc_nhai | f | f | f
+# 4. Switch the tag and start: migrate applies 0016, then api (check-env), jobs and web are recreated.
+#    postgres and its volume are not recreated. The VMS worker stays off (profile vms, gate G-B).
+sed -i 's/^NOVRSOC_IMAGE_TAG=.*/NOVRSOC_IMAGE_TAG=<new tag>/' .env
+docker compose up -d --wait
+# 5. Verify
+docker compose logs migrate | tail -3                      # ... Running upgrade 0015_admin_exports_chat -> 0016_nhai_worker_role
+docker compose logs api | grep -E 'OK +database'           # migration 0016_nhai_worker_role (expected 0016_nhai_worker_role)
+curl -s http://127.0.0.1:8000/readyz                       # "ready"
+```
+
+Then sign in with an existing account and check that the organizations and users are as before. Update the host NGINX
+site from `nginx-novrsoc.conf`, which now refuses `/api/v1/vms/worker/` from outside. Test it with `nginx -t`, then
+reload.
+
+To roll back, use the NEW image, because only it knows 0016:
+
+1. Run `docker compose run --rm migrate alembic downgrade 0015_admin_exports_chat`. This revokes the 0016 grants and
+   leaves the data unchanged.
+2. Set `NOVRSOC_IMAGE_TAG` back to the previous tag, and run `docker compose up -d --wait`.
+
+The NOLOGIN role can stay; it holds no table privileges.
+
+`scripts/release/rehearse_server2.sh` rehearses this exact sequence on a throwaway installation:
+
+- it brings the schema to 0015 with data and drops the role;
+- it checks that the migration is refused;
+- it runs `02-nhai-role.sh` twice, to show it is idempotent;
+- it upgrades;
+- it compares fingerprints of users, password hashes, organizations, memberships, machine credentials and audit
+  history.
+
 **Migrations**
 
 - They are additive and reversible.

@@ -68,7 +68,22 @@ def wait_http(url: str, timeout: float = 90) -> bool:
     return False
 
 
+def summary(out: Path, rcs: dict[str, int]) -> None:
+    """The last lines of the log name every failed step (or the phase that stopped early), so a CI log tail is enough."""
+    lines = ["", "== e2e summary"]
+    for phase, fname in (("main", "e2e-result.json"), ("api_down", "e2e-api-down-result.json")):
+        lines.append(f"{phase} phase: exit {rcs.get(phase, 'not run')}")
+        f = out / fname
+        if not f.exists():
+            lines.append(f"  no {fname}: the phase stopped before writing its result (see the error above)")
+            continue
+        failed = [r for r in json.loads(f.read_text(encoding="utf-8"))["results"] if not r["ok"]]
+        lines += [f"  FAIL  {r['name']}  ({r['detail'][:200]})" for r in failed] or ["  every step passed"]
+    print(chr(10).join(lines), flush=True)
+
+
 def main() -> int:
+    sys.stdout.reconfigure(line_buffering=True)   # keep this script's lines in order with the servers' output
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
@@ -137,7 +152,11 @@ def main() -> int:
                    "E2E_USER_A2": "analyst.alpha@e2e.novrsoc.invalid", "E2E_PASS_A2": pa2,
                    "E2E_USER_A3": "manager2.alpha@e2e.novrsoc.invalid", "E2E_PASS_A3": pa3,
                    "E2E_USER_T": "exec.alpha@e2e.novrsoc.invalid", "E2E_PASS_T": pt}
-        main_rc = subprocess.call(["node", "scripts/e2e-foundation.mjs"], cwd=WEB_DIR, env=run_env)
+        args.out.mkdir(parents=True, exist_ok=True)
+        for stale in ("e2e-result.json", "e2e-api-down-result.json"):
+            (args.out / stale).unlink(missing_ok=True)
+        rcs: dict[str, int] = {}
+        main_rc = rcs["main"] = subprocess.call(["node", "scripts/e2e-foundation.mjs"], cwd=WEB_DIR, env=run_env)
         # Phase 2: stop the API only, keep the web server: the UI must report it honestly.
         api = next(pr for pr in procs if "uvicorn" in " ".join(pr.args))
         procs.remove(api)
@@ -146,7 +165,8 @@ def main() -> int:
         else:
             api.terminate()
         time.sleep(1)
-        down_rc = subprocess.call(["node", "scripts/e2e-foundation.mjs"], cwd=WEB_DIR, env={**run_env, "E2E_PHASE": "api_down"})
+        down_rc = rcs["api_down"] = subprocess.call(["node", "scripts/e2e-foundation.mjs"], cwd=WEB_DIR, env={**run_env, "E2E_PHASE": "api_down"})
+        summary(args.out, rcs)
         return 1 if (main_rc or down_rc) else 0
     finally:
         for p in procs:

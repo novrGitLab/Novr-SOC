@@ -91,7 +91,10 @@ jobs:
           docker run --rm novrsoc-vms-worker:ci sh -c 'test "$(id -u)" = 10002 && test "$VMS_ENGINE" = disabled && ! command -v nmap && python -c "import v2_adapter, worker"'
       - name: Release preflight (publication, compose hardening, templates, Dockerfiles, dependencies)
         run: |
-          python -m pip install --disable-pip-version-check -r apps/api/requirements.lock   # metadata for the lock check
+          # Metadata for the runtime-lock check: the tested lock AND the internal contracts package, whose dependency
+          # closure is part of the runtime lock (the same two installs as the api job).
+          python -m pip install --disable-pip-version-check -r apps/api/requirements.lock
+          python -m pip install --disable-pip-version-check ./packages/contracts
           python scripts/release/preflight.py --no-gitleaks
 
   worker:

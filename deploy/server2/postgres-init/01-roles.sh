@@ -3,8 +3,8 @@
 # Same roles and grants as the tested development cluster (deploy/dev/postgres/init/01-roles.sh):
 #   novrsoc_owner  owns the schema and runs migrations (migrate service, operator jobs, backups). Not used by the API.
 #   novrsoc_app    the API's runtime role. NOSUPERUSER, NOBYPASSRLS: row-level security applies to every query.
-#   novrsoc_nhai   the Server 1 NHAI worker's role, created NOLOGIN (gate G-F2 enables login). Its grants are in
-#                  migration 0016_nhai_worker_role (least privilege; RLS applies).
+# The NHAI worker's role (novrsoc_nhai) is created by 02-nhai-role.sh, which is idempotent so that an existing volume
+# can run it before the 0016 upgrade.
 # Passwords come from compose secrets (files readable by the postgres user, uid 70), never from the environment.
 set -eu
 owner_pw=$(cat /run/secrets/pg_owner_password)
@@ -17,8 +17,6 @@ CREATE ROLE novrsoc_owner LOGIN PASSWORD :'owner_pw' NOSUPERUSER NOCREATEDB NOCR
 CREATE ROLE novrsoc_app   LOGIN PASSWORD :'app_pw'   NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
 ALTER ROLE novrsoc_owner SET search_path = novrsoc, public;
 ALTER ROLE novrsoc_app   SET search_path = novrsoc, public;
-CREATE ROLE novrsoc_nhai NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS CONNECTION LIMIT 2;
-ALTER ROLE novrsoc_nhai  SET search_path = novrsoc, public;
 EOSQL
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<'EOSQL'
@@ -27,7 +25,7 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
 CREATE SCHEMA novrsoc AUTHORIZATION novrsoc_owner;
 GRANT USAGE ON SCHEMA novrsoc TO novrsoc_app;
-GRANT CONNECT ON DATABASE novrsoc TO novrsoc_app, novrsoc_owner, novrsoc_nhai;
+GRANT CONNECT ON DATABASE novrsoc TO novrsoc_app, novrsoc_owner;
 EOSQL
 
 # Gate G-F2 (platform owner, as the superuser; not run here): enable login for the NHAI worker role with a password
