@@ -47,7 +47,8 @@ router = APIRouter(prefix="/api/v1/soc", tags=["soc"], responses=ERRORS)
 _ALERT_COLS = """a.id, a.source, a.external_id, a.rule_id, a.rule_level, a.rule_description, a.severity, a.agent_id,
     a.agent_name, host(a.src_ip) AS src_ip, a.mitre_techniques, a.observed_at, a.received_at, a.status,
     (SELECT ca.case_id FROM novrsoc.case_alerts ca WHERE ca.alert_id = a.id ORDER BY ca.linked_at DESC LIMIT 1) AS case_id,
-    a.asset_id, a.assignee_id, (SELECT u.email::text FROM novrsoc.users u WHERE u.id = a.assignee_id) AS assignee_label"""
+    a.asset_id, a.assignee_id, (SELECT u.email::text FROM novrsoc.users u WHERE u.id = a.assignee_id) AS assignee_label,
+    a.log_source_id, (SELECT s.name FROM novrsoc.log_sources s WHERE s.id = a.log_source_id) AS log_source_name"""
 _CASE_COLS = """c.id, c.number, c.title, c.severity, c.status, c.source, c.created_at, c.updated_at, c.closed_at,
     (SELECT count(*) FROM novrsoc.case_alerts ca WHERE ca.case_id = c.id) AS alert_count,
     c.assignee_id, (SELECT u.email::text FROM novrsoc.users u WHERE u.id = c.assignee_id) AS assignee_label,
@@ -163,7 +164,7 @@ def list_alerts(status: Literal["new", "acknowledged", "in_progress", "closed"] 
                 severity: Literal["critical", "high", "medium", "low"] | None = None,
                 limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0, le=100_000),
                 q: str | None = Query(None, max_length=200), assigned: Literal["me", "unassigned"] | None = None,
-                asset_id: uuid.UUID | None = None,
+                asset_id: uuid.UUID | None = None, log_source_id: uuid.UUID | None = None,
                 p: Principal = Depends(require("alerts:read")), conn: Connection = Depends(request_connection)) -> AlertList:
     where, params = ["true"], {"limit": limit, "offset": offset}
     if status:
@@ -179,6 +180,8 @@ def list_alerts(status: Literal["new", "acknowledged", "in_progress", "closed"] 
         where.append("a.assignee_id IS NULL")
     if asset_id:
         where.append("a.asset_id = :asset"); params["asset"] = asset_id
+    if log_source_id:
+        where.append("a.log_source_id = :src"); params["src"] = log_source_id
     cond = " AND ".join(where)
     total = conn.execute(text(f"SELECT count(*) FROM novrsoc.alerts a WHERE {cond}"), params).scalar()
     rows = conn.execute(text(f"SELECT {_ALERT_COLS} FROM novrsoc.alerts a WHERE {cond} ORDER BY a.observed_at DESC, a.id LIMIT :limit OFFSET :offset"), params).all()

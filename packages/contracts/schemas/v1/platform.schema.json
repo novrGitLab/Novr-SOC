@@ -3,6 +3,29 @@
     "AdminOrg": {
       "additionalProperties": false,
       "properties": {
+        "archived_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Archived At"
+        },
+        "contact_email": {
+          "default": "",
+          "title": "Contact Email",
+          "type": "string"
+        },
+        "contact_name": {
+          "default": "",
+          "title": "Contact Name",
+          "type": "string"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -25,6 +48,11 @@
           "title": "Name",
           "type": "string"
         },
+        "notes": {
+          "default": "",
+          "title": "Notes",
+          "type": "string"
+        },
         "slug": {
           "title": "Slug",
           "type": "string"
@@ -32,10 +60,34 @@
         "status": {
           "enum": [
             "active",
-            "suspended"
+            "suspended",
+            "archived"
           ],
           "title": "Status",
           "type": "string"
+        },
+        "status_reason": {
+          "default": "",
+          "title": "Status Reason",
+          "type": "string"
+        },
+        "timezone": {
+          "default": "UTC",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
         }
       },
       "required": [
@@ -52,6 +104,19 @@
     "AdminOrgCreate": {
       "additionalProperties": false,
       "properties": {
+        "contact_email": {
+          "default": "",
+          "maxLength": 254,
+          "pattern": "^$|^[^@\\s]+@[^@\\s]+$",
+          "title": "Contact Email",
+          "type": "string"
+        },
+        "contact_name": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Contact Name",
+          "type": "string"
+        },
         "name": {
           "maxLength": 200,
           "minLength": 1,
@@ -61,6 +126,13 @@
         "slug": {
           "pattern": "^[a-z0-9][a-z0-9-]{1,62}$",
           "title": "Slug",
+          "type": "string"
+        },
+        "timezone": {
+          "default": "UTC",
+          "maxLength": 64,
+          "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$",
+          "title": "Timezone",
           "type": "string"
         }
       },
@@ -1093,7 +1165,8 @@
             "vms_worker",
             "forwarder",
             "email_gateway",
-            "backup_agent"
+            "backup_agent",
+            "ti_feeder"
           ],
           "title": "Kind",
           "type": "string"

@@ -46,6 +46,12 @@ const P = {
     memberships: '/api/v1/admin/users/{user_id}/memberships', membership: '/api/v1/admin/users/{user_id}/memberships/{org_id}',
     analytics: '/api/v1/admin/analytics', health: '/api/v1/admin/health', quarantine: '/api/v1/admin/wazuh/quarantine', onboarding: '/api/v1/admin/onboarding',
     audit: '/api/v1/audit/events', mappings: '/api/v1/endpoints/group-mappings', mapping: '/api/v1/endpoints/group-mappings/{mapping_id}',
+    orgs: '/api/v1/admin/organizations', orgDirectory: '/api/v1/admin/organizations/directory', org: '/api/v1/admin/organizations/{org_id}',
+    orgStatus: '/api/v1/admin/organizations/{org_id}/status', userSearch: '/api/v1/admin/users/search', orgUsers: '/api/v1/admin/users',
+    identities: '/api/v1/admin/service-identities', identityRevoke: '/api/v1/admin/service-identities/{identity_id}/revoke',
+    sources: '/api/v1/log-sources', source: '/api/v1/log-sources/{source_id}', sourceRetire: '/api/v1/log-sources/{source_id}/retire',
+    sourceReassign: '/api/v1/log-sources/{source_id}/reassign', alerts: '/api/v1/soc/alerts', sites: '/api/v1/sites',
+    soarPolicy: '/api/v1/soar/policy', endpoints: '/api/v1/endpoints',
 } as const satisfies Record<string, ApiPath>;
 
 export const exportDownloadPath = (id: string) => `/api/v1/admin/exports/${encodeURIComponent(id)}/download`;
@@ -190,6 +196,38 @@ export const adminxApi = {
     onboarding: (o: O) => get<Schemas['OnboardingStatus']>(P.onboarding, o),
     audit: (o: O, q: Record<string, string | number | undefined>) => get<Schemas['AuditEventList']>(P.audit + queryString(q), o),
     mappings: (o: O) => get<Schemas['GroupMappingList']>(P.mappings, o),
-    addMapping: (o: O, group: string) => post<Schemas['GroupMapping']>(P.mappings, o, { group_name: group }),
+    addMapping: (o: O, group: string, acknowledgeBroad = false) =>
+        post<Schemas['GroupMapping']>(P.mappings, o, { group_name: group, acknowledge_broad_group: acknowledgeBroad } satisfies Schemas['GroupMappingCreate']),
     removeMapping: (o: O, id: string) => del<void>(fillPath(P.mapping, { mapping_id: id }), o),
+};
+
+/** Organization management (platform administrators). Organization-scoped data is read through the regular module APIs
+ *  with that organization as X-Org-Id: the API re-checks the switch and the database's row-level security applies. */
+export const orgApi = {
+    directory: (o: O, f: { q?: string; status?: string; kind?: string; health?: string } = {}) =>
+        get<Schemas['OrgDirectory']>(P.orgDirectory + queryString(f), o),
+    detail: (o: O, id: string) => get<Schemas['OrgDetail']>(fillPath(P.org, { org_id: id }), o),
+    create: (o: O, body: Schemas['AdminOrgCreate']) => post<Schemas['AdminOrg']>(P.orgs, o, body),
+    update: (o: O, id: string, body: Schemas['OrgUpdate']) => patch<Schemas['OrgDetail']>(fillPath(P.org, { org_id: id }), o, body),
+    setStatus: (o: O, id: string, body: Schemas['OrgStatusChange']) => post<Schemas['OrgDetail']>(fillPath(P.orgStatus, { org_id: id }), o, body),
+    searchUsers: (o: O, q: string) => get<Schemas['UserSearchList']>(P.userSearch + queryString({ q }), o),
+    users: (org: string) => get<Schemas['AdminUserList']>(P.orgUsers, org),
+    createUser: (org: string, body: Schemas['AdminUserCreate']) => post<Schemas['AdminUserCreated']>(P.orgUsers, org, body),
+    identities: (org: string) => get<Schemas['ServiceIdentityList']>(P.identities, org),
+    issueIdentity: (org: string, body: Schemas['ServiceIdentityCreate']) => post<Schemas['ServiceIdentityIssued']>(P.identities, org, body),
+    revokeIdentity: (org: string, id: string) => post<Schemas['ServiceIdentityView']>(fillPath(P.identityRevoke, { identity_id: id }), org),
+    sites: (org: string) => get<Schemas['SiteList']>(P.sites, org),
+    endpoints: (org: string) => get<Schemas['EndpointInventory']>(P.endpoints, org),
+    soarPolicy: (org: string) => get<Schemas['SoarPolicyView']>(P.soarPolicy, org),
+};
+
+/** Syslog and agentless sources: registration is the only way a Wazuh-manager event (agent 000) reaches an organization. */
+export const sourcesApi = {
+    list: (o: O, includeRetired = false) => get<Schemas['LogSourceList']>(P.sources + queryString({ include_retired: includeRetired ? 'true' : undefined }), o),
+    create: (o: O, body: Schemas['LogSourceCreate']) => post<Schemas['LogSourceView']>(P.sources, o, body),
+    update: (o: O, id: string, body: Partial<Schemas['LogSourceUpdate']>) =>
+        patch<Schemas['LogSourceView']>(fillPath(P.source, { source_id: id }), o, { clear_site: false, clear_network: false, ...body }),
+    retire: (o: O, id: string, reason: string) => post<Schemas['LogSourceView']>(fillPath(P.sourceRetire, { source_id: id }), o, { reason }),
+    reassign: (o: O, id: string, body: Schemas['LogSourceReassign']) => post<Schemas['LogSourceView']>(fillPath(P.sourceReassign, { source_id: id }), o, body),
+    alerts: (o: O, id: string) => get<Schemas['AlertList']>(P.alerts + queryString({ log_source_id: id, limit: 25 }), o),
 };

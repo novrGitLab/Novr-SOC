@@ -96,25 +96,38 @@ def inventory(p: Principal = Depends(require("endpoints:read")), conn: Connectio
     return EndpointInventory(source=manager_state, items=items, by_status=by_status, mapped_groups=len(scope.wazuh_agent_groups))
 
 
+# Wazuh puts every agent in `default` until it is reassigned: mapping it attributes every agent that is in no other
+# mapped group to this organization (an agent that is ALSO in another organization's group is quarantined as ambiguous).
+BROAD_GROUPS = frozenset({"default"})
+
+
 @router.get("/group-mappings", response_model=GroupMappingList, summary="Wazuh agent groups mapped to the organization")
 def list_mappings(p: Principal = Depends(require("endpoints:read")), conn: Connection = Depends(request_connection)) -> GroupMappingList:
     rows = conn.execute(text("SELECT id, group_name, created_at FROM novrsoc.wazuh_group_mappings ORDER BY group_name")).all()
-    return GroupMappingList(items=[GroupMapping(id=r.id, group_name=r.group_name, created_at=r.created_at) for r in rows])
+    return GroupMappingList(items=[GroupMapping(id=r.id, group_name=r.group_name, created_at=r.created_at,
+                                                broad=r.group_name in BROAD_GROUPS) for r in rows])
 
 
 @router.post("/group-mappings", response_model=GroupMapping, status_code=201, summary="Map a Wazuh agent group to the organization")
 def create_mapping(body: GroupMappingCreate, request: Request, p: Principal = Depends(require("endpoints:manage")),
                    conn: Connection = Depends(request_connection)) -> GroupMapping:
+    broad = body.group_name in BROAD_GROUPS
+    if broad and not body.acknowledge_broad_group:
+        raise ApiError(422, "broad_group_requires_acknowledgement",
+                       f"Every Wazuh agent is in '{body.group_name}' until it is reassigned: mapping it attributes every agent that "
+                       "is in no other mapped group to this organization. Confirm with acknowledge_broad_group.")
     try:
         with conn.begin_nested():
             r = conn.execute(text("""INSERT INTO novrsoc.wazuh_group_mappings (org_id, group_name, created_by)
                                      VALUES (:o, :g, :u) RETURNING id, group_name, created_at"""),
                              {"o": p.org_id, "g": body.group_name, "u": p.user_id}).one()
     except IntegrityError:
-        raise ApiError(409, "conflict", "This Wazuh agent group is already mapped to an organization")
+        raise ApiError(409, "conflict", "This Wazuh agent group is already mapped to an organization (one group, one organization: "
+                       "an agent's alerts must never match two tenants)")
     audit.record("WAZUH_GROUP_MAPPED", "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email,
-                 resource_type="wazuh_group", resource_id=body.group_name, request_id=request.state.request_id, ip=client_ip(request))
-    return GroupMapping(id=r.id, group_name=r.group_name, created_at=r.created_at)
+                 resource_type="wazuh_group", resource_id=body.group_name, request_id=request.state.request_id, ip=client_ip(request),
+                 details={"broad_group_acknowledged": True} if broad else {})
+    return GroupMapping(id=r.id, group_name=r.group_name, created_at=r.created_at, broad=broad)
 
 
 @router.delete("/group-mappings/{mapping_id}", status_code=204, summary="Remove a Wazuh agent group mapping")

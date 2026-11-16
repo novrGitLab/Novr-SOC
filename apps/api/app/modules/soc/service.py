@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from app.assets.reconcile import asset_for_agent
+from app.secops.log_sources import MANAGER_AGENT_IDS, classify_location
 from novrsoc_contracts.v1.soc import WazuhAlertIn
 
 RAW_CAP_BYTES = 32 * 1024
@@ -26,8 +27,23 @@ def severity_from_level(level: int) -> str:
 def _raw(alert: WazuhAlertIn) -> str:
     body = json.dumps(alert.raw or {}, default=str)
     if len(body.encode()) > RAW_CAP_BYTES:
-        body = json.dumps({"_truncated": True, "_original_bytes": len(body.encode())})
+        # keep the source location: it is what attributes (or quarantines) a manager-received event
+        body = json.dumps({"_truncated": True, "_original_bytes": len(body.encode()),
+                           "location": str((alert.raw or {}).get("location") or "")[:300]})
     return body
+
+
+def _manager_source(conn: Connection, alert: WazuhAlertIn):
+    """(source row, None) for a manager-received event from a live, enabled source; (None, quarantine reason) otherwise."""
+    kind, value = classify_location(str((alert.raw or {}).get("location") or ""))
+    if kind == "manager_local":
+        return None, "manager_local_event"
+    row = conn.execute(text("SELECT * FROM novrsoc.log_source_for(:k, :v)"), {"k": kind, "v": value}).first()
+    if row is None:
+        return None, "unknown_log_source"
+    if not row.enabled or row.org_status == "archived":
+        return None, "log_source_disabled"
+    return row, None
 
 
 def _ip(v: str | None) -> str | None:
@@ -45,17 +61,25 @@ class IngestCounts:
 
 
 def ingest_alerts(conn: Connection, alerts: list[WazuhAlertIn], *, source: str) -> IngestCounts:
-    """Store each alert under the ONE organization that owns its agent groups, or quarantine it.
+    """Store each alert under the ONE organization that owns it, or quarantine it.
+    * an agent's alert: the organization that maps its agent groups (exactly one);
+    * an event the Wazuh manager received itself (agent 000: remote syslog, agentless): the organization of the live,
+      enabled registration of its source (app.secops.log_sources); agent 000's groups are never used.
     The organization is never taken from the payload. Idempotent: a repeated alert is a duplicate, not a copy.
     Runs inside the caller's transaction; app.org_id is set per alert (transaction-local)."""
     counts = IngestCounts()
     for a in alerts:
-        org, matched = conn.execute(text("SELECT org_id, matched_orgs FROM novrsoc.org_for_agent_groups(:g)"),
-                                    {"g": list(a.agent.groups)}).one()
+        src = None
+        if a.agent.id in MANAGER_AGENT_IDS:
+            src, reason = _manager_source(conn, a)
+            org = src.org_id if src is not None else None
+        else:
+            org, matched = conn.execute(text("SELECT org_id, matched_orgs FROM novrsoc.org_for_agent_groups(:g)"),
+                                        {"g": list(a.agent.groups)}).one()
+            reason = None if org is not None else "ambiguous_organization" if matched > 1 else "no_organization_for_groups"
         if org is None:
             conn.execute(text("SELECT novrsoc.quarantine_alert(:s, :x, :r, :g, CAST(:raw AS jsonb))"),
-                         {"s": source, "x": a.id, "r": "ambiguous_organization" if matched > 1 else "no_organization_for_groups",
-                          "g": list(a.agent.groups), "raw": _raw(a)})
+                         {"s": source, "x": a.id, "r": reason, "g": list(a.agent.groups), "raw": _raw(a)})
             counts.quarantined += 1
             continue
         conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(org)})
@@ -69,7 +93,14 @@ def ingest_alerts(conn: Connection, alerts: list[WazuhAlertIn], *, source: str) 
              "desc": a.rule.description[:1000], "sev": severity_from_level(a.rule.level), "aid": a.agent.id,
              "aname": a.agent.name, "groups": list(a.agent.groups), "ip": _ip(a.src_ip),
              "mitre": list(a.rule.mitre_ids), "ts": a.timestamp, "raw": _raw(a)}).first()
-        if inserted:
+        if inserted and src is not None:
+            counts.accepted += 1
+            conn.execute(text("UPDATE novrsoc.alerts SET log_source_id = :s, asset_id = :a WHERE id = :id"),
+                         {"s": src.id, "a": src.asset_id, "id": inserted.id})
+            conn.execute(text("""UPDATE novrsoc.log_sources SET event_count = event_count + 1,
+                                 last_event_at = GREATEST(coalesce(last_event_at, :ts), :ts) WHERE id = :s"""),
+                         {"s": src.id, "ts": a.timestamp})
+        elif inserted:
             counts.accepted += 1
             asset = asset_for_agent(conn, a.agent.id, a.agent.name)  # consolidation: one canonical asset per agent
             if asset is not None:

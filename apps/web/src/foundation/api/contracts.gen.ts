@@ -97,6 +97,21 @@ export interface components {
         /** AdminOrg */
         AdminOrg: {
             /**
+             * Archived At
+             * @default null
+             */
+            archived_at: string | null;
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
+            /**
              * Created At
              * Format: date-time
              */
@@ -113,20 +128,55 @@ export interface components {
             kind: "platform" | "client";
             /** Name */
             name: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
             /** Slug */
             slug: string;
             /**
              * Status
              * @enum {string}
              */
-            status: "active" | "suspended";
+            status: "active" | "suspended" | "archived";
+            /**
+             * Status Reason
+             * @default
+             */
+            status_reason: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Updated At
+             * @default null
+             */
+            updated_at: string | null;
         };
         /** AdminOrgCreate */
         AdminOrgCreate: {
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
             /** Name */
             name: string;
             /** Slug */
             slug: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
         };
         /** AdminOrgList */
         AdminOrgList: {
@@ -294,6 +344,17 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Log Source Id
+             * @description The registered syslog or agentless source the alert came from (events of the Wazuh manager, agent 000), if any
+             * @default null
+             */
+            log_source_id: string | null;
+            /**
+             * Log Source Name
+             * @default null
+             */
+            log_source_name: string | null;
             /** Mitre Techniques */
             mitre_techniques: string[];
             /**
@@ -4254,6 +4315,12 @@ export interface components {
         /** GroupMapping */
         GroupMapping: {
             /**
+             * Broad
+             * @description A broad group (Wazuh's `default`): shown with a warning
+             * @default false
+             */
+            broad: boolean;
+            /**
              * Created At
              * Format: date-time
              */
@@ -4268,6 +4335,12 @@ export interface components {
         };
         /** GroupMappingCreate */
         GroupMappingCreate: {
+            /**
+             * Acknowledge Broad Group
+             * @description Required for a broad group (Wazuh's `default`): every agent belongs to it until it is reassigned, so mapping it attributes every agent that is in no other mapped group to this organization
+             * @default false
+             */
+            acknowledge_broad_group: boolean;
             /** Group Name */
             group_name: string;
         };
@@ -4839,6 +4912,260 @@ export interface components {
             /** Timeout Seconds */
             timeout_seconds: number;
         };
+        /** LogSourceCreate */
+        LogSourceCreate: {
+            /**
+             * Authorization Reference
+             * @description The client authorization (ticket, contract clause) for collecting this device's logs
+             */
+            authorization_reference: string;
+            /**
+             * Device Type
+             * @enum {string}
+             */
+            device_type: "firewall" | "router" | "switch" | "linux_server" | "windows_server" | "network_appliance" | "storage" | "other";
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Host
+             * @description agentless: the host as configured on the Wazuh manager
+             * @default
+             */
+            host: string;
+            /**
+             * Kind
+             * @default syslog
+             * @enum {string}
+             */
+            kind: "syslog" | "agentless";
+            /** Name */
+            name: string;
+            /**
+             * Network
+             * @description CIDR the source sits in
+             * @default null
+             */
+            network: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Port
+             * @default null
+             */
+            port: number | null;
+            /**
+             * Protocol
+             * @default udp
+             * @enum {string}
+             */
+            protocol: "udp" | "tcp" | "tls" | "ssh";
+            /**
+             * Site Id
+             * @default null
+             */
+            site_id: string | null;
+            /**
+             * Source Ip
+             * @description syslog: the sender address
+             * @default null
+             */
+            source_ip: string | null;
+            /**
+             * Vendor
+             * @default
+             */
+            vendor: string;
+        };
+        /** LogSourceList */
+        LogSourceList: {
+            /** Items */
+            items: components["schemas"]["LogSourceView"][];
+        };
+        /** LogSourceReassign */
+        LogSourceReassign: {
+            /**
+             * Org Id
+             * Format: uuid
+             * @description The organization that now owns the device
+             */
+            org_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** LogSourceRetire */
+        LogSourceRetire: {
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * LogSourceUpdate
+         * @description A field left out (null) is unchanged. Changing source_ip or host changes what the source matches.
+         */
+        LogSourceUpdate: {
+            /**
+             * Authorization Reference
+             * @default null
+             */
+            authorization_reference: string | null;
+            /**
+             * Clear Network
+             * @default false
+             */
+            clear_network: boolean;
+            /**
+             * Clear Site
+             * @default false
+             */
+            clear_site: boolean;
+            /**
+             * Device Type
+             * @default null
+             */
+            device_type: ("firewall" | "router" | "switch" | "linux_server" | "windows_server" | "network_appliance" | "storage" | "other") | null;
+            /**
+             * Enabled
+             * @default null
+             */
+            enabled: boolean | null;
+            /**
+             * Host
+             * @default null
+             */
+            host: string | null;
+            /**
+             * Name
+             * @default null
+             */
+            name: string | null;
+            /**
+             * Network
+             * @default null
+             */
+            network: string | null;
+            /**
+             * Notes
+             * @default null
+             */
+            notes: string | null;
+            /**
+             * Port
+             * @default null
+             */
+            port: number | null;
+            /**
+             * Protocol
+             * @default null
+             */
+            protocol: ("udp" | "tcp" | "tls" | "ssh") | null;
+            /**
+             * Site Id
+             * @default null
+             */
+            site_id: string | null;
+            /**
+             * Source Ip
+             * @default null
+             */
+            source_ip: string | null;
+            /**
+             * Vendor
+             * @default null
+             */
+            vendor: string | null;
+        };
+        /** LogSourceView */
+        LogSourceView: {
+            /** Asset Id */
+            asset_id: string | null;
+            /** Authorization Reference */
+            authorization_reference: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Device Type
+             * @enum {string}
+             */
+            device_type: "firewall" | "router" | "switch" | "linux_server" | "windows_server" | "network_appliance" | "storage" | "other";
+            /** Enabled */
+            enabled: boolean;
+            /** Event Count */
+            event_count: number;
+            /** Host */
+            host: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "syslog" | "agentless";
+            /** Last Event At */
+            last_event_at: string | null;
+            /** Match Value */
+            match_value: string;
+            /** Name */
+            name: string;
+            /** Network */
+            network: string | null;
+            /** Notes */
+            notes: string;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /** Port */
+            port: number | null;
+            /**
+             * Protocol
+             * @enum {string}
+             */
+            protocol: "udp" | "tcp" | "tls" | "ssh";
+            /**
+             * Retired At
+             * @default null
+             */
+            retired_at: string | null;
+            /**
+             * Retired Reason
+             * @default
+             */
+            retired_reason: string;
+            /** Site Id */
+            site_id: string | null;
+            /**
+             * Site Name
+             * @default null
+             */
+            site_name: string | null;
+            /** Source Ip */
+            source_ip: string | null;
+            /**
+             * Status
+             * @description receiving: an event in the last hour; quiet: in the last 24 hours; silent: none for 24 hours or more; never_received; disabled; retired (reassigned or removed, kept for history)
+             * @enum {string}
+             */
+            status: "receiving" | "quiet" | "silent" | "never_received" | "disabled" | "retired";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Vendor */
+            vendor: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -5338,10 +5665,21 @@ export interface components {
         /** OnboardingStatus */
         OnboardingStatus: {
             /**
+             * Completed
+             * @default 0
+             */
+            completed: number;
+            /**
              * Next Step
              * @default null
              */
             next_step: string | null;
+            /**
+             * Optional Steps
+             * @description Steps that do not count towards completion (not every organization has syslog or agentless sources)
+             * @default []
+             */
+            optional_steps: string[];
             /**
              * Org Id
              * Format: uuid
@@ -5353,6 +5691,11 @@ export interface components {
             steps: {
                 [key: string]: boolean;
             };
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
         };
         /** OrgAnalyticsRow */
         OrgAnalyticsRow: {
@@ -5446,6 +5789,215 @@ export interface components {
             /** Users */
             users: number;
         };
+        /** OrgDetail */
+        OrgDetail: {
+            /** Alerts 7D */
+            alerts_7d: number;
+            /**
+             * Archived At
+             * @default null
+             */
+            archived_at: string | null;
+            /** Assets */
+            assets: number;
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            integrations: components["schemas"]["OrgIntegrations"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "platform" | "client";
+            /** Name */
+            name: string;
+            /**
+             * Next Step
+             * @default null
+             */
+            next_step: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            onboarding: components["schemas"]["OnboardingStatus"];
+            /** Onboarding Completed */
+            onboarding_completed: number;
+            /** Onboarding Total */
+            onboarding_total: number;
+            /** Open Cases */
+            open_cases: number;
+            /** Sites */
+            sites: number;
+            /** Slug */
+            slug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
+            /**
+             * Status Reason
+             * @default
+             */
+            status_reason: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Updated At
+             * @default null
+             */
+            updated_at: string | null;
+            /** Users */
+            users: number;
+        };
+        /** OrgDirectory */
+        OrgDirectory: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Items */
+            items: components["schemas"]["OrgDirectoryRow"][];
+            /** Total */
+            total: number;
+        };
+        /** OrgDirectoryRow */
+        OrgDirectoryRow: {
+            /** Alerts 7D */
+            alerts_7d: number;
+            /** Assets */
+            assets: number;
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            integrations: components["schemas"]["OrgIntegrations"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "platform" | "client";
+            /** Name */
+            name: string;
+            /**
+             * Next Step
+             * @default null
+             */
+            next_step: string | null;
+            /** Onboarding Completed */
+            onboarding_completed: number;
+            /** Onboarding Total */
+            onboarding_total: number;
+            /** Open Cases */
+            open_cases: number;
+            /** Sites */
+            sites: number;
+            /** Slug */
+            slug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
+            /**
+             * Status Reason
+             * @default
+             */
+            status_reason: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Updated At
+             * @default null
+             */
+            updated_at: string | null;
+            /** Users */
+            users: number;
+        };
+        /** OrgIntegrations */
+        OrgIntegrations: {
+            /**
+             * Health
+             * @enum {string}
+             */
+            health: "ok" | "attention" | "not_configured" | "inactive";
+            /**
+             * Last Alert At
+             * @default null
+             */
+            last_alert_at: string | null;
+            /** Log Sources */
+            log_sources: number;
+            /** Log Sources Disabled */
+            log_sources_disabled: number;
+            /**
+             * Log Sources Never
+             * @description Enabled sources that have not sent any event yet
+             */
+            log_sources_never: number;
+            /**
+             * Log Sources Receiving
+             * @description Enabled sources with an event in the last hour
+             */
+            log_sources_receiving: number;
+            /**
+             * Notes
+             * @description Why the health is what it is, one line per finding
+             * @default []
+             */
+            notes: string[];
+            /** Service Identities */
+            service_identities: number;
+            /**
+             * Wazuh Agents
+             * @description Wazuh agents reconciled into the organization's asset inventory
+             */
+            wazuh_agents: number;
+            /** Wazuh Groups */
+            wazuh_groups: number;
+        };
         /** OrgList */
         OrgList: {
             /**
@@ -5455,6 +6007,20 @@ export interface components {
             all_organizations: boolean;
             /** Items */
             items: components["schemas"]["OrgSummary"][];
+        };
+        /**
+         * OrgStatusChange
+         * @description suspended: members cannot sign in or switch to it; telemetry keeps arriving. archived: kept for the record; it
+         *     must hold no Wazuh group mapping and no live log source first, so no event can reach it.
+         */
+        OrgStatusChange: {
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
         };
         /** OrgSummary */
         OrgSummary: {
@@ -5467,6 +6033,37 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /**
+         * OrgUpdate
+         * @description Profile fields; a field left out (null) is unchanged. The slug never changes (it identifies the organization).
+         */
+        OrgUpdate: {
+            /**
+             * Contact Email
+             * @default null
+             */
+            contact_email: string | null;
+            /**
+             * Contact Name
+             * @default null
+             */
+            contact_name: string | null;
+            /**
+             * Name
+             * @default null
+             */
+            name: string | null;
+            /**
+             * Notes
+             * @default null
+             */
+            notes: string | null;
+            /**
+             * Timezone
+             * @default null
+             */
+            timezone: string | null;
         };
         /**
          * OutcomeStatus
@@ -5918,8 +6515,38 @@ export interface components {
             };
             /** Last 24H */
             last_24h: number;
+            /**
+             * Unattributed Sources
+             * @default []
+             */
+            unattributed_sources: components["schemas"]["QuarantinedSource"][];
             /** Unmapped Groups */
             unmapped_groups: string[];
+        };
+        /**
+         * QuarantinedSource
+         * @description Events of the Wazuh manager (agent 000) that no live registration could attribute.
+         */
+        QuarantinedSource: {
+            /** Events */
+            events: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "syslog" | "agentless" | "manager_local";
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Value
+             * @description The sender IP (syslog), the agentless host, or the manager's local log location
+             */
+            value: string;
         };
         /** Quota */
         Quota: {
@@ -7310,7 +7937,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "collector" | "vms_worker" | "forwarder" | "email_gateway" | "backup_agent";
+            kind: "collector" | "vms_worker" | "forwarder" | "email_gateway" | "backup_agent" | "ti_feeder";
             /**
              * Org Id
              * Format: uuid
@@ -7934,6 +8561,17 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Log Source Id
+             * @description The registered syslog or agentless source the alert came from (events of the Wazuh manager, agent 000), if any
+             * @default null
+             */
+            log_source_id: string | null;
+            /**
+             * Log Source Name
+             * @default null
+             */
+            log_source_name: string | null;
             /** Mitre Techniques */
             mitre_techniques: string[];
             /**
@@ -8454,6 +9092,48 @@ export interface components {
             id: string;
             /** Role */
             role: string;
+        };
+        /** UserSearchList */
+        UserSearchList: {
+            /** Items */
+            items: components["schemas"]["UserSearchResult"][];
+        };
+        /** UserSearchResult */
+        UserSearchResult: {
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /**
+             * Home Org Id
+             * @default null
+             */
+            home_org_id: string | null;
+            /**
+             * Home Org Name
+             * @default null
+             */
+            home_org_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Memberships
+             * @default []
+             */
+            memberships: components["schemas"]["MembershipView"][];
+            /**
+             * Role
+             * @default null
+             */
+            role: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "disabled";
         };
         /** UserStatusUpdate */
         UserStatusUpdate: {

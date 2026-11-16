@@ -84,12 +84,16 @@ class EndpointDetail(Contract):
 
 class GroupMappingCreate(Contract):
     group_name: GroupName
+    acknowledge_broad_group: bool = Field(default=False, description="Required for a broad group (Wazuh's `default`): every "
+                                          "agent belongs to it until it is reassigned, so mapping it attributes every agent "
+                                          "that is in no other mapped group to this organization")
 
 
 class GroupMapping(Contract):
     id: uuid.UUID
     group_name: str
     created_at: datetime
+    broad: bool = Field(default=False, description="A broad group (Wazuh's `default`): shown with a warning")
 
 
 class GroupMappingList(Contract):

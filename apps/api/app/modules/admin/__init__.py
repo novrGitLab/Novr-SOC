@@ -10,7 +10,9 @@ from __future__ import annotations
 import secrets
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError, InternalError, ProgrammingError
@@ -22,6 +24,9 @@ from app.core.security import hash_password, new_machine_credential
 from app.db.session import request_connection
 from app.modules import ModuleInfo
 from app.routers._responses import ERRORS
+from novrsoc_contracts.v1.administration import (OnboardingStatus, OrgDetail, OrgDirectory, OrgDirectoryRow, OrgIntegrations,
+                                                 OrgStatusChange, OrgUpdate, UserSearchList, UserSearchResult)
+from novrsoc_contracts.v1.platform import PLATFORM_ONLY_KINDS, SERVICE_KIND_SCOPES
 from novrsoc_contracts.v1.platform import (AdminOrg, AdminOrgCreate, AdminOrgList, AdminUser, AdminUserCreate, AdminUserCreated,
                                            AdminUserList, BackupRunList, BackupRunView, ServiceIdentityCreate, ServiceIdentityIssued,
                                            ServiceIdentityList, ServiceIdentityView, UserStatusUpdate)
@@ -30,8 +35,7 @@ MODULE = ModuleInfo(name="admin", workstream="E", prefix="/api/v1/admin",
                     summary="Organizations, users, memberships, service identities and backup history")
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"], responses=ERRORS)
 
-KIND_SCOPES = {"forwarder": {"alerts:ingest"}, "vms_worker": {"vms:worker"}, "ti_feeder": {"intel:ingest"},
-               "collector": {"telemetry:ingest"}, "email_gateway": {"email:verdicts"}, "backup_agent": {"backups:report"}}
+KIND_SCOPES = SERVICE_KIND_SCOPES   # one definition (novrsoc_contracts.v1.platform)
 
 
 def _audit(p: Principal, request: Request, action: str, rtype: str, rid: str, details: dict | None = None) -> None:
@@ -41,7 +45,15 @@ def _audit(p: Principal, request: Request, action: str, rtype: str, rid: str, de
 
 # ---------------------------------------------------------------- organizations
 def _org(r) -> AdminOrg:
-    return AdminOrg(id=r.id, slug=str(r.slug), name=r.name, kind=r.kind, status=r.status, created_at=r.created_at)
+    return AdminOrg(id=r.id, slug=str(r.slug), name=r.name, kind=r.kind, status=r.status, created_at=r.created_at,
+                    contact_name=r.contact_name, contact_email=r.contact_email, timezone=r.timezone, notes=r.notes,
+                    status_reason=r.status_reason, updated_at=r.updated_at, archived_at=r.archived_at)
+
+
+def _platform_admin(p: Principal) -> None:
+    """Organization management spans tenants: platform administrators only (the database checks it again)."""
+    if p.role != "super_admin":
+        raise ApiError(403, "forbidden", "Platform administrators only")
 
 
 @router.get("/organizations", response_model=AdminOrgList, summary="All organizations (platform administrators)")
@@ -54,12 +66,137 @@ def create_org(body: AdminOrgCreate, request: Request, p: Principal = Depends(re
                conn: Connection = Depends(request_connection)) -> AdminOrg:
     try:
         with conn.begin_nested():
-            r = conn.execute(text("INSERT INTO novrsoc.organizations (slug, name, kind) VALUES (:s, :n, 'client') RETURNING *"),
-                             {"s": body.slug, "n": body.name}).one()
+            r = conn.execute(text("""INSERT INTO novrsoc.organizations (slug, name, kind, contact_name, contact_email, timezone)
+                                     VALUES (:s, :n, 'client', :cn, :ce, :tz) RETURNING *"""),
+                             {"s": body.slug, "n": body.name, "cn": body.contact_name, "ce": body.contact_email, "tz": body.timezone}).one()
     except IntegrityError:
         raise ApiError(409, "conflict", "An organization with this slug already exists")
     _audit(p, request, "ORG_CREATED", "organization", str(r.id), {"slug": body.slug})
     return _org(r)
+
+
+# Onboarding: computed by novrsoc.org_onboarding() from the organization's real configuration. Telemetry is configured
+# when Wazuh groups are mapped OR syslog/agentless sources are registered: each of those two alone is optional.
+ONBOARDING_ORDER = ("organization_created", "profile_completed", "users_added", "telemetry_configured", "wazuh_groups_mapped",
+                    "log_sources_registered", "telemetry_received", "sites_defined", "assets_inventoried", "sla_policies_set",
+                    "response_policy_set", "subscription_set")
+ONBOARDING_OPTIONAL = ("wazuh_groups_mapped", "log_sources_registered")
+
+
+def _onboarding(org_id: uuid.UUID, slug: str, raw: dict) -> OnboardingStatus:
+    raw = dict(raw or {})
+    raw["telemetry_configured"] = bool(raw.get("wazuh_groups_mapped") or raw.get("log_sources_registered"))
+    steps = {k: bool(raw.get(k)) for k in ONBOARDING_ORDER}
+    required = [k for k in ONBOARDING_ORDER if k not in ONBOARDING_OPTIONAL]
+    return OnboardingStatus(org_id=org_id, org_slug=slug, steps=steps, optional_steps=list(ONBOARDING_OPTIONAL),
+                            next_step=next((k for k in required if not steps[k]), None),
+                            completed=sum(1 for k in required if steps[k]), total=len(required))
+
+
+def _integrations(r) -> OrgIntegrations:
+    notes: list[str] = []
+    configured = r.wazuh_groups > 0 or r.log_sources > 0
+    if r.status != "active":
+        health = "inactive"
+        notes.append(f"Organization is {r.status}")
+    elif not configured:
+        health = "not_configured"
+        notes.append("No Wazuh group mapped and no syslog or agentless source registered")
+    else:
+        health = "ok"
+        if r.wazuh_groups and not r.wazuh_agents:
+            health = "attention"; notes.append("Wazuh groups are mapped but no agent has been reconciled into the inventory yet")
+        if r.log_sources_never:
+            health = "attention"; notes.append(f"{r.log_sources_never} enabled source(s) have not sent any event yet")
+        if r.log_sources_disabled:
+            notes.append(f"{r.log_sources_disabled} source(s) disabled: their events are quarantined")
+        if r.last_alert_at is None:
+            health = "attention"; notes.append("No security event has been received yet")
+    return OrgIntegrations(wazuh_groups=r.wazuh_groups, wazuh_agents=r.wazuh_agents, log_sources=r.log_sources,
+                           log_sources_receiving=r.log_sources_receiving, log_sources_never=r.log_sources_never,
+                           log_sources_disabled=r.log_sources_disabled, service_identities=r.service_identities,
+                           last_alert_at=r.last_alert_at, health=health, notes=notes)
+
+
+def _row(r) -> OrgDirectoryRow:
+    ob = _onboarding(r.org_id, r.slug, r.onboarding)
+    return OrgDirectoryRow(id=r.org_id, slug=r.slug, name=r.name, kind=r.kind, status=r.status, status_reason=r.status_reason,
+                           contact_name=r.contact_name, contact_email=r.contact_email, timezone=r.timezone, created_at=r.created_at,
+                           updated_at=r.updated_at, users=r.users, assets=r.assets, sites=r.sites, alerts_7d=r.alerts_7d,
+                           open_cases=r.open_cases, onboarding_completed=ob.completed, onboarding_total=ob.total,
+                           next_step=ob.next_step, integrations=_integrations(r))
+
+
+def _directory(conn: Connection) -> list:
+    return conn.execute(text("SELECT * FROM novrsoc.org_directory()")).all()
+
+
+@router.get("/organizations/directory", response_model=OrgDirectory, summary="Organization directory with status, onboarding and integrations")
+def directory(q: str | None = Query(None, max_length=200), status: Literal["active", "suspended", "archived"] | None = None,
+              kind: Literal["platform", "client"] | None = None, health: Literal["ok", "attention", "not_configured", "inactive"] | None = None,
+              p: Principal = Depends(require("users:manage")), conn: Connection = Depends(request_connection)) -> OrgDirectory:
+    _platform_admin(p)
+    rows = [_row(r) for r in _directory(conn)]
+    needle = (q or "").strip().lower()
+    rows = [r for r in rows
+            if (not needle or needle in r.name.lower() or needle in r.slug.lower() or needle in r.contact_email.lower())
+            and (status is None or r.status == status) and (kind is None or r.kind == kind)
+            and (health is None or r.integrations.health == health)]
+    return OrgDirectory(generated_at=_NOW(), items=rows, total=len(rows))
+
+
+def _detail(conn: Connection, org_id: uuid.UUID) -> OrgDetail:
+    r = next((x for x in _directory(conn) if x.org_id == org_id), None)
+    if r is None:
+        raise not_found("Organization not found")
+    o = conn.execute(text("SELECT notes, archived_at FROM novrsoc.organizations WHERE id = :o"), {"o": org_id}).one()
+    row = _row(r)
+    return OrgDetail(**row.model_dump(), notes=o.notes, archived_at=o.archived_at, onboarding=_onboarding(r.org_id, r.slug, r.onboarding))
+
+
+@router.get("/organizations/{org_id}", response_model=OrgDetail, summary="One organization: profile, status, onboarding and integrations")
+def get_org(org_id: uuid.UUID, p: Principal = Depends(require("users:manage")), conn: Connection = Depends(request_connection)) -> OrgDetail:
+    _platform_admin(p)
+    return _detail(conn, org_id)
+
+
+@router.patch("/organizations/{org_id}", response_model=OrgDetail, summary="Edit an organization's profile (audited)")
+def update_org(org_id: uuid.UUID, body: OrgUpdate, request: Request, p: Principal = Depends(require("users:manage")),
+               conn: Connection = Depends(request_connection)) -> OrgDetail:
+    _platform_admin(p)
+    cur = conn.execute(text("SELECT * FROM novrsoc.organizations WHERE id = :o"), {"o": org_id}).first()
+    if cur is None:
+        raise not_found("Organization not found")
+    new = {k: v for k, v in body.model_dump().items() if v is not None}
+    changed = sorted(k for k, v in new.items() if getattr(cur, k) != v)
+    if changed:
+        sets = ", ".join(f"{k} = :{k}" for k in changed)
+        conn.execute(text(f"UPDATE novrsoc.organizations SET {sets}, updated_at = now() WHERE id = :o"), {**{k: new[k] for k in changed}, "o": org_id})
+        _audit(p, request, "ORG_UPDATED", "organization", str(org_id), {"fields": changed})
+    return _detail(conn, org_id)
+
+
+@router.post("/organizations/{org_id}/status", response_model=OrgDetail, summary="Suspend, archive or reactivate an organization (audited)")
+def change_org_status(org_id: uuid.UUID, body: OrgStatusChange, request: Request, p: Principal = Depends(require("users:manage")),
+                      conn: Connection = Depends(request_connection)) -> OrgDetail:
+    _platform_admin(p)
+    r = next((x for x in _directory(conn) if x.org_id == org_id), None)
+    if r is None:
+        raise not_found("Organization not found")
+    if r.kind == "platform" and body.status != "active":
+        raise ApiError(422, "validation_error", "The platform organization cannot be suspended or archived")
+    if r.status == body.status:
+        raise ApiError(409, "conflict", f"The organization is already {body.status}")
+    if body.status == "archived" and (r.wazuh_groups or r.log_sources):
+        raise ApiError(409, "conflict", "Remove its Wazuh group mappings and retire or reassign its log sources before archiving: "
+                                        "an archived organization must not receive security events",
+                       {"wazuh_groups": r.wazuh_groups, "log_sources": r.log_sources})
+    conn.execute(text("""UPDATE novrsoc.organizations SET status = :s, status_reason = :r, updated_at = now(),
+                         archived_at = CASE WHEN :s = 'archived' THEN now() WHEN :s = 'active' THEN NULL ELSE archived_at END
+                         WHERE id = :o"""), {"s": body.status, "r": body.reason, "o": org_id})
+    _audit(p, request, {"active": "ORG_REACTIVATED", "suspended": "ORG_SUSPENDED", "archived": "ORG_ARCHIVED"}[body.status],
+           "organization", str(org_id), {"from": r.status, "to": body.status, "reason": body.reason})
+    return _detail(conn, org_id)
 
 
 # ---------------------------------------------------------------- users and memberships (active organization)
@@ -145,10 +282,10 @@ def list_identities(p: Principal = Depends(require("service_identities:manage"))
              summary="Issue a machine credential (shown once)")
 def issue_identity(body: ServiceIdentityCreate, request: Request, p: Principal = Depends(require("service_identities:manage")),
                    conn: Connection = Depends(request_connection)) -> ServiceIdentityIssued:
-    if not set(body.scopes) <= KIND_SCOPES[body.kind]:
-        raise ApiError(422, "validation_error", f"A {body.kind} identity may only hold: {', '.join(sorted(KIND_SCOPES[body.kind]))}")
+    if not body.scopes or not set(body.scopes) <= KIND_SCOPES[body.kind]:
+        raise ApiError(422, "validation_error", f"A {body.kind} identity holds: {', '.join(sorted(KIND_SCOPES[body.kind]))}")
     kind = conn.execute(text("SELECT kind FROM novrsoc.organizations WHERE id = :o"), {"o": p.org_id}).scalar()
-    if body.kind == "forwarder" and kind != "platform":
+    if body.kind in PLATFORM_ONLY_KINDS and kind != "platform":
         raise ApiError(422, "validation_error", "A forwarder identity belongs to the platform organization")
     ident = uuid.uuid4()
     token, secret_hash = new_machine_credential(ident)
@@ -202,8 +339,11 @@ from app.core.config import Settings as _Settings, get_settings as _get_settings
 from novrsoc_contracts.v1.administration import (BillingOverview, BillingPlanCreate, BillingPlanUpdate, BillingPlanView,  # noqa: E402
                                                  ComponentHealth, DataExportCreate, DataExportList, DataExportView, MembershipGrant,
                                                  MembershipList, MembershipView, OnboardingStatus, OrgAnalyticsRow, OrgBillingRow,
-                                                 PlatformAnalytics, PlatformHealth, QuarantineSummary, SubscriptionSet, TeamCreate,
-                                                 TeamList, TeamMemberAdd, TeamMemberView, TeamView)
+                                                 OrgDetail, OrgDirectory, OrgDirectoryRow, OrgIntegrations, OrgStatusChange, OrgUpdate,
+                                                 PlatformAnalytics, PlatformHealth, QuarantinedSource, QuarantineSummary, SubscriptionSet,
+                                                 TeamCreate, TeamList, TeamMemberAdd, TeamMemberView, TeamView, UserSearchList,
+                                                 UserSearchResult)
+from app.secops.log_sources import classify_location  # noqa: E402
 from novrsoc_contracts.v1.common import ActorRef as _ActorRef  # noqa: E402
 
 EXPORT_MAX_ROWS = 50_000
@@ -445,6 +585,23 @@ def _memberships(conn: Connection, user_id: uuid.UUID) -> MembershipList:
                                                   for r in rows])
 
 
+@router.get("/users/search", response_model=UserSearchList, summary="Find existing users across organizations (to assign, never duplicate)")
+def search_users(q: str = Query(..., min_length=2, max_length=200), p: Principal = Depends(require("users:manage")),
+                 conn: Connection = Depends(request_connection)) -> UserSearchList:
+    _platform_admin(p)
+    rows = conn.execute(text("""SELECT u.id, u.email::text AS email, u.display_name, u.status FROM novrsoc.users u
+                                WHERE u.email ILIKE :q OR u.display_name ILIKE :q ORDER BY u.email LIMIT 25"""),
+                        {"q": f"%{q.strip()}%"}).all()
+    out = []
+    for r in rows:
+        ms = _memberships(conn, r.id).items
+        home = next((m for m in ms if m.access_scope == "home"), None)
+        out.append(UserSearchResult(id=r.id, email=r.email, display_name=r.display_name, status=r.status,
+                                    home_org_id=home.org_id if home else None, home_org_name=home.org_name if home else None,
+                                    role=home.role if home else None, memberships=ms))
+    return UserSearchList(items=out)
+
+
 @router.get("/users/{user_id}/memberships", response_model=MembershipList, summary="A user's organizations (home and assignments)")
 def list_memberships(user_id: uuid.UUID, p: Principal = Depends(require("users:manage")),
                      conn: Connection = Depends(request_connection)) -> MembershipList:
@@ -488,19 +645,9 @@ def revoke_membership(user_id: uuid.UUID, org_id: uuid.UUID, request: Request, p
 
 @router.get("/onboarding", response_model=OnboardingStatus, summary="Onboarding progress of the active organization")
 def onboarding(p: Principal = Depends(require("users:manage")), conn: Connection = Depends(request_connection)) -> OnboardingStatus:
-    org = conn.execute(text("SELECT id, slug FROM novrsoc.organizations WHERE id = :o"), {"o": p.org_id}).one()
-    q = lambda sql: bool(conn.execute(text(sql), {"o": p.org_id}).scalar())  # noqa: E731
-    steps = {
-        "organization_created": True,
-        "users_added": q("SELECT count(*) > 0 FROM novrsoc.memberships WHERE org_id = :o"),
-        "wazuh_groups_mapped": q("SELECT count(*) > 0 FROM novrsoc.wazuh_group_mappings"),
-        "sites_defined": q("SELECT count(*) > 0 FROM novrsoc.sites"),
-        "sla_policies_set": q("SELECT count(*) > 0 FROM novrsoc.sla_policies"),
-        "response_policy_set": q("SELECT count(*) > 0 FROM novrsoc.soar_policies"),
-        "subscription_set": q("SELECT count(*) > 0 FROM novrsoc.org_subscriptions WHERE org_id = :o"),
-        "assets_inventoried": q("SELECT count(*) > 0 FROM novrsoc.assets"),
-    }
-    return OnboardingStatus(org_id=org.id, org_slug=str(org.slug), steps=steps, next_step=next((k for k, v in steps.items() if not v), None))
+    org = conn.execute(text("SELECT id, slug, novrsoc.org_onboarding(id) AS steps FROM novrsoc.organizations WHERE id = :o"),
+                       {"o": p.org_id}).one()
+    return _onboarding(org.id, str(org.slug), org.steps)
 
 
 # ---------------------------------------------------------------- platform analytics and health
@@ -577,4 +724,11 @@ def quarantine(p: Principal = Depends(require("users:manage")), conn: Connection
     by = {r[0]: r[1] for r in conn.execute(text("SELECT reason, count(*) FROM novrsoc.alert_quarantine GROUP BY reason"))}
     groups = [r[0] for r in conn.execute(text("""SELECT DISTINCT g FROM novrsoc.alert_quarantine q, unnest(q.agent_groups) g
                                                  WHERE q.reason = 'no_organization_for_groups' ORDER BY g LIMIT 100"""))]
-    return QuarantineSummary(last_24h=n, by_reason=by, unmapped_groups=groups)
+    srcs = []
+    for r in conn.execute(text("""SELECT reason, coalesce(raw->>'location', '') AS loc, count(*) AS n, max(received_at) AS last
+                                  FROM novrsoc.alert_quarantine
+                                  WHERE reason IN ('unknown_log_source', 'log_source_disabled', 'manager_local_event')
+                                  GROUP BY 1, 2 ORDER BY max(received_at) DESC LIMIT 100""")):
+        kind, value = classify_location(r.loc)
+        srcs.append(QuarantinedSource(kind=kind, value=value, reason=r.reason, events=r.n, last_seen_at=r.last))
+    return QuarantineSummary(last_24h=n, by_reason=by, unmapped_groups=groups, unattributed_sources=srcs)

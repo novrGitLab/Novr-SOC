@@ -601,6 +601,12 @@
     "OnboardingStatus": {
       "additionalProperties": false,
       "properties": {
+        "completed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Completed",
+          "type": "integer"
+        },
         "next_step": {
           "anyOf": [
             {
@@ -612,6 +618,15 @@
           ],
           "default": null,
           "title": "Next Step"
+        },
+        "optional_steps": {
+          "default": [],
+          "description": "Steps that do not count towards completion (not every organization has syslog or agentless sources)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Optional Steps",
+          "type": "array"
         },
         "org_id": {
           "format": "uuid",
@@ -631,6 +646,12 @@
           },
           "title": "Steps",
           "type": "object"
+        },
+        "total": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
         }
       },
       "required": [
@@ -856,6 +877,529 @@
       "title": "OrgBillingRow",
       "type": "object"
     },
+    "OrgDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts_7d": {
+          "minimum": 0,
+          "title": "Alerts 7D",
+          "type": "integer"
+        },
+        "archived_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Archived At"
+        },
+        "assets": {
+          "minimum": 0,
+          "title": "Assets",
+          "type": "integer"
+        },
+        "contact_email": {
+          "default": "",
+          "title": "Contact Email",
+          "type": "string"
+        },
+        "contact_name": {
+          "default": "",
+          "title": "Contact Name",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "integrations": {
+          "$ref": "#/$defs/OrgIntegrations"
+        },
+        "kind": {
+          "enum": [
+            "platform",
+            "client"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "next_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Step"
+        },
+        "notes": {
+          "default": "",
+          "title": "Notes",
+          "type": "string"
+        },
+        "onboarding": {
+          "$ref": "#/$defs/OnboardingStatus"
+        },
+        "onboarding_completed": {
+          "minimum": 0,
+          "title": "Onboarding Completed",
+          "type": "integer"
+        },
+        "onboarding_total": {
+          "minimum": 0,
+          "title": "Onboarding Total",
+          "type": "integer"
+        },
+        "open_cases": {
+          "minimum": 0,
+          "title": "Open Cases",
+          "type": "integer"
+        },
+        "sites": {
+          "minimum": 0,
+          "title": "Sites",
+          "type": "integer"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended",
+            "archived"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "status_reason": {
+          "default": "",
+          "title": "Status Reason",
+          "type": "string"
+        },
+        "timezone": {
+          "default": "UTC",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "users": {
+          "minimum": 0,
+          "title": "Users",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name",
+        "kind",
+        "status",
+        "created_at",
+        "users",
+        "assets",
+        "sites",
+        "alerts_7d",
+        "open_cases",
+        "onboarding_completed",
+        "onboarding_total",
+        "integrations",
+        "onboarding"
+      ],
+      "title": "OrgDetail",
+      "type": "object"
+    },
+    "OrgDirectory": {
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/OrgDirectoryRow"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "generated_at",
+        "items",
+        "total"
+      ],
+      "title": "OrgDirectory",
+      "type": "object"
+    },
+    "OrgDirectoryRow": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts_7d": {
+          "minimum": 0,
+          "title": "Alerts 7D",
+          "type": "integer"
+        },
+        "assets": {
+          "minimum": 0,
+          "title": "Assets",
+          "type": "integer"
+        },
+        "contact_email": {
+          "default": "",
+          "title": "Contact Email",
+          "type": "string"
+        },
+        "contact_name": {
+          "default": "",
+          "title": "Contact Name",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "integrations": {
+          "$ref": "#/$defs/OrgIntegrations"
+        },
+        "kind": {
+          "enum": [
+            "platform",
+            "client"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "next_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Step"
+        },
+        "onboarding_completed": {
+          "minimum": 0,
+          "title": "Onboarding Completed",
+          "type": "integer"
+        },
+        "onboarding_total": {
+          "minimum": 0,
+          "title": "Onboarding Total",
+          "type": "integer"
+        },
+        "open_cases": {
+          "minimum": 0,
+          "title": "Open Cases",
+          "type": "integer"
+        },
+        "sites": {
+          "minimum": 0,
+          "title": "Sites",
+          "type": "integer"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended",
+            "archived"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "status_reason": {
+          "default": "",
+          "title": "Status Reason",
+          "type": "string"
+        },
+        "timezone": {
+          "default": "UTC",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "users": {
+          "minimum": 0,
+          "title": "Users",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name",
+        "kind",
+        "status",
+        "created_at",
+        "users",
+        "assets",
+        "sites",
+        "alerts_7d",
+        "open_cases",
+        "onboarding_completed",
+        "onboarding_total",
+        "integrations"
+      ],
+      "title": "OrgDirectoryRow",
+      "type": "object"
+    },
+    "OrgIntegrations": {
+      "additionalProperties": false,
+      "properties": {
+        "health": {
+          "enum": [
+            "ok",
+            "attention",
+            "not_configured",
+            "inactive"
+          ],
+          "title": "Health",
+          "type": "string"
+        },
+        "last_alert_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Alert At"
+        },
+        "log_sources": {
+          "minimum": 0,
+          "title": "Log Sources",
+          "type": "integer"
+        },
+        "log_sources_disabled": {
+          "minimum": 0,
+          "title": "Log Sources Disabled",
+          "type": "integer"
+        },
+        "log_sources_never": {
+          "description": "Enabled sources that have not sent any event yet",
+          "minimum": 0,
+          "title": "Log Sources Never",
+          "type": "integer"
+        },
+        "log_sources_receiving": {
+          "description": "Enabled sources with an event in the last hour",
+          "minimum": 0,
+          "title": "Log Sources Receiving",
+          "type": "integer"
+        },
+        "notes": {
+          "default": [],
+          "description": "Why the health is what it is, one line per finding",
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "service_identities": {
+          "minimum": 0,
+          "title": "Service Identities",
+          "type": "integer"
+        },
+        "wazuh_agents": {
+          "description": "Wazuh agents reconciled into the organization's asset inventory",
+          "minimum": 0,
+          "title": "Wazuh Agents",
+          "type": "integer"
+        },
+        "wazuh_groups": {
+          "minimum": 0,
+          "title": "Wazuh Groups",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "wazuh_groups",
+        "wazuh_agents",
+        "log_sources",
+        "log_sources_receiving",
+        "log_sources_never",
+        "log_sources_disabled",
+        "service_identities",
+        "health"
+      ],
+      "title": "OrgIntegrations",
+      "type": "object"
+    },
+    "OrgStatusChange": {
+      "additionalProperties": false,
+      "description": "suspended: members cannot sign in or switch to it; telemetry keeps arriving. archived: kept for the record; it\nmust hold no Wazuh group mapping and no live log source first, so no event can reach it.",
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended",
+            "archived"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "title": "OrgStatusChange",
+      "type": "object"
+    },
+    "OrgUpdate": {
+      "additionalProperties": false,
+      "description": "Profile fields; a field left out (null) is unchanged. The slug never changes (it identifies the organization).",
+      "properties": {
+        "contact_email": {
+          "anyOf": [
+            {
+              "maxLength": 254,
+              "pattern": "^$|^[^@\\s]+@[^@\\s]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contact Email"
+        },
+        "contact_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contact Name"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "timezone": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        }
+      },
+      "title": "OrgUpdate",
+      "type": "object"
+    },
     "PlatformAnalytics": {
       "additionalProperties": false,
       "properties": {
@@ -949,6 +1493,14 @@
           "title": "Last 24H",
           "type": "integer"
         },
+        "unattributed_sources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/QuarantinedSource"
+          },
+          "title": "Unattributed Sources",
+          "type": "array"
+        },
         "unmapped_groups": {
           "items": {
             "type": "string"
@@ -963,6 +1515,49 @@
         "unmapped_groups"
       ],
       "title": "QuarantineSummary",
+      "type": "object"
+    },
+    "QuarantinedSource": {
+      "additionalProperties": false,
+      "description": "Events of the Wazuh manager (agent 000) that no live registration could attribute.",
+      "properties": {
+        "events": {
+          "minimum": 0,
+          "title": "Events",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "syslog",
+            "agentless",
+            "manager_local"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "value": {
+          "description": "The sender IP (syslog), the agentless host, or the manager's local log location",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "reason",
+        "events",
+        "last_seen_at"
+      ],
+      "title": "QuarantinedSource",
       "type": "object"
     },
     "SubscriptionSet": {
@@ -1150,6 +1745,102 @@
         "created_at"
       ],
       "title": "TeamView",
+      "type": "object"
+    },
+    "UserSearchList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/UserSearchResult"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "UserSearchList",
+      "type": "object"
+    },
+    "UserSearchResult": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "home_org_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Home Org Id"
+        },
+        "home_org_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Home Org Name"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "memberships": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MembershipView"
+          },
+          "title": "Memberships",
+          "type": "array"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "disabled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "display_name",
+        "status"
+      ],
+      "title": "UserSearchResult",
       "type": "object"
     }
   },

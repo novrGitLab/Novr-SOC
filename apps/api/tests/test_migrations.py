@@ -28,6 +28,14 @@ def test_upgrade_downgrade_upgrade(db):
         assert {"organizations", "users", "memberships", "sessions", "sites", "service_identities",
                 "audit_events", "cnii_designations", "roles", "permissions", "role_permissions", "alembic_version"} <= tables
         assert {"auth_session", "auth_user_for_login", "auth_service_identity", "app_org"} <= funcs
+        # The whole downgrade runs in ONE transaction; an autovacuum ANALYZE of a table it has just modified can wait on
+        # that transaction while holding the lock the next DROP needs (a deadlock PostgreSQL resolves by failing the
+        # downgrade). The throwaway database is not vacuumed during the round trip.
+        eng = create_engine(owner_url)
+        with eng.begin() as c:
+            for (t,) in c.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'novrsoc'")).all():
+                c.execute(text(f'ALTER TABLE novrsoc."{t}" SET (autovacuum_enabled = false)'))
+        eng.dispose()
         command.downgrade(cfg, "base")
         tables, funcs = _tables(owner_url)
         assert tables == {"alembic_version"} and not funcs

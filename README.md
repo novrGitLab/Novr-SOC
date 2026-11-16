@@ -26,7 +26,7 @@ anything.
 | Protection | CNII monitoring, Email security, Brand protection |
 | Assets | Asset inventory, Endpoints, Sites, Collectors and discovery |
 | Assistant and continuity | NovrChat, Data loss recovery |
-| Clients and administration | Organizations and onboarding, Users and teams, Billing, Platform analytics, Data exports, Wazuh group mappings, Platform health, Audit log |
+| Clients and administration | Organization directory and per-organization management (overview, users and teams, assets and networks, integrations including syslog and agentless sources, security policies, billing, audit, settings), Users and teams, Billing, Platform analytics, Data exports, Wazuh groups and log sources, Platform health, Audit log |
 
 A fresh installation contains no organizations, users, playbooks or security data. When an integration is not
 connected, the interface says so instead of showing placeholder figures.

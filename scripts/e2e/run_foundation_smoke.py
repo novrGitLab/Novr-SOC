@@ -87,6 +87,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
+    args.out = args.out.resolve()   # the browser script runs in apps/web: hand it an absolute path
     for p in (8000, 3011, 8651):
         if not port_free(p):
             raise SystemExit(f"port {p} is in use; stop whatever is listening there first")
@@ -109,6 +110,9 @@ def main() -> int:
             devseed.create_user(c, "analyst.alpha@e2e.novrsoc.invalid", pa2, "analyst", org_a)
             pa3 = secrets.token_urlsafe(18)   # a second manager: playbook versions are approved by someone other than their author
             devseed.create_user(c, "manager2.alpha@e2e.novrsoc.invalid", pa3, "soc_manager", org_a)
+            pp = secrets.token_urlsafe(18)   # a platform administrator (organization management)
+            org_p = devseed.create_org(c, "e2e-platform", "E2E Platform (disposable)", "platform")
+            devseed.create_user(c, "admin@e2e.novrsoc.invalid", pp, "super_admin", org_p)
             pt = secrets.token_urlsafe(18)   # an account with a temporary password (as created by Tenants and users)
             ut = devseed.create_user(c, "exec.alpha@e2e.novrsoc.invalid", pt, "executive", org_a)
             c.execute(text("UPDATE novrsoc.users SET password_change_required = true WHERE id = :u"), {"u": ut})
@@ -151,7 +155,8 @@ def main() -> int:
                    "E2E_ORG_A_NAME": "E2E Alpha (disposable)",
                    "E2E_USER_A2": "analyst.alpha@e2e.novrsoc.invalid", "E2E_PASS_A2": pa2,
                    "E2E_USER_A3": "manager2.alpha@e2e.novrsoc.invalid", "E2E_PASS_A3": pa3,
-                   "E2E_USER_T": "exec.alpha@e2e.novrsoc.invalid", "E2E_PASS_T": pt}
+                   "E2E_USER_T": "exec.alpha@e2e.novrsoc.invalid", "E2E_PASS_T": pt,
+                   "E2E_USER_P": "admin@e2e.novrsoc.invalid", "E2E_PASS_P": pp, "E2E_ORG_B": str(org_b)}
         args.out.mkdir(parents=True, exist_ok=True)
         for stale in ("e2e-result.json", "e2e-api-down-result.json"):
             (args.out / stale).unlink(missing_ok=True)

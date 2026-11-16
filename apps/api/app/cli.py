@@ -22,6 +22,7 @@ from sqlalchemy import create_engine, text
 
 from app import devseed
 from app.core.config import LOOPBACK_HOSTS, Settings
+from novrsoc_contracts.v1.platform import PLATFORM_ONLY_KINDS, SERVICE_KIND_SCOPES
 
 
 def seed_dev(out: Path, if_empty: bool = False) -> int:
@@ -130,14 +131,21 @@ def seed_dev_fixtures() -> int:
     return 0
 
 
-KINDS = ("forwarder", "vms_worker", "collector", "email_gateway", "backup_agent")
+# Kinds and the scopes each may hold: the same definition the API enforces (novrsoc_contracts.v1.platform).
+KINDS = tuple(SERVICE_KIND_SCOPES)
 
 
 def create_service_identity(kind: str, name: str, org_slug: str, scopes: list[str], out: Path) -> int:
-    """Issue one machine credential (nsk_). The secret is written ONCE to `out` (mode 0600) and never printed.
-    Works in any environment: it is the operator tool for issuing forwarder / worker credentials."""
+    """Issue one organization-bound machine credential (nsk_). The secret is written ONCE to `out` (mode 0600) and never
+    printed. Works in any environment: it is the operator tool for issuing forwarder / worker / feeder credentials.
+    Without --scope the kind's own scopes are granted; any other scope is refused (never silently dropped)."""
     if kind not in KINDS:
         print(f"refused: --kind must be one of {', '.join(KINDS)}", file=sys.stderr)
+        return 2
+    allowed = SERVICE_KIND_SCOPES[kind]
+    scopes = sorted(set(scopes)) if scopes else sorted(allowed)
+    if not set(scopes) <= allowed:
+        print(f"refused: a {kind} identity may only hold {', '.join(sorted(allowed))} (got {', '.join(scopes)})", file=sys.stderr)
         return 2
     if out.exists():
         print("refused: --out already exists (a credential is never overwritten)", file=sys.stderr)
@@ -147,12 +155,15 @@ def create_service_identity(kind: str, name: str, org_slug: str, scopes: list[st
         print("NOVRSOC_MIGRATION_DATABASE_URL is required (schema owner)", file=sys.stderr)
         return 2
     with create_engine(owner_url).begin() as conn:
-        org = conn.execute(text("SELECT id, kind FROM novrsoc.organizations WHERE slug = :s"), {"s": org_slug}).first()
+        org = conn.execute(text("SELECT id, kind, status FROM novrsoc.organizations WHERE slug = :s"), {"s": org_slug}).first()
         if org is None:
             print("refused: no organization with that slug", file=sys.stderr)
             return 2
-        if kind == "forwarder" and org.kind != "platform":
-            print("refused: a forwarder identity belongs to the platform organization", file=sys.stderr)
+        if kind in PLATFORM_ONLY_KINDS and org.kind != "platform":
+            print(f"refused: a {kind} identity belongs to the platform organization", file=sys.stderr)
+            return 2
+        if org.status != "active":
+            print(f"refused: the organization is {org.status}", file=sys.stderr)
             return 2
         ident, token = devseed.create_service_identity(conn, org.id, kind, name, scopes=scopes)
         conn.execute(text("""INSERT INTO novrsoc.audit_events (org_id, actor_type, actor_label, action, outcome, resource_type, resource_id)
@@ -242,10 +253,10 @@ def main() -> int:
     s.add_argument("--if-empty", action="store_true", help="succeed without changes when already seeded")
     sub.add_parser("seed-dev-fixtures", help="map dev Wazuh groups and ingest the labelled local fixture alerts")
     ci = sub.add_parser("create-service-identity", help="issue a machine credential (written once to --out)")
-    ci.add_argument("--kind", required=True)
+    ci.add_argument("--kind", required=True, help="one of " + ", ".join(SERVICE_KIND_SCOPES))
     ci.add_argument("--name", required=True)
     ci.add_argument("--org-slug", default="novrsoc-platform")
-    ci.add_argument("--scope", action="append", default=[])
+    ci.add_argument("--scope", action="append", default=[], help="defaults to the kind's own scope (e.g. ti_feeder: intel:ingest)")
     ci.add_argument("--out", required=True, type=Path)
     ri = sub.add_parser("revoke-service-identity", help="revoke a machine credential")
     ri.add_argument("--id", required=True)

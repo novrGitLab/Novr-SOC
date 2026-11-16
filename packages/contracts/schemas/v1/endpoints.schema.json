@@ -249,6 +249,12 @@
     "GroupMapping": {
       "additionalProperties": false,
       "properties": {
+        "broad": {
+          "default": false,
+          "description": "A broad group (Wazuh's `default`): shown with a warning",
+          "title": "Broad",
+          "type": "boolean"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -275,6 +281,12 @@
     "GroupMappingCreate": {
       "additionalProperties": false,
       "properties": {
+        "acknowledge_broad_group": {
+          "default": false,
+          "description": "Required for a broad group (Wazuh's `default`): every agent belongs to it until it is reassigned, so mapping it attributes every agent that is in no other mapped group to this organization",
+          "title": "Acknowledge Broad Group",
+          "type": "boolean"
+        },
         "group_name": {
           "pattern": "^[A-Za-z0-9_.-]{1,128}$",
           "title": "Group Name",

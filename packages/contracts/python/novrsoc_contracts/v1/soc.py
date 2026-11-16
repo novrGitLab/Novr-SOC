@@ -76,6 +76,9 @@ class StoredAlert(Contract):
     asset_id: uuid.UUID | None = Field(default=None, description="Consolidation: the canonical asset of the alert's agent")
     assignee_id: uuid.UUID | None = None
     assignee_label: str | None = None
+    log_source_id: uuid.UUID | None = Field(default=None, description="The registered syslog or agentless source the alert came "
+                                            "from (events of the Wazuh manager, agent 000), if any")
+    log_source_name: str | None = None
 
 
 class AlertDetail(StoredAlert):

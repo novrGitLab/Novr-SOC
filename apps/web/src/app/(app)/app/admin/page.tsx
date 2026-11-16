@@ -1,102 +1,108 @@
 'use client';
 
+// Organization directory (platform administrators): every organization with its status, onboarding progress, assets,
+// endpoints, sources and integration health, all computed by the API from real configuration (novrsoc.org_directory()).
+// Other roles with access to this page see their own organization's machine identities, as before.
+import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { Users } from 'lucide-react';
-import { Notice, PageHeader, Tag, btn, type Msg } from '@/components/features/vms/kit';
-import { Card, StatusPill } from '@/components/features/vms/ui';
+import { Building2, Plus } from 'lucide-react';
+import { Drawer, PageHeader, SearchBox, Select, btn, nf } from '@/components/features/vms/kit';
+import { StatusPill } from '@/components/features/vms/ui';
+import { orgApi } from '@/foundation/api/modules';
 import { useSession } from '@/foundation/session/SessionProvider';
-import { DataTable, Field, Loaded, TextInput, errorText, fmt } from '@/foundation/ui/pilot';
-import { inputCls } from '@/foundation/ui/sources';
+import { DataTable, Field, Loaded, TextInput, fmt } from '@/foundation/ui/pilot';
+import { useAction } from '@/foundation/ui/module';
 import { useResource } from '@/foundation/ui/useResource';
-import { OnboardingPanel } from './OnboardingPanel';
 import { adminApi } from './api';
+import { IdentitiesPanel } from './_org/IdentitiesPanel';
+import { QuarantinePanel } from './_org/QuarantinePanel';
+import { HEALTH, ONBOARDING_STEPS, ORG_STATUS, orgHref } from './_org/meta';
 
-const ROLES = ['analyst', 'soc_manager', 'executive', 'portal_user', 'super_admin'] as const;
-const KINDS: Record<string, string> = { vms_worker: 'vms:worker', ti_feeder: 'intel:ingest', forwarder: 'alerts:ingest', email_gateway: 'email:verdicts' };
+const STATUS = [['', 'Any status'], ['active', 'Active'], ['suspended', 'Suspended'], ['archived', 'Archived']] as const;
+const HEALTHS = [['', 'Any health'], ['ok', 'Healthy'], ['attention', 'Needs attention'], ['not_configured', 'Not configured'], ['inactive', 'Inactive']] as const;
+const EMPTY = { slug: '', name: '', contact_name: '', contact_email: '', timezone: 'Africa/Lagos' };
 
-export default function AdminPage() {
-    const { orgId, can, session } = useSession();
-    const orgs = useResource(useCallback(() => (can('users:manage') ? adminApi.orgs(orgId) : Promise.resolve({ items: [] })), [orgId, can]));
-    const users = useResource(useCallback(() => (can('users:manage') ? adminApi.users(orgId) : Promise.resolve({ items: [] })), [orgId, can]));
-    const idents = useResource(useCallback(() => adminApi.identities(orgId), [orgId]));
+export default function OrganizationsPage() {
+    const { session, orgId, can } = useSession();
+    const platformAdmin = session.role === 'super_admin' && can('users:manage');
+    const [q, setQ] = useState('');
+    const [status, setStatus] = useState<(typeof STATUS)[number][0]>('');
+    const [health, setHealth] = useState<(typeof HEALTHS)[number][0]>('');
+    const dir = useResource(useCallback(() => (platformAdmin ? orgApi.directory(orgId, { q: q || undefined, status: status || undefined, health: health || undefined })
+        : Promise.resolve(null)), [platformAdmin, orgId, q, status, health]));
     const backups = useResource(useCallback(() => (can('backups:read') ? adminApi.backups(orgId) : Promise.resolve({ items: [] })), [orgId, can]));
-    const [secret, setSecret] = useState<string | null>(null);
-    const [org, setOrg] = useState({ slug: '', name: '' });
-    const [user, setUser] = useState({ email: '', role: 'analyst' as (typeof ROLES)[number] });
-    const [ident, setIdent] = useState({ kind: 'vms_worker', name: '' });
-    const [msg, setMsg] = useState<Msg>(null);
-    const run = async (fn: () => Promise<unknown>, ok?: string) => { setMsg(null); try { await fn(); if (ok) setMsg({ ok: true, text: ok }); } catch (e) { setMsg({ ok: false, text: errorText(e) }); } };
+    const [creating, setCreating] = useState(false);
+    const [form, setForm] = useState(EMPTY);
+    const act = useAction();
 
+    if (!platformAdmin) {
+        return (
+            <>
+                <PageHeader title="Organizations" icon={Building2} description={`Organization management is for platform administrators. Machine identities of ${session.active_org.name}:`} />
+                {can('service_identities:manage') && <IdentitiesPanel orgId={orgId} orgName={session.active_org.name} canManage />}
+            </>
+        );
+    }
     return (
         <>
-            <PageHeader title="Organizations and onboarding" icon={Users} description={`Client organizations, onboarding progress, users, machine identities and backups for ${session.active_org.name}. Switch the active organization (top bar) to onboard a client. Secrets (temporary passwords, machine credentials) are shown once and stored only as hashes.`} />
-            {can('users:manage') && <OnboardingPanel />}
-            <Notice msg={msg} />
-            {secret && <Card><p className="text-sm font-bold">Copy this now — it will not be shown again</p><p className="font-mono text-xs break-all mt-1" data-testid="one-time-secret">{secret}</p>
-                <button className={btn('secondary')} onClick={() => setSecret(null)}>I have stored it</button></Card>}
-            {can('users:manage') && (
-                <div className="grid gap-5 lg:grid-cols-2">
-                    <Loaded title="Organizations" data={orgs.data} error={orgs.error}>
-                        {(d) => (<>
-                            <DataTable testid="admin-orgs" rows={d.items} rowKey={(o) => o.id} columns={[
-                                { key: 'n', header: 'Organization', render: (o) => <span>{o.name}<span className="block text-[11px] font-mono text-foreground-muted">{o.slug}</span></span> },
-                                { key: 'k', header: 'Kind', render: (o) => <Tag>{o.kind}</Tag> }, { key: 's', header: 'Status', render: (o) => o.status }]} />
-                            <div className="mt-3 flex flex-wrap items-end gap-2">
-                                <Field label="Slug"><TextInput value={org.slug} onChange={(e) => setOrg({ ...org, slug: e.target.value })} /></Field>
-                                <Field label="Name"><TextInput value={org.name} onChange={(e) => setOrg({ ...org, name: e.target.value })} /></Field>
-                                <button className={btn('primary')} disabled={!org.slug || !org.name} onClick={() => void run(async () => { await adminApi.createOrg(orgId, org); orgs.reload(); }, 'Organization created.')}>Create</button>
-                            </div></>)}
-                    </Loaded>
-                    <Loaded title="Users of this organization" data={users.data} error={users.error}>
-                        {(d) => (<>
-                            <DataTable testid="admin-users" rows={d.items} rowKey={(u) => u.id} columns={[
-                                { key: 'e', header: 'User', render: (u) => <span>{u.email}<span className="block text-[11px] text-foreground-muted">{u.role} · last sign-in {fmt(u.last_login_at)}</span></span> },
-                                { key: 's', header: 'Status', render: (u) => <StatusPill tone={u.status === 'active' ? 'good' : 'neutral'} label={u.locked ? 'locked' : u.status} /> },
-                                { key: 'a', header: '', render: (u) => u.id === session.user.id ? null : <span className="flex flex-wrap gap-1">
-                                    <button className={btn('ghost')} onClick={() => void run(async () => {
-                                        await adminApi.setStatus(orgId, u.id, u.status === 'active' ? 'disabled' : 'active'); users.reload(); })}>{u.status === 'active' ? 'Disable' : 'Enable'}</button>
-                                    <button className={btn('ghost')} onClick={() => void run(async () => { const r = await adminApi.resetPassword(orgId, u.id);
-                                        setSecret(`New temporary password for ${r.user.email}: ${r.temporary_password} (shown once; their sessions were signed out and they must change it at sign-in)`); users.reload(); })}>Reset password</button>
-                                </span> },
-                            ]} />
-                            <div className="mt-3 flex flex-wrap items-end gap-2">
-                                <Field label="Email"><TextInput type="email" value={user.email} onChange={(e) => setUser({ ...user, email: e.target.value })} /></Field>
-                                <Field label="Role"><select className={inputCls} value={user.role} onChange={(e) => setUser({ ...user, role: e.target.value as (typeof ROLES)[number] })}>{ROLES.map((r) => <option key={r}>{r}</option>)}</select></Field>
-                                <button className={btn('primary')} disabled={!user.email.includes('@')} onClick={() => void run(async () => {
-                                    const r = await adminApi.createUser(orgId, { email: user.email, role: user.role, display_name: '', access_scope: 'home' });
-                                    setSecret(`Temporary password for ${r.user.email}: ${r.temporary_password} (shown once; they must change it at first sign-in)`); users.reload(); })}>Create user</button>
-                            </div></>)}
-                    </Loaded>
-                </div>
-            )}
-            {can('service_identities:manage') && (
-                <Loaded title="Machine identities" hint="Forwarders, local VMS workers, TAXII feeders. Revocation takes effect immediately." data={idents.data} error={idents.error}>
-                    {(d) => (<>
-                        <DataTable testid="admin-identities" rows={d.items} rowKey={(i) => i.id} empty="No machine identity." columns={[
-                            { key: 'n', header: 'Identity', render: (i) => <span>{i.name}<span className="block text-[11px] text-foreground-muted">{i.kind} · {i.scopes.join(', ') || 'no scope'}</span></span> },
-                            { key: 's', header: 'Status', render: (i) => <StatusPill tone={i.status === 'active' ? 'good' : 'neutral'} label={i.status} /> },
-                            { key: 'u', header: 'Last used', className: 'hidden md:table-cell', render: (i) => <span className="text-xs">{fmt(i.last_used_at)}</span> },
-                            { key: 'a', header: '', render: (i) => i.status === 'active' ? <button className={btn('ghost')} onClick={() => void run(async () => { await adminApi.revoke(orgId, i.id); idents.reload(); })}>Revoke</button> : null },
-                        ]} />
-                        <div className="mt-3 flex flex-wrap items-end gap-2">
-                            <Field label="Kind"><select className={inputCls} value={ident.kind} onChange={(e) => setIdent({ ...ident, kind: e.target.value })}>{Object.keys(KINDS).map((k) => <option key={k}>{k}</option>)}</select></Field>
-                            <Field label="Name"><TextInput value={ident.name} onChange={(e) => setIdent({ ...ident, name: e.target.value })} /></Field>
-                            <button className={btn('primary')} disabled={!ident.name} onClick={() => void run(async () => {
-                                const r = await adminApi.issue(orgId, { kind: ident.kind as never, name: ident.name, scopes: [KINDS[ident.kind]], site_id: null });
-                                setSecret(`Credential for ${r.identity.name}: ${r.credential}`); idents.reload(); })}>Issue credential</button>
-                        </div></>)}
-                </Loaded>
-            )}
+            <PageHeader title="Organizations" icon={Building2}
+                description="Every client and the platform organization, with onboarding, assets, telemetry and integration health from their real configuration. Open one to manage it."
+                actions={<button className={btn('primary')} data-testid="new-org" onClick={() => { setForm(EMPTY); setCreating(true); }}><Plus className="w-3.5 h-3.5" aria-hidden />New organization</button>} />
+            {act.notice}
+            <div className="flex flex-wrap items-end gap-2">
+                <SearchBox value={q} onSubmit={setQ} placeholder="Name, slug or contact e-mail" label="Search organizations" />
+                <Select value={status} onChange={setStatus} options={STATUS} label="Status" />
+                <Select value={health} onChange={setHealth} options={HEALTHS} label="Integration health" />
+            </div>
+            <Loaded title="Directory" data={dir.data} error={dir.error} reload={dir.reload} testid="org-directory"
+                hint={dir.data ? `${dir.data.total} organization(s) · generated ${fmt(dir.data.generated_at)}` : undefined}>
+                {(d) => d && <DataTable rows={d.items} rowKey={(o) => o.id} testid="admin-orgs" empty="No organization matches." columns={[
+                    { key: 'n', header: 'Organization', render: (o) => <Link href={orgHref(o.id)} className="font-semibold hover:text-purple" data-testid="org-link">{o.name}
+                        <span className="block text-[11px] font-mono font-normal text-foreground-muted">{o.slug}{o.kind === 'platform' ? ' · platform' : ''}</span></Link> },
+                    { key: 's', header: 'Status', render: (o) => <StatusPill tone={ORG_STATUS[o.status].tone} label={ORG_STATUS[o.status].label} /> },
+                    { key: 'o', header: 'Onboarding', render: (o) => <Onboarding done={o.onboarding_completed} total={o.onboarding_total} next={o.next_step} href={o.next_step ? orgHref(o.id, ONBOARDING_STEPS[o.next_step]?.tab) : undefined} /> },
+                    { key: 'a', header: 'Assets', className: 'hidden md:table-cell', render: (o) => <span className="tabular-nums">{nf.format(o.assets)}<span className="block text-[11px] text-foreground-muted">{o.integrations.wazuh_agents} Wazuh agent(s)</span></span> },
+                    { key: 't', header: 'Telemetry', className: 'hidden lg:table-cell', render: (o) => <span className="text-xs">{o.integrations.wazuh_groups} group(s) · {o.integrations.log_sources} source(s)
+                        <span className="block text-[11px] text-foreground-muted">{o.integrations.log_sources_receiving} receiving · last event {fmt(o.integrations.last_alert_at)}</span></span> },
+                    { key: 'h', header: 'Integrations', render: (o) => <span title={o.integrations.notes.join('\n')}><StatusPill tone={HEALTH[o.integrations.health].tone} label={HEALTH[o.integrations.health].label} /></span> },
+                    { key: 'u', header: 'Users', className: 'hidden md:table-cell', render: (o) => <span className="tabular-nums">{o.users}</span> },
+                ]} />}
+            </Loaded>
+            <QuarantinePanel />
             {can('backups:read') && (
-                <Loaded title="Backups" hint="Encrypted logical dumps and restore drills (python -m app.cli backup / restore-drill)" data={backups.data} error={backups.error}>
-                    {(d) => <DataTable testid="admin-backups" rows={d.items} rowKey={(b) => b.id} empty="No backup has run in this installation." columns={[
+                <Loaded title="Platform backups" hint="Encrypted logical dumps and restore drills" data={backups.data} error={backups.error}>
+                    {(d) => <DataTable rows={d.items} rowKey={(b) => b.id} testid="admin-backups" empty="No backup has run in this installation." columns={[
                         { key: 'w', header: 'Started', render: (b) => <span className="text-xs">{fmt(b.started_at)}</span> },
                         { key: 's', header: 'Status', render: (b) => <StatusPill tone={b.status === 'succeeded' ? 'good' : b.status === 'failed' ? 'critical' : 'neutral'} label={b.status} /> },
-                        { key: 'z', header: 'Size', render: (b) => b.size_bytes ? `${Math.round(b.size_bytes / 1024)} KiB` : '—' },
                         { key: 'd', header: 'Restore drill', render: (b) => b.last_drill_status ? <span className="text-xs">{b.last_drill_status} · {fmt(b.last_drill_at)}</span> : <span className="text-xs text-foreground-muted">never drilled</span> },
                     ]} />}
                 </Loaded>
             )}
+            <Drawer open={creating} onClose={() => setCreating(false)} title="New client organization" subtitle="The slug is permanent; everything else can be edited later.">
+                <div className="grid sm:grid-cols-2 gap-3">
+                    <Field label="Name"><TextInput value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+                    <Field label="Slug (a-z, 0-9, -)"><TextInput value={form.slug} pattern="[a-z0-9][a-z0-9-]{1,62}" onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })} /></Field>
+                    <Field label="Contact name"><TextInput value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} /></Field>
+                    <Field label="Contact e-mail"><TextInput type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} /></Field>
+                    <Field label="Time zone"><TextInput value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} /></Field>
+                </div>
+                <button className={btn('primary', 'md')} disabled={act.busy || !form.name.trim() || !/^[a-z0-9][a-z0-9-]{1,62}$/.test(form.slug)}
+                    onClick={() => void act.run(async () => { const o = await orgApi.create(orgId, { ...form, name: form.name.trim() }); setCreating(false); dir.reload(); return o; },
+                        (o) => `Organization ${o.name} created. Open it to continue onboarding.`)}>Create</button>
+                {act.notice}
+            </Drawer>
         </>
+    );
+}
+
+function Onboarding({ done, total, next, href }: { done: number; total: number; next?: string | null; href?: string }) {
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return (
+        <span className="block min-w-32">
+            <span className="flex items-center gap-2 text-xs tabular-nums"><span className="h-1.5 flex-1 rounded-full bg-card-muted overflow-hidden" aria-hidden>
+                <span className="block h-full rounded-full bg-purple" style={{ width: `${pct}%` }} /></span>{done}/{total}</span>
+            {next && href ? <Link href={href} className="block text-[11px] text-foreground-muted hover:text-purple underline">Next: {ONBOARDING_STEPS[next]?.label ?? next}</Link>
+                : <span className="block text-[11px] text-foreground-muted">Complete</span>}
+        </span>
     );
 }

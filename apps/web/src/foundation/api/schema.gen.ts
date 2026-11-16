@@ -208,6 +208,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/organizations/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Organization directory with status, onboarding and integrations */
+        get: operations["directory_api_v1_admin_organizations_directory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organizations/{org_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One organization: profile, status, onboarding and integrations */
+        get: operations["get_org_api_v1_admin_organizations__org_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an organization's profile (audited) */
+        patch: operations["update_org_api_v1_admin_organizations__org_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/organizations/{org_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suspend, archive or reactivate an organization (audited) */
+        post: operations["change_org_status_api_v1_admin_organizations__org_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/service-identities": {
         parameters: {
             query?: never;
@@ -307,6 +359,23 @@ export interface paths {
         put?: never;
         /** Create a user in the active organization */
         post: operations["create_user_api_v1_admin_users_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find existing users across organizations (to assign, never duplicate) */
+        get: operations["search_users_api_v1_admin_users_search_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1463,6 +1532,76 @@ export interface paths {
         put?: never;
         /** Upload a STIX 2.1 bundle (validated, stored, related) */
         post: operations["upload_bundle_api_v1_insights_stix_bundles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/log-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Syslog and agentless sources of the active organization */
+        get: operations["list_sources_api_v1_log_sources_get"];
+        put?: never;
+        /** Register a syslog or agentless source (audited) */
+        post: operations["create_source_api_v1_log_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/log-sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One source with its status and event counts */
+        get: operations["get_source_api_v1_log_sources__source_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit, disable or enable a source (audited) */
+        patch: operations["update_source_api_v1_log_sources__source_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/log-sources/{source_id}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a source to another organization (platform administrators; audited in both) */
+        post: operations["reassign_source_api_v1_log_sources__source_id__reassign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/log-sources/{source_id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retire a source (kept for history; its events are then quarantined) */
+        post: operations["retire_source_api_v1_log_sources__source_id__retire_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2983,6 +3122,18 @@ export interface components {
         };
         /** AdminOrg */
         AdminOrg: {
+            /** Archived At */
+            archived_at?: string | null;
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
             /**
              * Created At
              * Format: date-time
@@ -3000,20 +3151,52 @@ export interface components {
             kind: "platform" | "client";
             /** Name */
             name: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
             /** Slug */
             slug: string;
             /**
              * Status
              * @enum {string}
              */
-            status: "active" | "suspended";
+            status: "active" | "suspended" | "archived";
+            /**
+             * Status Reason
+             * @default
+             */
+            status_reason: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /** Updated At */
+            updated_at?: string | null;
         };
         /** AdminOrgCreate */
         AdminOrgCreate: {
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
             /** Name */
             name: string;
             /** Slug */
             slug: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
         };
         /** AdminOrgList */
         AdminOrgList: {
@@ -3167,6 +3350,13 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Log Source Id
+             * @description The registered syslog or agentless source the alert came from (events of the Wazuh manager, agent 000), if any
+             */
+            log_source_id?: string | null;
+            /** Log Source Name */
+            log_source_name?: string | null;
             /** Mitre Techniques */
             mitre_techniques: string[];
             /**
@@ -5883,6 +6073,12 @@ export interface components {
         /** GroupMapping */
         GroupMapping: {
             /**
+             * Broad
+             * @description A broad group (Wazuh's `default`): shown with a warning
+             * @default false
+             */
+            broad: boolean;
+            /**
              * Created At
              * Format: date-time
              */
@@ -5897,6 +6093,12 @@ export interface components {
         };
         /** GroupMappingCreate */
         GroupMappingCreate: {
+            /**
+             * Acknowledge Broad Group
+             * @description Required for a broad group (Wazuh's `default`): every agent belongs to it until it is reassigned, so mapping it attributes every agent that is in no other mapped group to this organization
+             * @default false
+             */
+            acknowledge_broad_group: boolean;
             /** Group Name */
             group_name: string;
         };
@@ -6290,6 +6492,210 @@ export interface components {
              * @enum {string}
              */
             verdict: "unreviewed" | "true_positive" | "false_positive" | "benign";
+        };
+        /** LogSourceCreate */
+        LogSourceCreate: {
+            /**
+             * Authorization Reference
+             * @description The client authorization (ticket, contract clause) for collecting this device's logs
+             */
+            authorization_reference: string;
+            /**
+             * Device Type
+             * @enum {string}
+             */
+            device_type: "firewall" | "router" | "switch" | "linux_server" | "windows_server" | "network_appliance" | "storage" | "other";
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Host
+             * @description agentless: the host as configured on the Wazuh manager
+             * @default
+             */
+            host: string;
+            /**
+             * Kind
+             * @default syslog
+             * @enum {string}
+             */
+            kind: "syslog" | "agentless";
+            /** Name */
+            name: string;
+            /**
+             * Network
+             * @description CIDR the source sits in
+             */
+            network?: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Port */
+            port?: number | null;
+            /**
+             * Protocol
+             * @default udp
+             * @enum {string}
+             */
+            protocol: "udp" | "tcp" | "tls" | "ssh";
+            /** Site Id */
+            site_id?: string | null;
+            /**
+             * Source Ip
+             * @description syslog: the sender address
+             */
+            source_ip?: string | null;
+            /**
+             * Vendor
+             * @default
+             */
+            vendor: string;
+        };
+        /** LogSourceList */
+        LogSourceList: {
+            /** Items */
+            items: components["schemas"]["LogSourceView"][];
+        };
+        /** LogSourceReassign */
+        LogSourceReassign: {
+            /**
+             * Org Id
+             * Format: uuid
+             * @description The organization that now owns the device
+             */
+            org_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** LogSourceRetire */
+        LogSourceRetire: {
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * LogSourceUpdate
+         * @description A field left out (null) is unchanged. Changing source_ip or host changes what the source matches.
+         */
+        LogSourceUpdate: {
+            /** Authorization Reference */
+            authorization_reference?: string | null;
+            /**
+             * Clear Network
+             * @default false
+             */
+            clear_network: boolean;
+            /**
+             * Clear Site
+             * @default false
+             */
+            clear_site: boolean;
+            /** Device Type */
+            device_type?: ("firewall" | "router" | "switch" | "linux_server" | "windows_server" | "network_appliance" | "storage" | "other") | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Host */
+            host?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Network */
+            network?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Port */
+            port?: number | null;
+            /** Protocol */
+            protocol?: ("udp" | "tcp" | "tls" | "ssh") | null;
+            /** Site Id */
+            site_id?: string | null;
+            /** Source Ip */
+            source_ip?: string | null;
+            /** Vendor */
+            vendor?: string | null;
+        };
+        /** LogSourceView */
+        LogSourceView: {
+            /** Asset Id */
+            asset_id: string | null;
+            /** Authorization Reference */
+            authorization_reference: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Device Type
+             * @enum {string}
+             */
+            device_type: "firewall" | "router" | "switch" | "linux_server" | "windows_server" | "network_appliance" | "storage" | "other";
+            /** Enabled */
+            enabled: boolean;
+            /** Event Count */
+            event_count: number;
+            /** Host */
+            host: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "syslog" | "agentless";
+            /** Last Event At */
+            last_event_at: string | null;
+            /** Match Value */
+            match_value: string;
+            /** Name */
+            name: string;
+            /** Network */
+            network: string | null;
+            /** Notes */
+            notes: string;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /** Port */
+            port: number | null;
+            /**
+             * Protocol
+             * @enum {string}
+             */
+            protocol: "udp" | "tcp" | "tls" | "ssh";
+            /** Retired At */
+            retired_at?: string | null;
+            /**
+             * Retired Reason
+             * @default
+             */
+            retired_reason: string;
+            /** Site Id */
+            site_id: string | null;
+            /** Site Name */
+            site_name?: string | null;
+            /** Source Ip */
+            source_ip: string | null;
+            /**
+             * Status
+             * @description receiving: an event in the last hour; quiet: in the last 24 hours; silent: none for 24 hours or more; never_received; disabled; retired (reassigned or removed, kept for history)
+             * @enum {string}
+             */
+            status: "receiving" | "quiet" | "silent" | "never_received" | "disabled" | "retired";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Vendor */
+            vendor: string;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -6704,8 +7110,19 @@ export interface components {
         ObservationKind: "host" | "service" | "technology" | "finding";
         /** OnboardingStatus */
         OnboardingStatus: {
+            /**
+             * Completed
+             * @default 0
+             */
+            completed: number;
             /** Next Step */
             next_step?: string | null;
+            /**
+             * Optional Steps
+             * @description Steps that do not count towards completion (not every organization has syslog or agentless sources)
+             * @default []
+             */
+            optional_steps: string[];
             /**
              * Org Id
              * Format: uuid
@@ -6717,6 +7134,11 @@ export interface components {
             steps: {
                 [key: string]: boolean;
             };
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
         };
         /** OrgAnalyticsRow */
         OrgAnalyticsRow: {
@@ -6783,6 +7205,197 @@ export interface components {
             /** Users */
             users: number;
         };
+        /** OrgDetail */
+        OrgDetail: {
+            /** Alerts 7D */
+            alerts_7d: number;
+            /** Archived At */
+            archived_at?: string | null;
+            /** Assets */
+            assets: number;
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            integrations: components["schemas"]["OrgIntegrations"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "platform" | "client";
+            /** Name */
+            name: string;
+            /** Next Step */
+            next_step?: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            onboarding: components["schemas"]["OnboardingStatus"];
+            /** Onboarding Completed */
+            onboarding_completed: number;
+            /** Onboarding Total */
+            onboarding_total: number;
+            /** Open Cases */
+            open_cases: number;
+            /** Sites */
+            sites: number;
+            /** Slug */
+            slug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
+            /**
+             * Status Reason
+             * @default
+             */
+            status_reason: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Users */
+            users: number;
+        };
+        /** OrgDirectory */
+        OrgDirectory: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Items */
+            items: components["schemas"]["OrgDirectoryRow"][];
+            /** Total */
+            total: number;
+        };
+        /** OrgDirectoryRow */
+        OrgDirectoryRow: {
+            /** Alerts 7D */
+            alerts_7d: number;
+            /** Assets */
+            assets: number;
+            /**
+             * Contact Email
+             * @default
+             */
+            contact_email: string;
+            /**
+             * Contact Name
+             * @default
+             */
+            contact_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            integrations: components["schemas"]["OrgIntegrations"];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "platform" | "client";
+            /** Name */
+            name: string;
+            /** Next Step */
+            next_step?: string | null;
+            /** Onboarding Completed */
+            onboarding_completed: number;
+            /** Onboarding Total */
+            onboarding_total: number;
+            /** Open Cases */
+            open_cases: number;
+            /** Sites */
+            sites: number;
+            /** Slug */
+            slug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
+            /**
+             * Status Reason
+             * @default
+             */
+            status_reason: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Users */
+            users: number;
+        };
+        /** OrgIntegrations */
+        OrgIntegrations: {
+            /**
+             * Health
+             * @enum {string}
+             */
+            health: "ok" | "attention" | "not_configured" | "inactive";
+            /** Last Alert At */
+            last_alert_at?: string | null;
+            /** Log Sources */
+            log_sources: number;
+            /** Log Sources Disabled */
+            log_sources_disabled: number;
+            /**
+             * Log Sources Never
+             * @description Enabled sources that have not sent any event yet
+             */
+            log_sources_never: number;
+            /**
+             * Log Sources Receiving
+             * @description Enabled sources with an event in the last hour
+             */
+            log_sources_receiving: number;
+            /**
+             * Notes
+             * @description Why the health is what it is, one line per finding
+             * @default []
+             */
+            notes: string[];
+            /** Service Identities */
+            service_identities: number;
+            /**
+             * Wazuh Agents
+             * @description Wazuh agents reconciled into the organization's asset inventory
+             */
+            wazuh_agents: number;
+            /** Wazuh Groups */
+            wazuh_groups: number;
+        };
         /** OrgList */
         OrgList: {
             /**
@@ -6792,6 +7405,20 @@ export interface components {
             all_organizations: boolean;
             /** Items */
             items: components["schemas"]["OrgSummary"][];
+        };
+        /**
+         * OrgStatusChange
+         * @description suspended: members cannot sign in or switch to it; telemetry keeps arriving. archived: kept for the record; it
+         *     must hold no Wazuh group mapping and no live log source first, so no event can reach it.
+         */
+        OrgStatusChange: {
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
         };
         /** OrgSummary */
         OrgSummary: {
@@ -6804,6 +7431,22 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /**
+         * OrgUpdate
+         * @description Profile fields; a field left out (null) is unchanged. The slug never changes (it identifies the organization).
+         */
+        OrgUpdate: {
+            /** Contact Email */
+            contact_email?: string | null;
+            /** Contact Name */
+            contact_name?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Timezone */
+            timezone?: string | null;
         };
         /**
          * PasswordChangeRequest
@@ -7183,8 +7826,38 @@ export interface components {
             };
             /** Last 24H */
             last_24h: number;
+            /**
+             * Unattributed Sources
+             * @default []
+             */
+            unattributed_sources: components["schemas"]["QuarantinedSource"][];
             /** Unmapped Groups */
             unmapped_groups: string[];
+        };
+        /**
+         * QuarantinedSource
+         * @description Events of the Wazuh manager (agent 000) that no live registration could attribute.
+         */
+        QuarantinedSource: {
+            /** Events */
+            events: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "syslog" | "agentless" | "manager_local";
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Value
+             * @description The sender IP (syslog), the agentless host, or the manager's local log location
+             */
+            value: string;
         };
         /** ReadinessCheck */
         ReadinessCheck: {
@@ -8112,7 +8785,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "collector" | "vms_worker" | "forwarder" | "email_gateway" | "backup_agent";
+            kind: "collector" | "vms_worker" | "forwarder" | "email_gateway" | "backup_agent" | "ti_feeder";
             /**
              * Org Id
              * Format: uuid
@@ -8633,6 +9306,13 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Log Source Id
+             * @description The registered syslog or agentless source the alert came from (events of the Wazuh manager, agent 000), if any
+             */
+            log_source_id?: string | null;
+            /** Log Source Name */
+            log_source_name?: string | null;
             /** Mitre Techniques */
             mitre_techniques: string[];
             /**
@@ -8969,6 +9649,39 @@ export interface components {
             id: string;
             /** Role */
             role: string;
+        };
+        /** UserSearchList */
+        UserSearchList: {
+            /** Items */
+            items: components["schemas"]["UserSearchResult"][];
+        };
+        /** UserSearchResult */
+        UserSearchResult: {
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Home Org Id */
+            home_org_id?: string | null;
+            /** Home Org Name */
+            home_org_name?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Memberships
+             * @default []
+             */
+            memberships: components["schemas"]["MembershipView"][];
+            /** Role */
+            role?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "disabled";
         };
         /** UserStatusUpdate */
         UserStatusUpdate: {
@@ -10505,6 +11218,285 @@ export interface operations {
             };
         };
     };
+    directory_api_v1_admin_organizations_directory_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                status?: ("active" | "suspended" | "archived") | null;
+                kind?: ("platform" | "client") | null;
+                health?: ("ok" | "attention" | "not_configured" | "inactive") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgDirectory"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_org_api_v1_admin_organizations__org_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgDetail"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_org_api_v1_admin_organizations__org_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgDetail"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    change_org_status_api_v1_admin_organizations__org_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgDetail"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_identities_api_v1_admin_service_identities_get: {
         parameters: {
             query?: never;
@@ -11064,6 +12056,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserCreated"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    search_users_api_v1_admin_users_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSearchList"];
                 };
             };
             /** @description Bad request */
@@ -16821,6 +17880,422 @@ export interface operations {
             };
         };
     };
+    list_sources_api_v1_log_sources_get: {
+        parameters: {
+            query?: {
+                include_retired?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogSourceList"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_source_api_v1_log_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogSourceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogSourceView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_source_api_v1_log_sources__source_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogSourceView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_source_api_v1_log_sources__source_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogSourceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogSourceView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reassign_source_api_v1_log_sources__source_id__reassign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogSourceReassign"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogSourceView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retire_source_api_v1_log_sources__source_id__retire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogSourceRetire"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogSourceView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     request_alert_explanation_api_v1_nhai_alert_explanations_post: {
         parameters: {
             query?: never;
@@ -20931,6 +22406,7 @@ export interface operations {
                 q?: string | null;
                 assigned?: ("me" | "unassigned") | null;
                 asset_id?: string | null;
+                log_source_id?: string | null;
             };
             header?: never;
             path?: never;

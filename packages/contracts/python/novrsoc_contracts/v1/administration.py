@@ -165,6 +165,94 @@ class OnboardingStatus(Contract):
     org_slug: Slug
     steps: dict[str, bool]
     next_step: str | None = None
+    optional_steps: list[str] = Field(default=[], description="Steps that do not count towards completion (not every "
+                                      "organization has syslog or agentless sources)")
+    completed: int = Field(default=0, ge=0)
+    total: int = Field(default=0, ge=0)
+
+
+# ---------------------------------------------------------------- organization management (platform administrators)
+OrgStatus = Literal["active", "suspended", "archived"]
+IntegrationHealth = Literal["ok", "attention", "not_configured", "inactive"]
+
+
+class OrgUpdate(Contract):
+    """Profile fields; a field left out (null) is unchanged. The slug never changes (it identifies the organization)."""
+    name: Annotated[str, Field(min_length=1, max_length=200)] | None = None
+    contact_name: Annotated[str, Field(max_length=200)] | None = None
+    contact_email: Annotated[str, Field(max_length=254, pattern=r"^$|^[^@\s]+@[^@\s]+$")] | None = None
+    timezone: Annotated[str, Field(max_length=64, pattern=r"^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$")] | None = None
+    notes: Annotated[str, Field(max_length=4000)] | None = None
+
+
+class OrgStatusChange(Contract):
+    """suspended: members cannot sign in or switch to it; telemetry keeps arriving. archived: kept for the record; it
+    must hold no Wazuh group mapping and no live log source first, so no event can reach it."""
+    status: OrgStatus
+    reason: Annotated[str, Field(min_length=5, max_length=500)]
+
+
+class OrgIntegrations(Contract):
+    wazuh_groups: int = Field(ge=0)
+    wazuh_agents: int = Field(ge=0, description="Wazuh agents reconciled into the organization's asset inventory")
+    log_sources: int = Field(ge=0)
+    log_sources_receiving: int = Field(ge=0, description="Enabled sources with an event in the last hour")
+    log_sources_never: int = Field(ge=0, description="Enabled sources that have not sent any event yet")
+    log_sources_disabled: int = Field(ge=0)
+    service_identities: int = Field(ge=0)
+    last_alert_at: datetime | None = None
+    health: IntegrationHealth
+    notes: list[str] = Field(default=[], description="Why the health is what it is, one line per finding")
+
+
+class OrgDirectoryRow(Contract):
+    id: uuid.UUID
+    slug: str
+    name: str
+    kind: Literal["platform", "client"]
+    status: OrgStatus
+    status_reason: str = ""
+    contact_name: str = ""
+    contact_email: str = ""
+    timezone: str = "UTC"
+    created_at: datetime
+    updated_at: datetime | None = None
+    users: int = Field(ge=0)
+    assets: int = Field(ge=0)
+    sites: int = Field(ge=0)
+    alerts_7d: int = Field(ge=0)
+    open_cases: int = Field(ge=0)
+    onboarding_completed: int = Field(ge=0)
+    onboarding_total: int = Field(ge=0)
+    next_step: str | None = None
+    integrations: OrgIntegrations
+
+
+class OrgDirectory(Contract):
+    generated_at: datetime
+    items: list[OrgDirectoryRow]
+    total: int = Field(ge=0)
+
+
+class OrgDetail(OrgDirectoryRow):
+    notes: str = ""
+    archived_at: datetime | None = None
+    onboarding: OnboardingStatus
+
+
+class UserSearchResult(Contract):
+    id: uuid.UUID
+    email: str
+    display_name: str
+    status: Literal["active", "disabled"]
+    home_org_id: uuid.UUID | None = None
+    home_org_name: str | None = None
+    role: str | None = None
+    memberships: list[MembershipView] = []
+
+
+class UserSearchList(Contract):
+    items: list[UserSearchResult]
 
 
 class OrgAnalyticsRow(Contract):
@@ -206,7 +294,17 @@ class PlatformHealth(Contract):
     failures_24h: list[dict[str, Any]]
 
 
+class QuarantinedSource(Contract):
+    """Events of the Wazuh manager (agent 000) that no live registration could attribute."""
+    kind: Literal["syslog", "agentless", "manager_local"]
+    value: str = Field(description="The sender IP (syslog), the agentless host, or the manager's local log location")
+    reason: str
+    events: int = Field(ge=0)
+    last_seen_at: datetime
+
+
 class QuarantineSummary(Contract):
     last_24h: int = Field(ge=0)
     by_reason: dict[str, int]
     unmapped_groups: list[str]
+    unattributed_sources: list[QuarantinedSource] = []

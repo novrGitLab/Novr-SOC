@@ -370,6 +370,35 @@ try {
     await T.tab.screenshot(join(OUT, 'password-changed-overview.png'));
 } finally { await T.tab.close(); await T.browser.close(); }
 
+// ---------------------------------------------------------------- platform administrator: organization management
+const PA = await open(9349);
+try {
+    await login(PA.tab, process.env.E2E_USER_P, process.env.E2E_PASS_P, '/app');
+    await go(PA.tab, '/app/admin');
+    const dir = await waitFor(PA.tab, `(() => { const t = document.querySelector('[data-testid=admin-orgs]'); return t && t.textContent.includes('E2E Alpha') && t.textContent.includes('E2E Beta') ? t.textContent : null; })()`, 30000);
+    step('the organization directory lists every organization with status, onboarding and integration health', !!dir && /Active/.test(dir) && /\d+\/\d+/.test(dir), (dir ?? 'not shown').slice(0, 120));
+    await go(PA.tab, `/app/admin/organizations/${process.env.E2E_ORG_A}?tab=integrations`);
+    const tabs = await waitFor(PA.tab, `document.querySelectorAll('[data-testid=org-tabs] [role=tab]').length || null`);
+    await waitFor(PA.tab, `!!document.querySelector('[data-testid=log-sources]') && !document.querySelector('main [aria-busy=true]')`, 30000);
+    const created = await PA.tab.eval(`(async () => {
+        const csrf = decodeURIComponent((document.cookie.split('; ').find((c) => c.startsWith('novrsoc_csrf=')) || '=').split('=')[1]);
+        const r = await fetch('/api/v1/log-sources', { method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, 'X-Org-Id': ${JSON.stringify(process.env.E2E_ORG_A)} },
+            body: JSON.stringify({ name: 'e2e-opnsense', kind: 'syslog', source_ip: '10.250.0.1', host: '', device_type: 'firewall', vendor: 'OPNsense',
+                protocol: 'udp', port: 514, site_id: null, network: null, authorization_reference: 'E2E-AUTH-1', notes: '', enabled: true }) });
+        return r.status; })()`);
+    await PA.tab.eval(`location.reload()`);
+    const row = await waitFor(PA.tab, `(() => { const t = document.querySelector('[data-testid=log-sources-table]'); return t && t.textContent.includes('e2e-opnsense') ? t.textContent : null; })()`, 30000);
+    step('the organization page has its 8 tabs and registers a syslog source to that organization only', tabs === 8 && created === 201 && !!row && /No event yet/.test(row), `${tabs}/${created}`);
+    const other = await PA.tab.eval(`fetch('/api/v1/log-sources', { headers: { 'X-Org-Id': ${JSON.stringify(process.env.E2E_ORG_B)} } }).then((r) => r.json()).then((j) => j.items.map((s) => s.name).join(','))`);
+    step("the other organization does not see the source", !String(other).includes('e2e-opnsense'), String(other));
+    await go(PA.tab, `/app/admin/organizations/${process.env.E2E_ORG_A}?tab=users`);
+    await waitFor(PA.tab, `!!document.querySelector('[data-testid=org-members]')`, 30000);
+    const members = await waitFor(PA.tab, `(() => { const t = document.querySelector('[data-testid=org-members]'); return t && t.textContent.includes('analyst.alpha@e2e') ? t.textContent : null; })()`, 20000);
+    step('the users tab lists the organization members', !!members);
+    await PA.tab.screenshot(join(OUT, 'org-management.png'));
+} finally { await PA.tab.close(); await PA.browser.close(); }
+
 const failed = results.filter((r) => !r.ok).length;
 writeFileSync(join(OUT, 'e2e-result.json'), JSON.stringify({ web: WEB, site_name: siteName, site_id: siteId, case_id: caseId, report_id: reportId, results, failed }, null, 2));
 console.log(`\n${results.length - failed}/${results.length} steps passed`);

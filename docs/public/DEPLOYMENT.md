@@ -134,6 +134,33 @@ This creates the platform organization and one `super_admin`. The one-time passw
 
 The audit log records `PLATFORM_BOOTSTRAPPED` and `PASSWORD_CHANGED`. The command refuses to run a second time.
 
+### Onboarding a client organization
+
+Do every step in **Clients and administration → Organizations**, as a platform administrator. Nothing is pre-loaded,
+and no organization is assumed.
+
+1. **New organization:** enter the name, a permanent slug, the contact and the time zone. Open it; the Overview
+   lists the onboarding steps, and each step opens the tab where it is configured.
+2. **Integrations → Wazuh agent groups:** map the client's groups.
+   - A group belongs to one organization at a time.
+   - Mapping `default` needs the acknowledgement shown on screen, because every agent is in `default` until it is
+     moved.
+   - An agent whose groups map to two organizations is quarantined, not guessed.
+3. **Integrations → Syslog and agentless sources:** register each device that sends syslog to the Wazuh manager.
+   Record its name, its source IP as the manager receives it, its device type, vendor, protocol and port, its site
+   and network, and the client's authorization reference.
+   - Events from an unregistered or disabled source are quarantined.
+   - The manager's own events are always quarantined.
+4. **Assets → Sync Wazuh agents now:** reconciles the agents into the client's inventory. The endpoints table shows
+   their Wazuh status.
+5. **Users and teams:** assign existing analysts to the organization. Use **Create account** only for people who
+   have no account yet.
+6. **Check the quarantine:** **Organizations → Quarantined events** lists unmapped groups and unattributed sources.
+   An entry that belongs to the client means a mapping or a registration is missing.
+
+The Wazuh manager must accept the device's syslog itself, in a `<remote>` block of type `syslog` that allows the
+device's address. NovrSOC never changes the Wazuh configuration.
+
 ## 5. Backups, upgrades and migrations
 
 **Backups**
@@ -204,6 +231,19 @@ The NOLOGIN role can stay; it holds no table privileges.
 - it upgrades;
 - it compares fingerprints of users, password hashes, organizations, memberships, machine credentials and audit
   history.
+
+**Upgrading to migration 0017 (organization management, log sources)**
+
+There is no manual step beyond the usual backup: `docker compose up -d --wait` applies it.
+
+- Existing organizations stay `active` and keep their data. Their new profile fields start empty.
+- Existing alerts are unchanged.
+- From then on, events received by the Wazuh manager itself (agent `000`) are attributed only through registered
+  sources. Before, they could match a group mapping. Register the client's syslog devices right after the upgrade,
+  and check **Quarantined events** for any sender that is still unregistered.
+
+Rollback: `alembic downgrade 0016_nhai_worker_role`. This removes the log sources and their alert links, and the
+quarantine entries with the new reasons. It also turns any archived organization back into a suspended one.
 
 **Migrations**
 

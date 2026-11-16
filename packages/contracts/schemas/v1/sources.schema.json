@@ -1,0 +1,622 @@
+{
+  "$defs": {
+    "LogSourceCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization_reference": {
+          "description": "The client authorization (ticket, contract clause) for collecting this device's logs",
+          "maxLength": 200,
+          "minLength": 3,
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "device_type": {
+          "enum": [
+            "firewall",
+            "router",
+            "switch",
+            "linux_server",
+            "windows_server",
+            "network_appliance",
+            "storage",
+            "other"
+          ],
+          "title": "Device Type",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "host": {
+          "default": "",
+          "description": "agentless: the host as configured on the Wazuh manager",
+          "maxLength": 253,
+          "pattern": "^$|^[A-Za-z0-9]([A-Za-z0-9.:-]{0,252})$",
+          "title": "Host",
+          "type": "string"
+        },
+        "kind": {
+          "default": "syslog",
+          "enum": [
+            "syslog",
+            "agentless"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 2,
+          "title": "Name",
+          "type": "string"
+        },
+        "network": {
+          "anyOf": [
+            {
+              "maxLength": 49,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "CIDR the source sits in",
+          "title": "Network"
+        },
+        "notes": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Notes",
+          "type": "string"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "protocol": {
+          "default": "udp",
+          "enum": [
+            "udp",
+            "tcp",
+            "tls",
+            "ssh"
+          ],
+          "title": "Protocol",
+          "type": "string"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        },
+        "source_ip": {
+          "anyOf": [
+            {
+              "maxLength": 45,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "syslog: the sender address",
+          "title": "Source Ip"
+        },
+        "vendor": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Vendor",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "device_type",
+        "authorization_reference"
+      ],
+      "title": "LogSourceCreate",
+      "type": "object"
+    },
+    "LogSourceList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/LogSourceView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "LogSourceList",
+      "type": "object"
+    },
+    "LogSourceReassign": {
+      "additionalProperties": false,
+      "properties": {
+        "org_id": {
+          "description": "The organization that now owns the device",
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org_id",
+        "reason"
+      ],
+      "title": "LogSourceReassign",
+      "type": "object"
+    },
+    "LogSourceRetire": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 5,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "LogSourceRetire",
+      "type": "object"
+    },
+    "LogSourceUpdate": {
+      "additionalProperties": false,
+      "description": "A field left out (null) is unchanged. Changing source_ip or host changes what the source matches.",
+      "properties": {
+        "authorization_reference": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorization Reference"
+        },
+        "clear_network": {
+          "default": false,
+          "title": "Clear Network",
+          "type": "boolean"
+        },
+        "clear_site": {
+          "default": false,
+          "title": "Clear Site",
+          "type": "boolean"
+        },
+        "device_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "firewall",
+                "router",
+                "switch",
+                "linux_server",
+                "windows_server",
+                "network_appliance",
+                "storage",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Device Type"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "maxLength": 253,
+              "pattern": "^$|^[A-Za-z0-9]([A-Za-z0-9.:-]{0,252})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 2,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "network": {
+          "anyOf": [
+            {
+              "maxLength": 49,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Network"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "protocol": {
+          "anyOf": [
+            {
+              "enum": [
+                "udp",
+                "tcp",
+                "tls",
+                "ssh"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Protocol"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Id"
+        },
+        "source_ip": {
+          "anyOf": [
+            {
+              "maxLength": 45,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Ip"
+        },
+        "vendor": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vendor"
+        }
+      },
+      "title": "LogSourceUpdate",
+      "type": "object"
+    },
+    "LogSourceView": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Asset Id"
+        },
+        "authorization_reference": {
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "device_type": {
+          "enum": [
+            "firewall",
+            "router",
+            "switch",
+            "linux_server",
+            "windows_server",
+            "network_appliance",
+            "storage",
+            "other"
+          ],
+          "title": "Device Type",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "event_count": {
+          "minimum": 0,
+          "title": "Event Count",
+          "type": "integer"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "syslog",
+            "agentless"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Event At"
+        },
+        "match_value": {
+          "title": "Match Value",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "network": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Network"
+        },
+        "notes": {
+          "title": "Notes",
+          "type": "string"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Port"
+        },
+        "protocol": {
+          "enum": [
+            "udp",
+            "tcp",
+            "tls",
+            "ssh"
+          ],
+          "title": "Protocol",
+          "type": "string"
+        },
+        "retired_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retired At"
+        },
+        "retired_reason": {
+          "default": "",
+          "title": "Retired Reason",
+          "type": "string"
+        },
+        "site_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Site Id"
+        },
+        "site_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Site Name"
+        },
+        "source_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Ip"
+        },
+        "status": {
+          "description": "receiving: an event in the last hour; quiet: in the last 24 hours; silent: none for 24 hours or more; never_received; disabled; retired (reassigned or removed, kept for history)",
+          "enum": [
+            "receiving",
+            "quiet",
+            "silent",
+            "never_received",
+            "disabled",
+            "retired"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "vendor": {
+          "title": "Vendor",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "name",
+        "kind",
+        "source_ip",
+        "host",
+        "match_value",
+        "device_type",
+        "vendor",
+        "protocol",
+        "port",
+        "site_id",
+        "network",
+        "enabled",
+        "authorization_reference",
+        "notes",
+        "asset_id",
+        "event_count",
+        "last_event_at",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "LogSourceView",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/sources.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: sources",
+  "version": "1.0.0"
+}

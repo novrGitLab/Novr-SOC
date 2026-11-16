@@ -134,7 +134,7 @@ class ServiceWhoAmI(Contract):
     identity_id: uuid.UUID
     org_id: uuid.UUID
     site_id: uuid.UUID | None
-    kind: Literal["collector", "vms_worker", "forwarder", "email_gateway", "backup_agent"]
+    kind: Literal["collector", "vms_worker", "forwarder", "email_gateway", "backup_agent", "ti_feeder"]
     scopes: list[str]
 
 
@@ -169,6 +169,18 @@ PlatformStatus.model_rebuild()
 # ---------------------------------------------------------------- Phase 6 pilot (additive): administration
 RoleName = Literal["super_admin", "soc_manager", "analyst", "executive", "portal_user"]
 ServiceKind = Literal["collector", "vms_worker", "forwarder", "email_gateway", "backup_agent", "ti_feeder"]
+# The ONE definition of machine identity kinds and the scopes each may hold. The API (admin), the operator CLI and the
+# database CHECK on service_identities.kind must agree with it (tests/test_identity_kinds.py). Every kind is bound to
+# one organization; a forwarder belongs to the platform organization (it delivers for every mapped organization).
+SERVICE_KIND_SCOPES: dict[str, frozenset[str]] = {
+    "forwarder": frozenset({"alerts:ingest"}),
+    "vms_worker": frozenset({"vms:worker"}),
+    "ti_feeder": frozenset({"intel:ingest"}),
+    "collector": frozenset({"telemetry:ingest"}),
+    "email_gateway": frozenset({"email:verdicts"}),
+    "backup_agent": frozenset({"backups:report"}),
+}
+PLATFORM_ONLY_KINDS = frozenset({"forwarder"})
 
 
 class AdminOrg(Contract):
@@ -176,13 +188,23 @@ class AdminOrg(Contract):
     slug: str
     name: str
     kind: Literal["platform", "client"]
-    status: Literal["active", "suspended"]
+    status: Literal["active", "suspended", "archived"]
     created_at: datetime
+    contact_name: str = ""
+    contact_email: str = ""
+    timezone: str = "UTC"
+    notes: str = ""
+    status_reason: str = ""
+    updated_at: datetime | None = None
+    archived_at: datetime | None = None
 
 
 class AdminOrgCreate(Contract):
     slug: Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9-]{1,62}$")]
     name: Annotated[str, Field(min_length=1, max_length=200)]
+    contact_name: Annotated[str, Field(max_length=200)] = ""
+    contact_email: Annotated[str, Field(max_length=254, pattern=r"^$|^[^@\s]+@[^@\s]+$")] = ""
+    timezone: Annotated[str, Field(max_length=64, pattern=r"^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$")] = "UTC"
 
 
 class AdminOrgList(Contract):

@@ -56,6 +56,7 @@ apps/api/app/modules/cnii/__init__.py
 apps/api/app/modules/continuity/__init__.py
 apps/api/app/modules/endpoints/__init__.py
 apps/api/app/modules/insights/__init__.py
+apps/api/app/modules/log_sources/__init__.py
 apps/api/app/modules/nhai/__init__.py
 apps/api/app/modules/posture/__init__.py
 apps/api/app/modules/protection/__init__.py
@@ -78,6 +79,7 @@ apps/api/app/routers/auth.py
 apps/api/app/routers/platform.py
 apps/api/app/routers/tenant.py
 apps/api/app/secops/__init__.py
+apps/api/app/secops/log_sources.py
 apps/api/app/secops/sla.py
 apps/api/app/soar/__init__.py
 apps/api/app/soar/bridge_client.py
@@ -91,6 +93,8 @@ apps/api/tests/helpers/rls.py
 apps/api/tests/helpers/tls_server.py
 apps/api/tests/modules/admin/test_admin_and_cnii.py
 apps/api/tests/modules/admin/test_admin_consolidation.py
+apps/api/tests/modules/admin/test_identity_kinds.py
+apps/api/tests/modules/admin/test_org_management.py
 apps/api/tests/modules/assets/test_assets.py
 apps/api/tests/modules/chat/test_chat.py
 apps/api/tests/modules/cnii/test_cnii_monitoring.py
@@ -101,6 +105,7 @@ apps/api/tests/modules/endpoints/test_wazuh_live.py
 apps/api/tests/modules/insights/test_actors_cves.py
 apps/api/tests/modules/insights/test_insights.py
 apps/api/tests/modules/insights/test_stix_taxii.py
+apps/api/tests/modules/log_sources/test_log_sources.py
 apps/api/tests/modules/nhai/test_nhai.py
 apps/api/tests/modules/nhai/test_nhai_consolidation.py
 apps/api/tests/modules/nhai/test_nhai_worker_role.py
@@ -151,12 +156,17 @@ apps/web/scripts/lib/ts-graph.mjs
 apps/web/src/app/(app)/app/_overview/PlatformPanel.tsx
 apps/web/src/app/(app)/app/_overview/shared.tsx
 apps/web/src/app/(app)/app/account/page.tsx
-apps/web/src/app/(app)/app/admin/OnboardingPanel.tsx
+apps/web/src/app/(app)/app/admin/_org/GroupMappingsPanel.tsx
+apps/web/src/app/(app)/app/admin/_org/IdentitiesPanel.tsx
+apps/web/src/app/(app)/app/admin/_org/LogSourcesPanel.tsx
+apps/web/src/app/(app)/app/admin/_org/QuarantinePanel.tsx
+apps/web/src/app/(app)/app/admin/_org/meta.ts
 apps/web/src/app/(app)/app/admin/analytics/page.tsx
 apps/web/src/app/(app)/app/admin/api.ts
 apps/web/src/app/(app)/app/admin/billing/page.tsx
 apps/web/src/app/(app)/app/admin/exports/page.tsx
 apps/web/src/app/(app)/app/admin/health/page.tsx
+apps/web/src/app/(app)/app/admin/organizations/[id]/page.tsx
 apps/web/src/app/(app)/app/admin/page.tsx
 apps/web/src/app/(app)/app/admin/users/page.tsx
 apps/web/src/app/(app)/app/admin/wazuh-groups/page.tsx
@@ -309,6 +319,7 @@ packages/contracts/python/novrsoc_contracts/v1/protection.py
 packages/contracts/python/novrsoc_contracts/v1/secops.py
 packages/contracts/python/novrsoc_contracts/v1/soar.py
 packages/contracts/python/novrsoc_contracts/v1/soc.py
+packages/contracts/python/novrsoc_contracts/v1/sources.py
 packages/contracts/python/novrsoc_contracts/v1/vms.py
 packages/contracts/schemas/v1/administration.schema.json
 packages/contracts/schemas/v1/ai_gateway.schema.json
@@ -328,6 +339,7 @@ packages/contracts/schemas/v1/protection.schema.json
 packages/contracts/schemas/v1/secops.schema.json
 packages/contracts/schemas/v1/soar.schema.json
 packages/contracts/schemas/v1/soc.schema.json
+packages/contracts/schemas/v1/sources.schema.json
 packages/contracts/schemas/v1/vms.schema.json
 packages/contracts/tests/test_compat_gate.py
 packages/contracts/tests/test_contracts.py
@@ -354,6 +366,7 @@ packages/db/migrations/versions/0013_secops_soar_ai_activity.py
 packages/db/migrations/versions/0014_intel_cnii_continuity.py
 packages/db/migrations/versions/0015_admin_exports_chat.py
 packages/db/migrations/versions/0016_nhai_worker_role.py
+packages/db/migrations/versions/0017_org_management_log_sources.py
 release/PUBLIC_ALLOWLIST.txt
 release/PUBLIC_MANIFEST.tsv
 scripts/contracts/compat.py

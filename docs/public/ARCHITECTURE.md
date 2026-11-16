@@ -34,10 +34,46 @@ authenticate with machine identities: tokens bound to one organization and one r
 - Permissions are checked in the API for every route. The interface hides what a role cannot do, but it is not the
   control.
 - A machine caller's organization comes from its identity, never from its payload. An alert's organization comes
-  from its Wazuh agent-group mapping.
+  from an explicit attribution (see below), never from the alert.
+- Machine identity kinds and the scopes each may hold are one definition shared by the API, the operator CLI, the
+  contracts and the database: `forwarder` (platform organization only), `vms_worker`, `ti_feeder`, `collector`,
+  `email_gateway`, `backup_agent`.
 - Cross-organization access by platform staff is explicit. It is recorded in the audit log.
 - CNII monitoring needs a CNII designation for the user, as well as the permission. It also needs a recorded
   authorization for each monitored asset, checked on the server.
+
+## Event attribution
+
+Every security event is stored under exactly one organization, or quarantined:
+
+| Event | Attributed by | Quarantined when |
+|---|---|---|
+| From a Wazuh agent | The organization that maps the agent's groups. A group maps to at most one organization. | No mapped group, or groups of two organizations |
+| Received by the Wazuh manager itself (agent `000`): remote syslog | The live registration of the sender address that the manager records in `location` | The sender isn't registered, or its registration is disabled |
+| Received by the Wazuh manager itself: agentless check | The live registration of the host configured on the manager | Same as remote syslog |
+| The manager's own logs and modules | Never attributed | Always |
+
+Agent `000`'s groups and name are never used, and the hostname inside a syslog message is never trusted.
+
+A source is registered to one organization at a time, across all organizations, with an authorization reference.
+Moving it to another organization retires the old registration, which keeps its history and alert links, and only
+later events go to the new organization.
+
+Wazuh's `default` group contains every agent until the agent is reassigned. Mapping it needs an explicit
+acknowledgement, and the group stays flagged as broad.
+
+Quarantined events are visible to platform administrators, with the unmapped groups and unattributed sources.
+
+## Organizations
+
+A client organization is `active`, `suspended` or `archived`:
+
+- **Suspended:** its members can't sign in, and nobody can switch to it.
+- **Archived:** it must have no Wazuh mappings and no live sources first.
+
+The directory and the onboarding progress are computed by the database from real configuration
+(`novrsoc.org_directory()`, `novrsoc.org_onboarding()`). Analysts monitor several organizations through `operations`
+assignments of their one account. Switching is audited.
 
 ## Asset inventory
 

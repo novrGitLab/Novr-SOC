@@ -31,6 +31,7 @@ MODULES = [
     ("vms", "Vulnerability management", "live", "Scopes, scans, schedules, findings, retests and remediation. Scanning runs only where the installation enables it (local test targets in the pilot).", "vms:read"),
     ("insights", "Threat Insights", "live", "Indicators, matching, correlation, STIX 2.1 store, threat actors, CVE intelligence and evidence snapshots.", "intel:read"),
     ("assets", "Asset inventory", "live", "One canonical identity per asset, reconciled from Wazuh, VMS, email domains and manual entries.", "assets:read"),
+    ("log_sources", "Syslog and agentless sources", "live", "Devices that reach NovrSOC through the Wazuh manager, each registered to exactly one organization; unattributed events are quarantined.", "endpoints:read"),
     ("collectors", "Collectors and discovery", "live", "Wazuh sync runs on demand; network discovery and cloud inventory are configuration only (not authorized).", "assets:read"),
     ("email_security", "Email security", "live", "Domains and DMARC aggregate reports. Domain verification needs a DNS adapter (not configured).", "protection:read"),
     ("brand_protection", "Brand protection", "live", "Watch subjects and lookalike monitoring through the configured resolver.", "protection:read"),

@@ -80,6 +80,32 @@
           "title": "Id",
           "type": "string"
         },
+        "log_source_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The registered syslog or agentless source the alert came from (events of the Wazuh manager, agent 000), if any",
+          "title": "Log Source Id"
+        },
+        "log_source_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Log Source Name"
+        },
         "mitre_techniques": {
           "items": {
             "type": "string"
@@ -985,6 +1011,32 @@
           "format": "uuid",
           "title": "Id",
           "type": "string"
+        },
+        "log_source_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The registered syslog or agentless source the alert came from (events of the Wazuh manager, agent 000), if any",
+          "title": "Log Source Id"
+        },
+        "log_source_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Log Source Name"
         },
         "mitre_techniques": {
           "items": {
