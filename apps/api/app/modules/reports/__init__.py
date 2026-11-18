@@ -64,7 +64,7 @@ def build_organization_summary(conn: Connection, p: Principal, settings: Setting
             out.append(_section("endpoints", "Endpoints (NovrSIEM)", "integration_unconfigured",
                                 note="No NovrSIEM connection is configured; endpoint figures are unavailable, not zero."))
         else:
-            scope = org_scope(conn, p.org_id)
+            scope = org_scope(conn, p.org_id, settings.collection_groups)
             agents = source.list_agents(scope)
             by_status: dict[str, int] = {}
             vulns = {"critical": 0, "high": 0, "medium": 0, "low": 0}

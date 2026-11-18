@@ -11,6 +11,7 @@ const P = {
     playbooks: '/api/v1/soar/playbooks', policy: '/api/v1/soar/policy', recs: '/api/v1/soar/recommendations',
     runs: '/api/v1/soar/runs', run: '/api/v1/soar/runs/{run_id}', approvals: '/api/v1/soar/approvals',
     decide: '/api/v1/soar/approvals/{approval_id}/decision', dispatch: '/api/v1/soar/steps/{step_id}/dispatch',
+    automation: '/api/v1/soar/automation/events',
 } as const satisfies Record<string, ApiPath>;
 
 export const soarApi = {
@@ -26,4 +27,12 @@ export const soarApi = {
     decide: (orgId: string | null, id: string, decision: 'approve' | 'reject', reason: string) =>
         request<Run>(fillPath(P.decide, { approval_id: id }), { method: 'POST', orgId, body: { decision, reason } satisfies Schemas['ApprovalDecisionRequest'] }),
     redispatch: (orgId: string | null, stepId: string) => request<Run>(fillPath(P.dispatch, { step_id: stepId }), { method: 'POST', orgId }),
+    automationEvents: (orgId: string | null) => request<Schemas['AutomationEventList']>(`${P.automation}${queryString({ limit: 200 })}`, { orgId }),
 };
+
+/** The policy as an update body: the base fields, optionally with a new automation policy. */
+export function policyBody(p: Policy, automation?: Schemas['SoarAutomationPolicy']): Schemas['SoarPolicyUpdate'] {
+    return { allowed_actions: p.allowed_actions, allowed_agent_groups: p.allowed_agent_groups, live_enabled: p.live_enabled,
+        approval_ttl_minutes: p.approval_ttl_minutes, max_runs_per_hour: p.max_runs_per_hour ?? 20, max_dispatch_attempts: p.max_dispatch_attempts ?? 3,
+        ...(automation ? { automation } : {}) };
+}

@@ -61,11 +61,11 @@ export function AlertIntelPanel({ alertId }: { alertId: string }) {
     }
     const job = jobs.data?.items[0];
     return (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             <Loaded title="Threat Insights" hint="Deterministic indicator matches for this alert" data={matches.data} error={matches.error} testid="alert-ti">
                 {(d) => d.items.length === 0 ? <p className="text-xs text-foreground-muted">No indicator of this organization matches this alert.</p> : (
                     <ul className="text-sm space-y-1">{d.items.map((m) => (
-                        <li key={m.id}><Tag strong>{m.indicator.type}</Tag> <span className="font-mono">{m.indicator.value}</span> <span className="text-xs text-foreground-muted">
+                        <li key={m.id}><Tag strong>{m.indicator.type}</Tag> <span className="font-mono wrap-any">{m.indicator.value}</span> <span className="text-xs text-foreground-muted">
                             from {m.observable.source_field} · {m.indicator.provenance.source} · confidence {m.confidence.score} ({m.confidence.band}) · {m.verdict}</span></li>))}</ul>
                 )}
             </Loaded>

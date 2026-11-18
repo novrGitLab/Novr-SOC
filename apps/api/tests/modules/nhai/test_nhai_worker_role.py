@@ -60,7 +60,8 @@ def test_role_attributes_and_exact_grants(owner):
         assert got == EXPECTED
         funcs = {f for (f,) in c.execute(text("""SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
                                                  WHERE n.nspname = 'novrsoc' AND has_function_privilege(:r, p.oid, 'EXECUTE')"""), {"r": ROLE})}
-        assert funcs == {"app_org", "nhai_claim_job", "nhai_expire_jobs"}
+        # nhai_heartbeat (migration 0021): writes ONLY the nhai_worker heartbeat row, for NHAI readiness
+        assert funcs == {"app_org", "nhai_claim_job", "nhai_expire_jobs", "nhai_heartbeat"}
 
 
 def test_worker_completes_every_consolidated_task_as_the_worker_role(fixture_settings, fixture_alerts, alpha_finding,  # noqa: F811

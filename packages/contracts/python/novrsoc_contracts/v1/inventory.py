@@ -161,6 +161,26 @@ class AssetAlertRef(Contract):
     source: str
 
 
+class CaseAssetCorrelation(Contract):
+    """One canonical asset of a case: the case's alerts on it and the asset's open vulnerability findings."""
+    asset_id: uuid.UUID
+    display_name: str
+    criticality: str
+    exposure: str
+    alert_ids: list[uuid.UUID]
+    open_findings: list[AssetFindingRef] = []
+    open_findings_total: int = Field(default=0, ge=0, description="All open findings of the asset; `open_findings` lists the riskiest")
+
+
+class CaseCorrelation(Contract):
+    """SIEM and VMS evidence of one case joined through the canonical asset inventory (never by hostname guessing)."""
+    case_id: uuid.UUID
+    assets: list[CaseAssetCorrelation]
+    alerts_without_asset: int = Field(ge=0, description="Linked alerts not yet attributed to an inventory asset")
+    findings_visible: bool = Field(description="False when the caller may not read VMS findings (vms:read): assets and "
+                                               "alerts are still listed, findings are not")
+
+
 class AssetCaseRef(Contract):
     id: uuid.UUID
     reference: str

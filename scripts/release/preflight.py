@@ -95,7 +95,7 @@ def check_compose() -> None:
     import tempfile
     tmp = Path(tempfile.mkdtemp(prefix="novrsoc-preflight-"))
     (tmp / "secrets").mkdir()
-    for name in ("api.env", "migrate.env", "backup.env", "secrets/pg_superuser_password", "secrets/pg_owner_password",
+    for name in ("api.env", "migrate.env", "backup.env", "vms-greenbone.env", "secrets/pg_superuser_password", "secrets/pg_owner_password",
                  "secrets/pg_app_password"):
         (tmp / name).write_text("", encoding="utf-8")   # empty stand-ins: compose only needs the files to exist
     dummy = {"NOVRSOC_IMAGE_TAG": "preflight", "NOVRSOC_CONFIG_DIR": str(tmp), "NOVRSOC_BACKUP_DIR": str(tmp)}

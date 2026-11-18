@@ -186,7 +186,8 @@ class ExecutionOutcome(Internal):
 class SoarAuditEvent(Internal):
     """Every state change of a run, approval or step is also an audit_events row with these actions."""
     action: Literal["SOAR_RUN_REQUESTED", "SOAR_RUN_STATE", "SOAR_APPROVAL_REQUESTED", "SOAR_APPROVAL_DECIDED",
-                    "SOAR_STEP_EXECUTED", "SOAR_STEP_RETRY_SCHEDULED", "SOAR_LIVE_REFUSED"]
+                    "SOAR_STEP_EXECUTED", "SOAR_STEP_RETRY_SCHEDULED", "SOAR_LIVE_REFUSED", "SOAR_AUTOMATION_CHANGED",
+                    "SOAR_AUTOMATIC_RUN", "SOAR_POLICY_AUTHORIZED", "SOAR_AUTOMATIC_CASE"]
     run_id: uuid.UUID
     step_key: str | None = None
     actor: ActorRef
@@ -207,10 +208,14 @@ class PlaybookTriggers(Contract):
 
 class PlaybookExecutionPolicy(Contract):
     """Consolidation: how an APPROVED playbook version may run. Live mode still needs the organization's response
-    policy (live_enabled) and a human approval for every consequential step; this policy can only narrow that."""
+    policy (live_enabled); this policy can only narrow that. `automatic`: the version may also be started by NovrSOAR
+    automation when a new alert matches its triggers (the organization's automation must be on as well). A
+    consequential step of an automatic run proceeds without a person only when the organization's policy
+    pre-authorizes the action and every guard passes; otherwise it waits for a human approval."""
     modes: Annotated[list[ExecutionMode], Field(min_length=1, max_length=2)] = [ExecutionMode.DRY_RUN]
     min_case_severity: Literal["low", "medium", "high", "critical"] = "low"
     max_runs_per_day: Annotated[int, Field(ge=1, le=500)] = 20
+    automatic: bool = False
 
 
 class PlaybookCreate(Contract):
@@ -278,6 +283,36 @@ class SoarPolicyView(Contract):
     emergency_at: datetime | None = None
     max_runs_per_hour: Annotated[int, Field(ge=1, le=500)] = 20
     max_dispatch_attempts: Annotated[int, Field(ge=1, le=10)] = 3
+    automation: "SoarAutomationPolicy" = Field(default_factory=lambda: SoarAutomationPolicy(),
+                                               description="Policy-driven orchestration (off by default)")
+    automation_since: datetime | None = Field(default=None, description="When automation was last switched on: only alerts "
+                                                                        "received after this are ever acted on")
+
+
+ProtectedTarget = Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.:/\\-]{1,64}$")]
+
+
+class SoarAutomationPolicy(Contract):
+    """Policy-driven orchestration of one organization. Off by default.
+
+    * `case_creation`: new alerts at or above `case_min_severity` open (or join) an automation case without a person.
+    * `enabled`: approved playbook versions marked `automatic` start on matching new alerts.
+    * `pre_authorized_actions`: consequential actions that may proceed WITHOUT a per-event human approval, and only when
+      the detection confidence is at least `min_confidence`, the target comes from the alert's own evidence, its agent
+      groups are authorized, it is not a protected target, and fewer than `max_dispatches_per_hour` automatic dispatches
+      happened in the last hour. Each must also be in the policy's `allowed_actions`. Everything else waits for a person.
+    * `protected_targets`: IP addresses or networks (CIDR), NovrAgent ids and account names that no response action
+      (automatic or approved) may ever target."""
+    enabled: bool = False
+    case_creation: bool = False
+    case_min_severity: Literal["low", "medium", "high", "critical"] = "high"
+    pre_authorized_actions: list[ActionType] = []
+    min_confidence: Annotated[int, Field(ge=0, le=100)] = 80
+    max_dispatches_per_hour: Annotated[int, Field(ge=1, le=500)] = 20
+    protected_targets: Annotated[list[ProtectedTarget], Field(max_length=200)] = []
+
+
+SoarPolicyView.model_rebuild()
 
 
 class SoarPolicyUpdate(Contract):
@@ -287,6 +322,7 @@ class SoarPolicyUpdate(Contract):
     approval_ttl_minutes: Annotated[int, Field(ge=5, le=1440)] = 60
     max_runs_per_hour: Annotated[int, Field(ge=1, le=500)] = 20
     max_dispatch_attempts: Annotated[int, Field(ge=1, le=10)] = 3
+    automation: SoarAutomationPolicy | None = Field(default=None, description="Omitted: the automation policy is unchanged")
 
 
 StepState = Literal["pending", "awaiting_approval", "rejected", "expired", "dispatched", "succeeded", "failed", "dry_run",
@@ -314,6 +350,10 @@ class StepView(Contract):
     request_id: uuid.UUID | None = None
     receipt: ExecutionReceipt | None = None
     approval_id: uuid.UUID | None = None
+    authorization: Literal["human", "policy"] | None = Field(default=None, description="Who authorized a consequential step: "
+                                                                                       "a person, or the pre-authorization policy")
+    request: dict[str, Any] | None = Field(default=None, description="The exact request body signed and sent to NovrSOAR "
+                                                                     "(no secret is part of it)")
 
 
 class ApprovalView(Contract):
@@ -329,6 +369,7 @@ class ApprovalView(Contract):
     reason: str | None = None
     expires_at: datetime
     created_at: datetime
+    authorization: Literal["human", "policy"] = "human"
 
 
 class ApprovalList(Contract):
@@ -353,6 +394,9 @@ class RunView(Contract):
     created_at: datetime
     updated_at: datetime
     steps: list[StepView] = []
+    origin: Literal["manual", "automatic"] = "manual"
+    confidence: int | None = Field(default=None, ge=0, le=100, description="Automatic runs: the detection confidence")
+    trigger_alert_id: uuid.UUID | None = None
 
 
 class RunList(Contract):
@@ -415,6 +459,41 @@ class SoarOperations(Contract):
     approved_playbooks: int = Field(ge=0)
     pending_playbook_reviews: int = Field(ge=0)
     timeline: list[SoarTimelineEntry]
+    automation_enabled: bool = False
+    automatic_runs_24h: int = Field(default=0, ge=0)
+    policy_authorized_24h: int = Field(default=0, ge=0, description="Consequential steps dispatched under pre-authorization")
+    automatic_cases_24h: int = Field(default=0, ge=0)
+
+
+class AutomationDecision(str, Enum):
+    CASE_CREATED = "case_created"
+    CASE_JOINED = "case_joined"
+    RUN_STARTED = "run_started"
+    SKIPPED_EMERGENCY_STOP = "skipped_emergency_stop"
+    SKIPPED_LIMIT = "skipped_limit"
+    SKIPPED_SEVERITY = "skipped_severity"
+    FAILED = "failed"
+
+
+class AutomationEventView(Contract):
+    """One decision NovrSOAR automation took for one new alert (and playbook, when one matched)."""
+    id: uuid.UUID
+    created_at: datetime
+    alert_id: uuid.UUID
+    playbook_name: str = ""
+    decision: AutomationDecision
+    confidence: int = Field(ge=0, le=100)
+    confidence_factors: list[str] = []
+    case_id: uuid.UUID | None = None
+    run_id: uuid.UUID | None = None
+    detail: str = ""
+
+
+class AutomationEventList(Contract):
+    items: list[AutomationEventView]
+    enabled: bool
+    case_creation: bool
+    since: datetime | None = None
 
 
 class AiActivityView(Contract):

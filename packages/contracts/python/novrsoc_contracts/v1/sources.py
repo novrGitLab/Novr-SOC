@@ -22,7 +22,7 @@ from .common import Contract
 SourceKind = Literal["syslog", "agentless"]
 DeviceType = Literal["firewall", "router", "switch", "linux_server", "windows_server", "network_appliance", "storage", "other"]
 SourceProtocol = Literal["udp", "tcp", "tls", "ssh"]
-SourceStatus = Literal["receiving", "quiet", "silent", "never_received", "disabled", "retired"]
+SourceStatus = Literal["receiving", "quiet", "silent", "never_received", "disabled", "retired", "pending_verification"]
 HostName = Annotated[str, Field(max_length=253, pattern=r"^$|^[A-Za-z0-9]([A-Za-z0-9.:-]{0,252})$")]
 
 
@@ -125,6 +125,8 @@ class LogSourceView(Contract):
     asset_id: uuid.UUID | None
     event_count: int = Field(ge=0)
     last_event_at: datetime | None
+    verified: bool = Field(default=True, description="False until a NovrSOC administrator verifies a sender the organization registered itself; until then it stays disabled and its events are quarantined")
+    verified_at: datetime | None = None
     status: SourceStatus = Field(description="receiving: an event in the last hour; quiet: in the last 24 hours; silent: none for "
                                  "24 hours or more; never_received; disabled; retired (reassigned or removed, kept for history)")
     retired_at: datetime | None = None

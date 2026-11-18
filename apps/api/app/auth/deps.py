@@ -5,7 +5,8 @@ Machine callers: "Authorization: Bearer nsk_<id>.<secret>"; the organization (an
 service identity record, never from the request.
 
 Order inside one request transaction:
-  1. session lookup (SECURITY DEFINER)        -> user id
+  0. portal of the request host (app.portal)  -> platform / one organization's portal / unknown
+  1. session lookup (SECURITY DEFINER)        -> user id; the session must belong to THIS host's portal
   2. set app.user_id (+ app.platform_admin for super_admin)
   3. memberships (RLS: own rows)              -> home role
   4. organization resolution (X-Org-Id)       -> set app.org_id
@@ -27,6 +28,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, forbidden, unauthenticated
 from app.core.security import digests_equal, parse_machine_credential, sha256
 from app.db.session import request_connection, set_context
+from app import portal as portals
 
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_HEADER = "X-CSRF-Token"
@@ -49,6 +51,14 @@ class Principal:
         return permission in self.permissions
 
 
+def _is_uuid(v: str) -> bool:
+    try:
+        uuid.UUID(v.strip())
+        return True
+    except ValueError:
+        return False
+
+
 def client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
@@ -61,10 +71,19 @@ def _authenticate_session(request: Request, conn: Connection, settings: Settings
     token = request.cookies.get(settings.session_cookie_name)
     if not token:
         raise unauthenticated()
-    row = conn.execute(text("SELECT session_id, user_id, csrf_hash FROM novrsoc.auth_session(:h)"),
+    row = conn.execute(text("SELECT session_id, user_id, csrf_hash, portal_org_id FROM novrsoc.auth_session_portal(:h)"),
                        {"h": sha256(token)}).first()
     if not row:
         raise unauthenticated("Session expired or invalid")
+    here = portals.resolve(conn, request, settings)
+    request.state.portal = here
+    expected = here.org_id if here.kind == "tenant" else None
+    if here.kind == "unknown" or row.portal_org_id != expected:
+        # A session is valid only on the host it was created on: a copied cookie or a forged Host never moves it.
+        audit.record("SESSION_HOST_MISMATCH", "denied", org_id=row.portal_org_id, actor_id=row.user_id, resource_type="session",
+                     resource_id=str(row.session_id), request_id=request.state.request_id, ip=client_ip(request),
+                     details={"host": here.host[:253], "portal": here.kind, "path": request.url.path})
+        raise unauthenticated("This session does not belong to this address. Sign in here.")
     if request.method.upper() in UNSAFE:
         presented = request.headers.get(CSRF_HEADER, "")
         if not presented or not digests_equal(sha256(presented), bytes(row.csrf_hash)):
@@ -91,7 +110,17 @@ def current_principal(request: Request, conn: Connection = Depends(request_conne
                      request_id=request.state.request_id, ip=client_ip(request),
                      details={"reason": reason, "method": request.method, "path": request.url.path})
 
-    res = resolve(conn, home=home, memberships=memberships, requested=request.headers.get(ORG_HEADER),
+    here = request.state.portal
+    requested = request.headers.get(ORG_HEADER)
+    if here.kind == "tenant":
+        # An organization portal shows that organization only: no switch, whatever the role or the header says.
+        if home is None or home.org_id != here.org_id:
+            raise unauthenticated("This session does not belong to this address. Sign in here.")
+        if requested and requested.strip() not in ("", str(here.org_id)):
+            audit_denied(uuid.UUID(int=0) if not _is_uuid(requested) else uuid.UUID(requested.strip()), "organization switch on a portal")
+            raise forbidden("An organization portal shows its own organization only")
+        requested = None
+    res = resolve(conn, home=home, memberships=memberships, requested=requested,
                   method=request.method, audit_denied=audit_denied)
     set_context(conn, org_id=res.org_id)
     if res.cross_org:

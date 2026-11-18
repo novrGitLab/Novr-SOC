@@ -172,6 +172,16 @@ if ($Setup -eq 'pilot') {
     $env:NOVRSOC_VMS_SCANNING = 'local_test_targets'
     $env:NOVRSOC_BRAND_RESOLVER = 'test_adapter'
 }
+# Organization portals in development: <name>.novrsoc.localhost:<web port> resolves to this machine in every browser. The
+# local Next.js proxy forwards the browser's host (X-Forwarded-Host), which only this loopback API trusts. Agent
+# enrollment stays disabled here (there is no NovrSIEM manager); the syslog address is a placeholder.
+$env:NOVRSOC_PORTAL_BASE_DOMAIN = 'novrsoc.localhost'
+$env:NOVRSOC_TRUST_FORWARDED_HOST = 'true'
+$env:NOVRSOC_PUBLIC_SCHEME = 'http'
+$env:NOVRSOC_PUBLIC_PORT = "$WebPort"
+$env:NOVRSOC_PUBLIC_PLATFORM_HOST = 'localhost'
+$env:NOVRSOC_AGENT_MANAGER_ADDRESS = 'siem.novrsoc.localhost'
+$env:NOVRSOC_SYSLOG_COLLECTOR_ADDRESS = 'syslog.novrsoc.localhost'
 Step 'Environment validation (python -m app.cli check-env)'
 Push-Location $Api
 try { & $Py -m app.cli check-env } finally { Pop-Location }

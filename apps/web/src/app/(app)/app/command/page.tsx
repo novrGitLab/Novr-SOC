@@ -6,15 +6,15 @@
 // switches into its organization (audited by the API) and shows the record in that organization's own workspace.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
-import { Download, Globe2 } from 'lucide-react';
+import { useCallback, useState, type FormEvent } from 'react';
+import { Building2, Download, Globe2 } from 'lucide-react';
 import { PageHeader, SearchBox, Tag, btn, nf } from '@/components/features/vms/kit';
 import { Card, StatusPill, Unavailable, type Tone } from '@/components/features/vms/ui';
 import type { Schemas } from '@/foundation/api/client';
-import { commandApi, type CommandQuery, type CommandView } from '@/foundation/api/modules';
+import { commandApi, orgApi, type CommandQuery, type CommandView } from '@/foundation/api/modules';
 import { useSession } from '@/foundation/session/SessionProvider';
-import { DataTable, Field, Loaded, errorText, fmt } from '@/foundation/ui/pilot';
-import { StateTag, initialParam, selectCls } from '@/foundation/ui/module';
+import { DataTable, Field, Loaded, TextInput, errorText, fmt } from '@/foundation/ui/pilot';
+import { StateTag, initialParam, selectCls, useAction } from '@/foundation/ui/module';
 import { useResource } from '@/foundation/ui/useResource';
 
 type Rec = Schemas['CommandRecord'];
@@ -105,7 +105,45 @@ export default function CommandCenterPage() {
     );
 }
 
+/** Platform administrators create an organization here; its portal, branding, invitations and agent group are then
+ *  configured on its organization page (opened right after creation). */
+function NewOrganization() {
+    const { orgId, can, session } = useSession();
+    const router = useRouter();
+    const act = useAction();
+    const [open, setOpen] = useState(false);
+    const [f, setF] = useState({ name: '', slug: '', contact: '', email: '', tz: 'Africa/Lagos', sub: '' });
+    if (session.role !== 'super_admin' || !can('users:manage')) return null;
+    async function create(e: FormEvent) {
+        e.preventDefault();
+        const org = await act.run(() => orgApi.create(orgId, { slug: f.slug.trim(), name: f.name.trim(), contact_name: f.contact.trim(),
+            contact_email: f.email.trim(), timezone: f.tz.trim() || 'UTC' }), 'Organization created.');
+        if (!org) return;
+        if (f.sub.trim()) await act.run(() => orgApi.setPortal(orgId, org.id, { portal_subdomain: f.sub.trim().toLowerCase(), portal_enabled: false,
+            display_name: '', primary_color: null, secondary_color: null }), 'Portal address reserved.');
+        router.push(`/app/admin/organizations/${org.id}?tab=settings`);
+    }
+    return (
+        <Card className="mb-4">
+            {!open ? <button className={btn('primary')} onClick={() => setOpen(true)} data-testid="command-new-org"><Building2 className="w-3.5 h-3.5" aria-hidden />New organization</button> : (
+                <form onSubmit={create} className="flex flex-wrap items-end gap-2" data-testid="command-new-org-form">
+                    <Field label="Name"><TextInput required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value, slug: f.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') })} /></Field>
+                    <Field label="Identifier"><TextInput required pattern="[a-z0-9][a-z0-9-]{1,62}" value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value })} /></Field>
+                    <Field label="Portal subdomain (optional)"><TextInput pattern="[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?" value={f.sub} onChange={(e) => setF({ ...f, sub: e.target.value })} /></Field>
+                    <Field label="Contact"><TextInput value={f.contact} onChange={(e) => setF({ ...f, contact: e.target.value })} /></Field>
+                    <Field label="Contact email"><TextInput type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+                    <Field label="Timezone"><TextInput value={f.tz} onChange={(e) => setF({ ...f, tz: e.target.value })} /></Field>
+                    <button className={btn('primary')} type="submit" disabled={act.busy}>Create and configure</button>
+                    <button className={btn('secondary')} type="button" onClick={() => setOpen(false)}>Cancel</button>
+                </form>
+            )}
+            {act.notice}
+        </Card>
+    );
+}
+
 function Overview({ onPick }: { onPick: (org: string) => void }) {
+    const { session } = useSession();
     const ov = useResource(useCallback(() => commandApi.overview(), []));
     const tiles: [string, string][] = [['organizations', 'Organizations'], ['posture_critical', 'Critical posture'], ['critical_alerts_24h', 'Critical alerts (24 h)'],
         ['open_cases', 'Open cases'], ['critical_findings', 'Critical findings'], ['soar_pending_approvals', 'Approvals waiting'],
@@ -114,6 +152,7 @@ function Overview({ onPick }: { onPick: (org: string) => void }) {
         <Loaded title="" data={ov.data} error={ov.error} reload={ov.reload} testid="command-overview">
             {(d) => (
                 <>
+                    <NewOrganization />
                     <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                         {tiles.map(([k, label]) => (
                             <Card key={k} className="!p-4"><p className="text-[11px] uppercase tracking-wide text-foreground-muted">{label}</p>
@@ -133,6 +172,8 @@ function Overview({ onPick }: { onPick: (org: string) => void }) {
                             { key: 'i', header: 'Intel / NHAI / SOAR', render: (r) => <span className="text-xs">{r.intel_matches_7d} matches (7 d) · {r.nhai_queued} NHAI queued
                                 <span className="block text-foreground-muted">{r.soar_pending_approvals} approvals · {r.soar_runs_7d} runs (7 d)</span></span> },
                             { key: 'l', header: 'Last alert', render: (r) => <span className="text-xs">{fmt(r.last_alert_at)}</span> },
+                            { key: 'cfg', header: '', render: (r) => (session.role === 'super_admin'
+                                ? <Link className="text-xs underline" href={`/app/admin/organizations/${r.org.id}`}>Configure</Link> : null) },
                         ]} />
                     </Card>
                 </>

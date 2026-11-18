@@ -87,6 +87,8 @@ export function LogSourcesPanel({ orgId, orgName, canManage }: { orgId: string; 
                                             s.enabled ? 'Disabled: its events are quarantined.' : 'Enabled.').then(() => list.reload())}>{s.enabled ? 'Disable' : 'Enable'}</button>
                                         <button className={btn('ghost')} onClick={() => setRetiring(s)}>Retire</button>
                                         {platformAdmin && <button className={btn('ghost')} onClick={() => { setTarget(''); setMoving(s); }}>Reassign</button>}
+                                        {platformAdmin && !s.verified && <button className={btn('primary')} disabled={act.busy} data-testid="verify-source"
+                                            onClick={() => void act.run(() => sourcesApi.verify(orgId, s.id), 'Verified and enabled.').then(() => list.reload())}>Verify</button>}
                                     </>}
                                 </span>) },
                         ]} />

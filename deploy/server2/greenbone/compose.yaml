@@ -1,0 +1,180 @@
+# NovrSOC V2: the Greenbone Community stack for NovrVMS, on Server 2, as its OWN compose project (`novrsoc-greenbone`),
+# isolated from NovrSOC's database and API.
+#
+#   cd deploy/server2/greenbone && docker compose --env-file /etc/novrsoc-v2/greenbone.env up -d
+#
+# What it is: gvmd (the management daemon), its own PostgreSQL (pg-gvm) and Redis, the OpenVAS scanner (ospd-openvas
+# with notus-scanner), and the feed data containers. There is NO web interface (GSA is not deployed) and NO published
+# port. NovrVMS talks to gvmd ONLY through gvmd's Unix socket, which this stack places in the host directory
+# ${GB_RUN_DIR}/gvmd-socket; the NovrSOC compose service `vms-greenbone` mounts that directory. Authentication is a
+# dedicated Greenbone user (see docs/public/DEPLOYMENT.md, "Greenbone").
+#
+# Isolation:
+#   * gb_internal (internal: true): gvmd, pg-gvm, redis, ospd-openvas, notus-scanner talk here; no route out.
+#   * gb_scan: ONLY ospd-openvas joins it. It is the one network with a route to client networks (through the
+#     WireGuard routes of the dedicated scanner host). Nothing from NovrSOC's own networks is reachable from it.
+#   * NovrSOC's PostgreSQL is never reachable: gvmd uses its own pg-gvm, on gb_internal only.
+#
+# Load on Server 2: memory and CPU are capped per service, and openvas.conf (written by configure-openvas) limits the
+# scanner to GB_MAX_HOSTS hosts and GB_MAX_CHECKS checks in parallel. NovrSOC itself runs at most
+# NOVRSOC_VMS_MAX_RUNNING_GREENBONE Greenbone task(s) at a time (default 1) and ingests results in batches of 1000.
+#
+# Images: every image is pinned by DIGEST in greenbone.env (no default, no `latest`, no `stable`). The service layout
+# follows the Greenbone Community Containers 22.4 compose file; check it against the release you pin before deploying.
+name: novrsoc-greenbone
+
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+x-data: &data
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  restart: "no"
+  network_mode: none
+
+services:
+  # ---- feed data (copied into volumes, then exit) ------------------------------------------------------------
+  vulnerability-tests:
+    <<: *data
+    image: ${GB_IMAGE_VULNERABILITY_TESTS:?pin by digest in greenbone.env}
+    environment: {STORAGE_PATH: /var/lib/openvas/22.04/vt-data/nasl}
+    volumes: [vt_data_vol:/mnt]
+  notus-data:
+    <<: *data
+    image: ${GB_IMAGE_NOTUS_DATA:?pin by digest in greenbone.env}
+    volumes: [notus_data_vol:/mnt]
+  scap-data:
+    <<: *data
+    image: ${GB_IMAGE_SCAP_DATA:?pin by digest in greenbone.env}
+    volumes: [scap_data_vol:/mnt]
+  cert-bund-data:
+    <<: *data
+    image: ${GB_IMAGE_CERT_BUND_DATA:?pin by digest in greenbone.env}
+    volumes: [cert_data_vol:/mnt]
+  dfn-cert-data:
+    <<: *data
+    image: ${GB_IMAGE_DFN_CERT_DATA:?pin by digest in greenbone.env}
+    volumes: [cert_data_vol:/mnt]
+    depends_on: [cert-bund-data]
+  data-objects:
+    <<: *data
+    image: ${GB_IMAGE_DATA_OBJECTS:?pin by digest in greenbone.env}
+    volumes: [data_objects_vol:/mnt]
+  report-formats:
+    <<: *data
+    image: ${GB_IMAGE_REPORT_FORMATS:?pin by digest in greenbone.env}
+    volumes: [data_objects_vol:/mnt]
+    depends_on: [data-objects]
+  gpg-data:
+    <<: *data
+    image: ${GB_IMAGE_GPG_DATA:?pin by digest in greenbone.env}
+    volumes: [gpg_data_vol:/mnt]
+
+  # ---- management: Redis, gvmd's own PostgreSQL, gvmd ---------------------------------------------------------
+  redis-server:
+    <<: *hardening
+    image: ${GB_IMAGE_REDIS:?pin by digest in greenbone.env}
+    volumes: [redis_socket_vol:/run/redis/]
+    networks: [gb_internal]
+    mem_limit: 512m
+  pg-gvm:
+    <<: *hardening
+    image: ${GB_IMAGE_PG_GVM:?pin by digest in greenbone.env}
+    volumes: [psql_data_vol:/var/lib/postgresql, psql_socket_vol:/var/run/postgresql]
+    networks: [gb_internal]
+    mem_limit: 1g
+    cpus: 1.0
+  gvmd:
+    <<: *hardening
+    image: ${GB_IMAGE_GVMD:?pin by digest in greenbone.env}
+    volumes:
+      - gvmd_data_vol:/var/lib/gvm
+      - scap_data_vol:/var/lib/gvm/scap-data/
+      - cert_data_vol:/var/lib/gvm/cert-data
+      - data_objects_vol:/var/lib/gvm/data-objects/gvmd
+      - vt_data_vol:/var/lib/openvas/plugins
+      - psql_data_vol:/var/lib/postgresql
+      - ${GB_RUN_DIR:-/srv/novrsoc-greenbone}/gvmd-socket:/run/gvmd
+      - ospd_openvas_socket_vol:/run/ospd
+      - psql_socket_vol:/var/run/postgresql
+    networks: [gb_internal]
+    mem_limit: 2g
+    cpus: 1.5
+    depends_on: [pg-gvm, scap-data, cert-bund-data, dfn-cert-data, data-objects, report-formats]
+
+  # ---- scanner ---------------------------------------------------------------------------------------------
+  configure-openvas:
+    <<: *data
+    image: ${GB_IMAGE_OPENVAS_SCANNER:?pin by digest in greenbone.env}
+    volumes:
+      - ${GB_RUN_DIR:-/srv/novrsoc-greenbone}/openvas-conf:/mnt
+      - openvas_log_data_vol:/var/log/openvas
+    # expand_vhosts = no is REQUIRED: NovrVMS refuses to scan when vhost expansion may be on (it would test hostnames
+    # nobody authorized). max_hosts / max_checks bound the scanner's parallelism.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        printf 'table_driven_lsc = yes\nmqtt_server_uri = mqtt-broker:1883\nexpand_vhosts = no\nmax_hosts = ${GB_MAX_HOSTS:-4}\nmax_checks = ${GB_MAX_CHECKS:-2}\n' > /mnt/openvas.conf
+        chmod 644 /mnt/openvas.conf
+        touch /var/log/openvas/openvas.log && chmod 666 /var/log/openvas/openvas.log
+  mqtt-broker:
+    <<: *hardening
+    image: ${GB_IMAGE_MQTT_BROKER:?pin by digest in greenbone.env}
+    networks: [gb_internal]
+    mem_limit: 128m
+  ospd-openvas:
+    <<: *hardening
+    image: ${GB_IMAGE_OSPD_OPENVAS:?pin by digest in greenbone.env}
+    hostname: ospd-openvas.local
+    # The scanner needs raw sockets for host discovery and port scanning. Nothing else in either stack has them.
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, NET_RAW]
+    command: ["ospd-openvas", "-f", "--config", "/etc/gvm/ospd-openvas.conf", "--mqtt-broker-address", "mqtt-broker",
+              "--notus-feed-dir", "/var/lib/notus/advisories", "-m", "666"]
+    volumes:
+      - gpg_data_vol:/etc/openvas/gnupg
+      - vt_data_vol:/var/lib/openvas/plugins
+      - notus_data_vol:/var/lib/notus
+      - ospd_openvas_socket_vol:/run/ospd
+      - redis_socket_vol:/run/redis/
+      - ${GB_RUN_DIR:-/srv/novrsoc-greenbone}/openvas-conf:/etc/openvas/:ro
+      - openvas_log_data_vol:/var/log/openvas
+    networks: [gb_internal, gb_scan]
+    mem_limit: ${GB_SCANNER_MEMORY:-3g}
+    cpus: ${GB_SCANNER_CPUS:-2.0}
+    pids_limit: 1024
+    depends_on: [redis-server, gpg-data, vulnerability-tests, configure-openvas, mqtt-broker]
+  notus-scanner:
+    <<: *hardening
+    image: ${GB_IMAGE_NOTUS_SCANNER:?pin by digest in greenbone.env}
+    environment: {NOTUS_SCANNER_PRODUCTS_DIRECTORY: /var/lib/notus/products}
+    volumes: [notus_data_vol:/var/lib/notus, gpg_data_vol:/etc/openvas/gnupg]
+    networks: [gb_internal]
+    mem_limit: 512m
+    depends_on: [mqtt-broker, gpg-data, vulnerability-tests]
+
+networks:
+  gb_internal:
+    internal: true            # no route out: management, database and broker traffic only
+  gb_scan:
+    ipam:
+      config: [{subnet: "${GB_SCAN_SUBNET:-172.30.40.0/24}"}]   # the scanner's egress; route only authorized client networks
+
+volumes:
+  gpg_data_vol: {}
+  scap_data_vol: {}
+  cert_data_vol: {}
+  data_objects_vol: {}
+  gvmd_data_vol: {}
+  psql_data_vol: {}
+  vt_data_vol: {}
+  notus_data_vol: {}
+  psql_socket_vol: {}
+  ospd_openvas_socket_vol: {}
+  redis_socket_vol: {}
+  openvas_log_data_vol: {}

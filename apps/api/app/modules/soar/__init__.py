@@ -23,8 +23,11 @@ Consolidation:
 """
 from __future__ import annotations
 
+import ipaddress
 import json
+import re
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Path, Query, Request
@@ -43,10 +46,12 @@ from app.routers._responses import ERRORS
 from app.soar import bridge_client
 from novrsoc_contracts.v1.common import ActorRef
 from novrsoc_contracts.v1.soar import (AiActivityList, AiActivityView, ApprovalDecisionRequest, ApprovalList, ApprovalView,
+                                       AutomationEventList, AutomationEventView,
                                        EmergencyStopRequest, ExecutionReceipt, PlaybookCreate, PlaybookExecutionPolicy, PlaybookList,
                                        PlaybookRecommendation, PlaybookReview, PlaybookStep, PlaybookTriggers, PlaybookValidation,
                                        PlaybookVersionList, PlaybookView, RecommendationList, RunCreate, RunList, RunView,
-                                       SoarOperations, SoarPolicyUpdate, SoarPolicyView, SoarTimelineEntry, StepView)
+                                       SoarAutomationPolicy, SoarOperations, SoarPolicyUpdate, SoarPolicyView, SoarTimelineEntry,
+                                       StepView)
 
 MODULE = ModuleInfo(name="soar", workstream="A", prefix="/api/v1/soar",
                     summary="SOAR engine: playbooks, policy, runs, human approvals, bridge dispatch and receipts")
@@ -61,10 +66,37 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _audit(p: Principal, request: Request, action: str, run_id, details: dict) -> None:
-    audit.record(action, "success" if action != "SOAR_LIVE_REFUSED" else "denied", org_id=p.org_id, actor_id=p.user_id,
-                 actor_label=p.email, resource_type="soar_run", resource_id=str(run_id), request_id=request.state.request_id,
-                 ip=client_ip(request), details=details)
+AUTOMATION_LABEL = "NovrSOAR automation"
+AGENT_ID = re.compile(r"^\d{3,6}$")
+ACCOUNT = re.compile(r"^[A-Za-z0-9._\\-]{1,64}$")
+
+
+@dataclass(frozen=True)
+class Actor:
+    """Who drives an engine operation: a signed-in person (from a request) or the automation (no user, no request)."""
+    org_id: uuid.UUID
+    user_id: uuid.UUID | None
+    label: str
+    request_id: str = ""
+    ip: str | None = None
+
+    @property
+    def system(self) -> bool:
+        return self.user_id is None
+
+
+def actor_of(p: Principal, request: Request) -> Actor:
+    return Actor(p.org_id, p.user_id, p.email, request.state.request_id, client_ip(request))
+
+
+def automation_actor(org_id: uuid.UUID) -> Actor:
+    return Actor(org_id, None, AUTOMATION_LABEL)
+
+
+def _audit(actor: Actor, action: str, run_id, details: dict) -> None:
+    audit.record(action, "success" if action != "SOAR_LIVE_REFUSED" else "denied", org_id=actor.org_id,
+                 actor_type="system" if actor.system else "user", actor_id=actor.user_id, actor_label=actor.label,
+                 resource_type="soar_run", resource_id=str(run_id), request_id=actor.request_id, ip=actor.ip, details=details)
 
 
 # ---------------------------------------------------------------- playbooks and policy
@@ -121,7 +153,11 @@ def validate_playbook(conn: Connection, steps: list[PlaybookStep], triggers: Pla
                 warnings.append(f"Step {st.step_key}: {a} is not in the organization's response policy; it will be refused at run time.")
             if st.timeout_seconds > 900:
                 warnings.append(f"Step {st.step_key}: a consequential step with a timeout over 15 minutes.")
-            warnings.append(f"Step {st.step_key}: {a} always waits for a human approval by someone other than the requester.")
+            if ep.automatic and a in {x.value for x in policy.automation.pre_authorized_actions}:
+                warnings.append(f"Step {st.step_key}: {a} is pre-authorized: in an automatic run it proceeds WITHOUT a human approval "
+                                f"when the detection confidence is at least {policy.automation.min_confidence} and every guard passes.")
+            else:
+                warnings.append(f"Step {st.step_key}: {a} waits for a human approval by someone other than the requester.")
         if a in ("notify_email", "notify_ciso"):
             warnings.append(f"Step {st.step_key}: no notification adapter is configured; the step will be skipped and say so.")
         if a == "enrich_iocs" and first_consequential is not None and i > first_consequential:
@@ -133,6 +169,11 @@ def validate_playbook(conn: Connection, steps: list[PlaybookStep], triggers: Pla
             warnings.append("Live mode is allowed but the playbook has no consequential step.")
     if not (triggers.rule_ids or triggers.mitre or triggers.min_level):
         warnings.append("No triggers: the playbook is never recommended and can only be run by choosing it on a case.")
+        if ep.automatic:
+            errors.append("An automatic playbook needs triggers (rule ids, MITRE techniques or a minimum level).")
+    elif ep.automatic:
+        warnings.append("Automatic: once approved, this version starts by itself on matching NEW alerts while the organization's "
+                        "automation is on" + ("" if policy.automation.enabled else " (it is currently off)") + ".")
     return PlaybookValidation(valid=not errors, errors=errors, warnings=warnings, checked_at=_now())
 
 
@@ -241,7 +282,50 @@ def _policy(conn: Connection) -> SoarPolicyView:
     return SoarPolicyView(allowed_actions=list(r.allowed_actions), allowed_agent_groups=list(r.allowed_agent_groups),
                           live_enabled=r.live_enabled, approval_ttl_minutes=r.approval_ttl_minutes, updated_at=r.updated_at,
                           emergency_stop=r.emergency_stop, emergency_reason=r.emergency_reason, emergency_at=r.emergency_at,
-                          max_runs_per_hour=r.max_runs_per_hour, max_dispatch_attempts=r.max_dispatch_attempts)
+                          max_runs_per_hour=r.max_runs_per_hour, max_dispatch_attempts=r.max_dispatch_attempts,
+                          automation=SoarAutomationPolicy(enabled=r.automation_enabled, case_creation=r.case_creation,
+                                                          case_min_severity=r.case_min_severity, pre_authorized_actions=list(r.auto_actions),
+                                                          min_confidence=r.auto_min_confidence,
+                                                          max_dispatches_per_hour=r.auto_max_dispatch_per_hour,
+                                                          protected_targets=list(r.protected_targets)),
+                          automation_since=r.automation_since)
+
+
+def _check_protected_entries(entries: list[str]) -> None:
+    bad = []
+    for e in entries:
+        try:
+            ipaddress.ip_network(e, strict=False)
+            continue
+        except ValueError:
+            pass
+        if not (AGENT_ID.match(e) or ACCOUNT.match(e)):
+            bad.append(e)
+    if bad:
+        raise ApiError(422, "validation_error", "A protected target is an IP address, a network (CIDR), a NovrAgent id or an account name",
+                       {"invalid": bad[:20]})
+
+
+def protected_match(action: str, target: str | None, agent_id: str | None, entries: list[str]) -> str | None:
+    """The protected-target entry that forbids this action, or None. Applies to automatic AND human-approved actions."""
+    ip = None
+    if action == "block_ip" and target:
+        try:
+            ip = ipaddress.ip_address(target)
+        except ValueError:
+            ip = None
+    for e in entries:
+        if ip is not None:
+            try:
+                if ip in ipaddress.ip_network(e, strict=False):
+                    return e
+            except ValueError:
+                pass
+        if agent_id and e == agent_id:
+            return e
+        if target and e.lower() == target.lower():
+            return e
+    return None
 
 
 @router.get("/policy", response_model=SoarPolicyView, summary="The organization's response authorization policy")
@@ -263,19 +347,49 @@ def put_policy(body: SoarPolicyUpdate, request: Request, p: Principal = Depends(
     if foreign:
         raise ApiError(422, "group_not_mapped", "Response actions may target only NovrAgent groups mapped to this organization",
                        {"groups": foreign[:20]})
+    before = _policy(conn)
+    auto = body.automation or before.automation
+    allowed = {a.value for a in body.allowed_actions}
+    pre = [a.value for a in auto.pre_authorized_actions]
+    not_consequential = sorted(set(pre) - CONSEQUENTIAL)
+    if not_consequential:
+        raise ApiError(422, "validation_error", "Only consequential actions are pre-authorized (the others never need an approval)",
+                       {"actions": not_consequential})
+    outside = sorted(set(pre) - allowed)
+    if outside:
+        raise ApiError(422, "validation_error", "A pre-authorized action must also be in the policy's allowed actions", {"actions": outside})
+    _check_protected_entries(auto.protected_targets)
+    was_on = before.automation.enabled or before.automation.case_creation
+    now_on = auto.enabled or auto.case_creation
     conn.execute(text("""INSERT INTO novrsoc.soar_policies (org_id, allowed_actions, allowed_agent_groups, live_enabled, approval_ttl_minutes,
-                                                        updated_by, max_runs_per_hour, max_dispatch_attempts)
-                         VALUES (:o, :a, :g, :l, :t, :u, :mr, :md)
+                                                        updated_by, max_runs_per_hour, max_dispatch_attempts, automation_enabled,
+                                                        case_creation, case_min_severity, auto_actions, auto_min_confidence,
+                                                        auto_max_dispatch_per_hour, protected_targets)
+                         VALUES (:o, :a, :g, :l, :t, :u, :mr, :md, :ae, :cc, :cs, :aa, :mc, :mx, :pt)
                          ON CONFLICT (org_id) DO UPDATE SET allowed_actions = EXCLUDED.allowed_actions,
                            allowed_agent_groups = EXCLUDED.allowed_agent_groups, live_enabled = EXCLUDED.live_enabled,
                            approval_ttl_minutes = EXCLUDED.approval_ttl_minutes, updated_by = EXCLUDED.updated_by, updated_at = now(),
-                           max_runs_per_hour = EXCLUDED.max_runs_per_hour, max_dispatch_attempts = EXCLUDED.max_dispatch_attempts"""),
-                 {"o": p.org_id, "a": [a.value for a in body.allowed_actions], "g": body.allowed_agent_groups,
+                           max_runs_per_hour = EXCLUDED.max_runs_per_hour, max_dispatch_attempts = EXCLUDED.max_dispatch_attempts,
+                           automation_enabled = EXCLUDED.automation_enabled, case_creation = EXCLUDED.case_creation,
+                           case_min_severity = EXCLUDED.case_min_severity, auto_actions = EXCLUDED.auto_actions,
+                           auto_min_confidence = EXCLUDED.auto_min_confidence,
+                           auto_max_dispatch_per_hour = EXCLUDED.auto_max_dispatch_per_hour,
+                           protected_targets = EXCLUDED.protected_targets"""),
+                 {"o": p.org_id, "a": sorted(allowed), "g": body.allowed_agent_groups,
                   "l": body.live_enabled, "t": body.approval_ttl_minutes, "u": p.user_id, "mr": body.max_runs_per_hour,
-                  "md": body.max_dispatch_attempts})
+                  "md": body.max_dispatch_attempts, "ae": auto.enabled, "cc": auto.case_creation, "cs": auto.case_min_severity,
+                  "aa": sorted(pre), "mc": auto.min_confidence, "mx": auto.max_dispatches_per_hour, "pt": auto.protected_targets})
+    if now_on and not was_on:
+        # Switching automation on never reaches back: only alerts received from now on are considered.
+        conn.execute(text("""UPDATE novrsoc.soar_policies SET automation_since = now(), automation_cursor_at = now(),
+                             automation_cursor_id = NULL"""))
     audit.record("SOAR_POLICY_UPDATED", "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email,
                  resource_type="soar_policy", request_id=request.state.request_id, ip=client_ip(request),
                  details=body.model_dump(mode="json"))
+    if auto != before.automation:
+        audit.record("SOAR_AUTOMATION_CHANGED", "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email,
+                     resource_type="soar_policy", request_id=request.state.request_id, ip=client_ip(request),
+                     details={"before": before.automation.model_dump(mode="json"), "after": auto.model_dump(mode="json")})
     return _policy(conn)
 
 
@@ -302,11 +416,14 @@ def _stopped(conn: Connection) -> SoarPolicyView | None:
 
 
 # ---------------------------------------------------------------- case evidence and recommendations
-def _case_alerts(conn: Connection, case_id: uuid.UUID) -> list:
+def _case_alerts(conn: Connection, case_id: uuid.UUID, trigger_alert_id: uuid.UUID | None = None) -> list:
+    """The case's alerts, oldest first; for an automatic run the TRIGGERING alert comes first, so its evidence (source
+    address, agent) is the target, never an older alert's that merely shares the case."""
     return conn.execute(text("""SELECT a.id, a.rule_id, a.rule_level, a.mitre_techniques, a.agent_id, a.agent_groups,
                                        host(a.src_ip) AS src_ip, a.raw, a.severity
                                 FROM novrsoc.case_alerts ca JOIN novrsoc.alerts a ON a.id = ca.alert_id AND a.org_id = ca.org_id
-                                WHERE ca.case_id = :c ORDER BY a.observed_at"""), {"c": case_id}).all()
+                                WHERE ca.case_id = :c ORDER BY (a.id = CAST(:t AS uuid)) IS TRUE DESC, a.observed_at"""),
+                        {"c": case_id, "t": trigger_alert_id}).all()
 
 
 def _target(action: str, params: dict, alerts: list) -> tuple[str | None, str | None, list[str]]:
@@ -332,23 +449,35 @@ def recommendations(case_id: uuid.UUID, p: Principal = Depends(require("cases:re
     alerts = _case_alerts(conn, case_id)
     out = []
     for pb in approved_playbooks(conn):
-        t, why = pb.triggers, []
-        if t.rule_ids and any(a.rule_id in t.rule_ids for a in alerts):
-            why.append("rule " + ", ".join(sorted({a.rule_id for a in alerts if a.rule_id in t.rule_ids})))
-        if t.mitre and any(set(a.mitre_techniques or []) & set(t.mitre) for a in alerts):
-            why.append("MITRE " + ", ".join(sorted({m for a in alerts for m in (a.mitre_techniques or []) if m in t.mitre})))
-        if (t.rule_ids or t.mitre) and not why:
-            continue
-        if t.min_level and not any(a.rule_level >= t.min_level for a in alerts):
+        why = trigger_match(pb.triggers, alerts)
+        if why is None:
             continue
         targets = {s.step_key: tg for s in pb.steps if s.action.value in CONSEQUENTIAL
                    for tg in [_target(s.action.value, s.parameters, alerts)[0]] if tg}
-        out.append(PlaybookRecommendation(playbook=pb, matched_on=why or [f"rule level >= {t.min_level}"], proposed_targets=targets))
+        out.append(PlaybookRecommendation(playbook=pb, matched_on=why, proposed_targets=targets))
     return RecommendationList(case_id=case_id, items=out)
+
+
+def trigger_match(t: PlaybookTriggers, alerts: list) -> list[str] | None:
+    """Why the triggers match these alerts, or None. Deterministic; shared by recommendations and automation."""
+    if not (t.rule_ids or t.mitre or t.min_level):
+        return None
+    why = []
+    if t.rule_ids and any(a.rule_id in t.rule_ids for a in alerts):
+        why.append("rule " + ", ".join(sorted({a.rule_id for a in alerts if a.rule_id in t.rule_ids})))
+    if t.mitre and any(set(a.mitre_techniques or []) & set(t.mitre) for a in alerts):
+        why.append("MITRE " + ", ".join(sorted({m for a in alerts for m in (a.mitre_techniques or []) if m in t.mitre})))
+    if (t.rule_ids or t.mitre) and not why:
+        return None
+    if t.min_level and not any(a.rule_level >= t.min_level for a in alerts):
+        return None
+    return why or [f"rule level >= {t.min_level}"]
 
 
 # ---------------------------------------------------------------- runs
 def _actor(uid, label) -> ActorRef:
+    if uid is None:
+        return ActorRef(type="system", id=None, label=label or AUTOMATION_LABEL)
     return ActorRef(type="user", id=uid, label=label or "")
 
 
@@ -358,14 +487,15 @@ def _run_view(conn: Connection, run_id: uuid.UUID) -> RunView:
                      {"id": run_id}).first()
     if r is None:
         raise not_found("Run not found")
-    steps = conn.execute(text("""SELECT s.*, a.id AS approval_id FROM novrsoc.soar_steps s
+    steps = conn.execute(text("""SELECT s.*, a.id AS approval_id, a.auth_kind FROM novrsoc.soar_steps s
                                  LEFT JOIN novrsoc.soar_approvals a ON a.step_id = s.id WHERE s.run_id = :r ORDER BY s.position"""),
                          {"r": run_id}).all()
     return RunView(id=r.id, playbook_id=r.playbook_id, playbook_name=r.playbook_name, playbook_version=r.playbook_version,
                    case_id=r.case_id, mode=r.mode, state=r.state, requested_by=_actor(r.requested_by, r.requested_label),
-                   created_at=r.created_at, updated_at=r.updated_at,
+                   created_at=r.created_at, updated_at=r.updated_at, origin=r.origin, confidence=r.confidence,
+                   trigger_alert_id=r.trigger_alert_id,
                    steps=[StepView(id=s.id, step_key=s.step_key, action=s.action, target=s.target, state=s.state, message=s.message,
-                                   request_id=s.request_id, approval_id=s.approval_id,
+                                   request_id=s.request_id, approval_id=s.approval_id, authorization=s.auth_kind, request=s.request,
                                    receipt=ExecutionReceipt.model_validate(s.receipt) if s.receipt else None) for s in steps])
 
 
@@ -390,86 +520,159 @@ def _step(conn, step_id, state, message, **extra) -> None:
 
 @router.post("/runs", response_model=RunView, status_code=201, summary="Run a playbook for a case (dry run by default)")
 def create_run(body: RunCreate, request: Request, p: Principal = Depends(require("response:contain")),
-               conn: Connection = Depends(request_connection)):
+               conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)):
     existing = conn.execute(text("SELECT id FROM novrsoc.soar_runs WHERE idempotency_key = :k"), {"k": body.idempotency_key}).scalar()
     if existing:
         return JSONResponse(_run_view(conn, existing).model_dump(mode="json"), status_code=200)
     pb = conn.execute(text("SELECT * FROM novrsoc.soar_playbooks WHERE id = :i"), {"i": body.playbook_id}).first()
     if pb is None or pb.version != body.playbook_version:
         raise not_found("Playbook (version) not found")
-    if not pb.enabled:
-        raise ApiError(409, "conflict", "This playbook is disabled")
-    if pb.status != "approved":
-        raise ApiError(409, "playbook_not_approved", f"Only an approved playbook version can run (this one is {pb.status})")
     case = conn.execute(text("SELECT severity FROM novrsoc.cases WHERE id = :c"), {"c": body.case_id}).first()
     if case is None:
         raise not_found("Case not found")
-    policy, alerts = _policy(conn), _case_alerts(conn, body.case_id)
+    policy = _policy(conn)
+    refusal = run_gate(conn, pb, case.severity, body.mode.value, policy)
+    if refusal is not None:
+        status, code, message = refusal
+        if code == "emergency_stop":
+            audit.record("SOAR_RUN_REFUSED", "denied", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email, resource_type="soar_playbook",
+                         resource_id=f"{pb.name}@{pb.version}", request_id=request.state.request_id, ip=client_ip(request),
+                         details={"reason": "emergency_stop"})
+        raise ApiError(status, code, message)
+    run_id = start_run(conn, settings, actor_of(p, request), pb, body.case_id, body.mode.value, body.justification, body.idempotency_key,
+                       policy=policy)
+    return _run_view(conn, run_id)
+
+
+def run_gate(conn: Connection, pb, case_severity: str, mode: str, policy: SoarPolicyView) -> tuple[int, str, str] | None:
+    """(status, code, message) when this playbook version may not start now; None when it may. Same rules for people and
+    the automation: enabled and approved version, emergency stop, allowed mode, minimum case severity, run limits."""
+    if not pb.enabled:
+        return 409, "conflict", "This playbook is disabled"
+    if pb.status != "approved":
+        return 409, "playbook_not_approved", f"Only an approved playbook version can run (this one is {pb.status})"
     if policy.emergency_stop:
-        audit.record("SOAR_RUN_REFUSED", "denied", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email, resource_type="soar_playbook",
-                     resource_id=f"{pb.name}@{pb.version}", request_id=request.state.request_id, ip=client_ip(request),
-                     details={"reason": "emergency_stop"})
-        raise ApiError(409, "emergency_stop", f"The SOAR emergency stop is on: {policy.emergency_reason}")
+        return 409, "emergency_stop", f"The SOAR emergency stop is on: {policy.emergency_reason}"
     ep = PlaybookExecutionPolicy(**(pb.execution_policy or {}))
-    if body.mode.value not in [m.value for m in ep.modes]:
-        raise ApiError(409, "mode_not_allowed", f"This playbook version may only run in: {', '.join(m.value for m in ep.modes)}")
-    if SEV[case.severity] < SEV[ep.min_case_severity]:
-        raise ApiError(409, "severity_below_policy", f"This playbook runs only on {ep.min_case_severity} or more severe cases")
+    if mode not in [m.value for m in ep.modes]:
+        return 409, "mode_not_allowed", f"This playbook version may only run in: {', '.join(m.value for m in ep.modes)}"
+    if SEV[case_severity] < SEV[ep.min_case_severity]:
+        return 409, "severity_below_policy", f"This playbook runs only on {ep.min_case_severity} or more severe cases"
     hour = conn.execute(text("SELECT count(*) FROM novrsoc.soar_runs WHERE created_at > now() - interval '1 hour'")).scalar()
     if hour >= policy.max_runs_per_hour:
-        raise ApiError(429, "run_limit", f"The organization's limit of {policy.max_runs_per_hour} runs per hour is reached")
+        return 429, "run_limit", f"The organization's limit of {policy.max_runs_per_hour} runs per hour is reached"
     day = conn.execute(text("""SELECT count(*) FROM novrsoc.soar_runs r JOIN novrsoc.soar_playbooks pb ON pb.id = r.playbook_id
                                WHERE pb.name = :n AND r.created_at > now() - interval '24 hours'"""), {"n": pb.name}).scalar()
     if day >= ep.max_runs_per_day:
-        raise ApiError(429, "run_limit", f"This playbook's limit of {ep.max_runs_per_day} runs per day is reached")
+        return 429, "run_limit", f"This playbook's limit of {ep.max_runs_per_day} runs per day is reached"
+    return None
+
+
+def _policy_dispatches_last_hour(conn: Connection) -> int:
+    return conn.execute(text("""SELECT count(*) FROM novrsoc.soar_approvals WHERE auth_kind = 'policy'
+                                AND created_at > now() - interval '1 hour'""")).scalar()
+
+
+def start_run(conn: Connection, settings: Settings, actor: Actor, pb, case_id: uuid.UUID, mode: str, justification: str,
+              idempotency_key: str, *, policy: SoarPolicyView, origin: str = "manual", confidence: int | None = None,
+              trigger_alert_id: uuid.UUID | None = None) -> uuid.UUID:
+    """Create a run and its steps (the caller has passed run_gate). Non-consequential steps run in-process. A
+    consequential step is checked (target from the case's own evidence, allowed action, authorized agent groups, not a
+    protected target, live mode enabled) and then:
+      * automatic run + action pre-authorized + confidence >= the threshold + under the hourly automatic dispatch cap:
+        a POLICY authorization is recorded and the step is dispatched at once (no per-event approval);
+      * otherwise: a human approval is requested (someone other than the requester decides)."""
+    alerts = _case_alerts(conn, case_id, trigger_alert_id)
     run_id = conn.execute(text("""INSERT INTO novrsoc.soar_runs (org_id, playbook_id, playbook_version, case_id, mode, state,
-                                    idempotency_key, requested_by, requested_label)
-                                  VALUES (:o, :pb, :v, :c, :m, 'pending', :k, :u, :l) RETURNING id"""),
-                          {"o": p.org_id, "pb": pb.id, "v": pb.version, "c": body.case_id, "m": body.mode.value,
-                           "k": body.idempotency_key, "u": p.user_id, "l": p.email}).scalar()
-    _audit(p, request, "SOAR_RUN_REQUESTED", run_id, {"playbook": f"{pb.name}@{pb.version}", "mode": body.mode.value})
+                                    idempotency_key, requested_by, requested_label, origin, confidence, trigger_alert_id)
+                                  VALUES (:o, :pb, :v, :c, :m, 'pending', :k, :u, :l, :origin, :conf, :trig) RETURNING id"""),
+                          {"o": actor.org_id, "pb": pb.id, "v": pb.version, "c": case_id, "m": mode, "k": idempotency_key,
+                           "u": actor.user_id, "l": actor.label, "origin": origin, "conf": confidence, "trig": trigger_alert_id}).scalar()
+    _audit(actor, "SOAR_AUTOMATIC_RUN" if origin == "automatic" else "SOAR_RUN_REQUESTED", run_id,
+           {"playbook": f"{pb.name}@{pb.version}", "mode": mode, "origin": origin, "confidence": confidence,
+            "trigger_alert_id": str(trigger_alert_id) if trigger_alert_id else None})
+    auto = policy.automation
+    pre_authorized = {a.value for a in auto.pre_authorized_actions}
+    approvers_to_notify = False
     for pos, raw in enumerate(pb.steps):
         s = PlaybookStep(**raw)
         action = s.action.value
         target, agent_id, groups = _target(action, s.parameters, alerts) if action in CONSEQUENTIAL else (None, None, [])
         sid = conn.execute(text("""INSERT INTO novrsoc.soar_steps (org_id, run_id, position, step_key, action, target, parameters, state)
                                    VALUES (:o, :r, :pos, :k, :a, :t, CAST(:pr AS jsonb), 'pending') RETURNING id"""),
-                           {"o": p.org_id, "r": run_id, "pos": pos, "k": s.step_key, "a": action, "t": target,
+                           {"o": actor.org_id, "r": run_id, "pos": pos, "k": s.step_key, "a": action, "t": target,
                             "pr": json.dumps({**s.parameters, "_agent_id": agent_id, "_agent_groups": groups})}).scalar()
         if action == "enrich_iocs":
             n = conn.execute(text("""SELECT count(*) FROM novrsoc.ti_matches m JOIN novrsoc.case_alerts ca
                                      ON ca.alert_id = m.alert_id AND ca.org_id = m.org_id WHERE ca.case_id = :c"""),
-                             {"c": body.case_id}).scalar()
+                             {"c": case_id}).scalar()
             _step(conn, sid, "succeeded", f"{n} Threat Insights indicator match(es) on the case's alerts")
-        elif action == "create_task":
+            continue
+        if action == "create_task":
             conn.execute(text("""INSERT INTO novrsoc.case_events (case_id, org_id, actor_id, actor_label, kind, body)
                                  VALUES (:c, :o, :u, :l, 'note', :b)"""),
-                         {"c": body.case_id, "o": p.org_id, "u": p.user_id, "l": p.email,
+                         {"c": case_id, "o": actor.org_id, "u": actor.user_id, "l": actor.label,
                           "b": f"Task (playbook {pb.name}): {s.parameters.get('title', s.step_key)}"})
             _step(conn, sid, "succeeded", "Task added to the case timeline")
-        elif action in ("notify_email", "notify_ciso"):
+            continue
+        if action in ("notify_email", "notify_ciso"):
             _step(conn, sid, "skipped_not_configured", "No notification adapter is configured; nothing was sent")
-        elif target is None:
+            continue
+        guard = protected_match(action, target, agent_id, auto.protected_targets) if target else None
+        if target is None:
             _step(conn, sid, "refused_by_policy", "The case's alerts contain no target for this action")
         elif action not in [a.value for a in policy.allowed_actions]:
             _step(conn, sid, "refused_by_policy", f"{action} is not in the organization's response policy")
         elif not set(groups) & set(policy.allowed_agent_groups):
             _step(conn, sid, "refused_by_policy", "The endpoint's NovrAgent groups are not authorized by the response policy")
-        elif body.mode.value == "live" and not policy.live_enabled:
+        elif guard is not None:
+            _step(conn, sid, "refused_by_policy", f"{target} is a protected target ({guard}); no response action may target it")
+        elif mode == "live" and not policy.live_enabled:
             _step(conn, sid, "refused_by_policy", "Live mode is not enabled in the organization's response policy")
-            _audit(p, request, "SOAR_LIVE_REFUSED", run_id, {"step": s.step_key})
+            _audit(actor, "SOAR_LIVE_REFUSED", run_id, {"step": s.step_key})
         else:
+            why_human = None
+            if origin != "automatic":
+                why_human = ""
+            elif action not in pre_authorized:
+                why_human = f"{action} is not pre-authorized by the automation policy"
+            elif confidence is None or confidence < auto.min_confidence:
+                why_human = f"detection confidence {confidence} is below the pre-authorization threshold {auto.min_confidence}"
+            elif _policy_dispatches_last_hour(conn) >= auto.max_dispatches_per_hour:
+                why_human = f"the automatic dispatch limit ({auto.max_dispatches_per_hour} per hour) is reached"
+            if why_human is None:
+                aid = conn.execute(text("""INSERT INTO novrsoc.soar_approvals (org_id, step_id, action, target, justification, requested_by,
+                                             requested_label, decision, decided_label, reason, decided_at, expires_at, auth_kind)
+                                           VALUES (:o, :s, :a, :t, :j, NULL, :l, 'approve', 'automation policy', :r, now(), :e, 'policy')
+                                           RETURNING id"""),
+                                   {"o": actor.org_id, "s": sid, "a": action, "t": target, "j": justification, "l": AUTOMATION_LABEL,
+                                    "r": f"Pre-authorized {action}: detection confidence {confidence} >= {auto.min_confidence}",
+                                    "e": _now() + DISPATCH_TTL}).scalar()
+                _audit(actor, "SOAR_POLICY_AUTHORIZED", run_id, {"approval_id": str(aid), "action": action, "target": target,
+                                                                 "confidence": confidence, "threshold": auto.min_confidence})
+                conn.execute(text("UPDATE novrsoc.soar_steps SET request_id = :q WHERE id = :s"), {"q": uuid.uuid4(), "s": sid})
+                step = conn.execute(text("SELECT * FROM novrsoc.soar_steps WHERE id = :s"), {"s": sid}).one()
+                run = conn.execute(text("SELECT * FROM novrsoc.soar_runs WHERE id = :r"), {"r": run_id}).one()
+                approval = conn.execute(text("SELECT * FROM novrsoc.soar_approvals WHERE id = :a"), {"a": aid}).one()
+                _dispatch(conn, settings, actor, step, run, approval)
+                continue
             expires = _now() + timedelta(minutes=policy.approval_ttl_minutes)
+            just = justification if not why_human else f"{justification} (needs a person: {why_human})"
             aid = conn.execute(text("""INSERT INTO novrsoc.soar_approvals (org_id, step_id, action, target, justification,
                                          requested_by, requested_label, expires_at)
                                        VALUES (:o, :s, :a, :t, :j, :u, :l, :e) RETURNING id"""),
-                               {"o": p.org_id, "s": sid, "a": action, "t": target, "j": body.justification, "u": p.user_id,
-                                "l": p.email, "e": expires}).scalar()
-            _step(conn, sid, "awaiting_approval", "Awaiting a human approval (not the requester)")
-            _audit(p, request, "SOAR_APPROVAL_REQUESTED", run_id, {"approval_id": str(aid), "action": action, "target": target})
+                               {"o": actor.org_id, "s": sid, "a": action, "t": target, "j": just[:2000], "u": actor.user_id,
+                                "l": actor.label, "e": expires}).scalar()
+            _step(conn, sid, "awaiting_approval", "Awaiting a human approval" + (f" ({why_human})" if why_human else " (not the requester)"))
+            _audit(actor, "SOAR_APPROVAL_REQUESTED", run_id, {"approval_id": str(aid), "action": action, "target": target})
+            approvers_to_notify = approvers_to_notify or actor.system
+    if approvers_to_notify:
+        users = [u.user_id for u in activity.users_with_roles(conn, ["soc_manager", "super_admin"])]
+        activity.notify(conn, users, "soar_approval", f"Automatic run of {pb.name} needs an approval",
+                        "A consequential step was not pre-authorized; a person must decide.", f"/app/soar/runs/{run_id}")
     state = _settle_run(conn, run_id)
-    _audit(p, request, "SOAR_RUN_STATE", run_id, {"to": state})
-    return _run_view(conn, run_id)
+    _audit(actor, "SOAR_RUN_STATE", run_id, {"to": state})
+    return run_id
 
 
 @router.get("/runs", response_model=RunList, summary="Runs of the organization (newest first)")
@@ -490,7 +693,7 @@ def _approval_view(r) -> ApprovalView:
     return ApprovalView(id=r.id, run_id=r.run_id, step_key=r.step_key, action=r.action, target=r.target, justification=r.justification,
                         requested_by=_actor(r.requested_by, r.requested_label), decision=r.decision,
                         decided_by=_actor(r.decided_by, r.decided_label) if r.decided_by else None, reason=r.reason,
-                        expires_at=r.expires_at, created_at=r.created_at)
+                        expires_at=r.expires_at, created_at=r.created_at, authorization=r.auth_kind)
 
 
 _APPROVAL_SQL = """SELECT a.*, s.run_id, s.step_key FROM novrsoc.soar_approvals a JOIN novrsoc.soar_steps s ON s.id = a.step_id"""
@@ -504,8 +707,11 @@ def list_approvals(pending: bool = False, p: Principal = Depends(require("cases:
     return ApprovalList(items=[_approval_view(r) for r in rows])
 
 
-def _dispatch(conn: Connection, settings: Settings, p: Principal, request: Request, step, run, approval) -> None:
-    alerts = _case_alerts(conn, run.case_id)
+def _dispatch(conn: Connection, settings: Settings, actor: Actor, step, run, approval) -> None:
+    """Re-check, then send the step to the bridge. The signed request body is stored on the step: a retry re-sends the
+    SAME body (same request_id, same timestamps), so a bridge that already executed it answers with its stored receipt
+    instead of a request_id conflict. An expired stored request is never re-signed: the step fails and says so."""
+    alerts = _case_alerts(conn, run.case_id, run.trigger_alert_id)
     params = step.parameters or {}
     target, agent_id, groups = _target(step.action, params, alerts)
     policy = _policy(conn)
@@ -515,10 +721,20 @@ def _dispatch(conn: Connection, settings: Settings, p: Principal, request: Reque
             or not set(groups) & set(policy.allowed_agent_groups) or (run.mode == "live" and not policy.live_enabled):
         _step(conn, step.id, "refused_by_policy", "Re-check at dispatch failed: target or authorization changed")
         return
-    req = {"v": 1, "request_id": str(step.request_id), "org_id": str(p.org_id), "run_id": str(run.id), "step_key": step.step_key,
-           "action": step.action, "agent_id": agent_id, "target": target, "approval_id": str(approval.id),
-           "approved_by": str(approval.decided_by), "issued_at": _now().isoformat(),
-           "expires_at": (_now() + DISPATCH_TTL).isoformat(), "mode": run.mode}
+    guard = protected_match(step.action, target, agent_id, policy.automation.protected_targets)
+    if guard is not None:
+        _step(conn, step.id, "refused_by_policy", f"Re-check at dispatch failed: {target} is a protected target ({guard})")
+        return
+    req = step.request if step.request and step.request.get("request_id") == str(step.request_id) else None
+    if req is not None and datetime.fromisoformat(req["expires_at"]) <= _now():
+        _step(conn, step.id, "failed", "The signed request expired before a receipt arrived; nothing is re-signed. Start a new run.")
+        return
+    if req is None:
+        req = {"v": 1, "request_id": str(step.request_id), "org_id": str(actor.org_id), "run_id": str(run.id), "step_key": step.step_key,
+               "action": step.action, "agent_id": agent_id, "target": target, "approval_id": str(approval.id),
+               "approved_by": str(approval.decided_by) if approval.decided_by else "policy", "authorization": approval.auth_kind,
+               "issued_at": _now().isoformat(), "expires_at": (_now() + DISPATCH_TTL).isoformat(), "mode": run.mode}
+        conn.execute(text("UPDATE novrsoc.soar_steps SET request = CAST(:r AS jsonb) WHERE id = :s"), {"r": json.dumps(req), "s": step.id})
     try:
         receipt = bridge_client.factory(settings).execute(req)
     except bridge_client.BridgeUnconfigured as e:
@@ -535,9 +751,9 @@ def _dispatch(conn: Connection, settings: Settings, p: Principal, request: Reque
         _step(conn, step.id, "failed", f"Receipt refused: {e}")
         return
     state = {"executed": "succeeded", "dry_run": "dry_run", "rejected": "failed", "failed": "failed"}[receipt.status]
-    _step(conn, step.id, state, f"Bridge: {receipt.status} ({receipt.reason})", receipt=receipt.model_dump_json())
-    _audit(p, request, "SOAR_STEP_EXECUTED", run.id, {"step": step.step_key, "receipt_status": receipt.status,
-                                                      "adapter": receipt.adapter, "request_id": str(step.request_id)})
+    _step(conn, step.id, state, f"NovrSOAR: {receipt.status} ({receipt.reason})", receipt=receipt.model_dump_json())
+    _audit(actor, "SOAR_STEP_EXECUTED", run.id, {"step": step.step_key, "receipt_status": receipt.status, "adapter": receipt.adapter,
+                                                 "request_id": str(step.request_id), "authorization": approval.auth_kind})
 
 
 @router.post("/approvals/{approval_id}/decision", response_model=RunView, summary="Approve or reject (not your own request)")
@@ -555,6 +771,7 @@ def decide(approval_id: uuid.UUID, body: ApprovalDecisionRequest, request: Reque
     stop = _stopped(conn)
     if stop is not None and body.decision == "approve":
         raise ApiError(409, "emergency_stop", f"The SOAR emergency stop is on: {stop.emergency_reason}. Approvals that would dispatch are blocked.")
+    actor = actor_of(p, request)
     if a.expires_at <= _now():
         # Returned, not raised: the expiry must be committed with the run's new state.
         _step(conn, step.id, "expired", "The approval expired before a decision")
@@ -563,15 +780,15 @@ def decide(approval_id: uuid.UUID, body: ApprovalDecisionRequest, request: Reque
                                        "request_id": request.state.request_id}}, status_code=409)
     conn.execute(text("""UPDATE novrsoc.soar_approvals SET decision = :d, decided_by = :u, decided_label = :l, reason = :r,
                          decided_at = now() WHERE id = :id"""), {"d": body.decision, "u": p.user_id, "l": p.email, "r": body.reason, "id": a.id})
-    _audit(p, request, "SOAR_APPROVAL_DECIDED", run.id, {"approval_id": str(a.id), "decision": body.decision})
+    _audit(actor, "SOAR_APPROVAL_DECIDED", run.id, {"approval_id": str(a.id), "decision": body.decision})
     if body.decision == "reject":
         _step(conn, step.id, "rejected", f"Rejected by {p.email}: {body.reason}")
     else:
         conn.execute(text("UPDATE novrsoc.soar_steps SET request_id = :q WHERE id = :s"), {"q": uuid.uuid4(), "s": step.id})
         step = conn.execute(text("SELECT * FROM novrsoc.soar_steps WHERE id = :s"), {"s": step.id}).one()
         approval = conn.execute(text("SELECT * FROM novrsoc.soar_approvals WHERE id = :id"), {"id": a.id}).one()
-        _dispatch(conn, settings, p, request, step, run, approval)
-    _audit(p, request, "SOAR_RUN_STATE", run.id, {"to": _settle_run(conn, run.id)})
+        _dispatch(conn, settings, actor, step, run, approval)
+    _audit(actor, "SOAR_RUN_STATE", run.id, {"to": _settle_run(conn, run.id)})
     return _run_view(conn, run.id)
 
 
@@ -588,13 +805,15 @@ def redispatch(step_id: uuid.UUID, request: Request, p: Principal = Depends(requ
         raise ApiError(409, "emergency_stop", f"The SOAR emergency stop is on: {stop.emergency_reason}")
     run = conn.execute(text("SELECT * FROM novrsoc.soar_runs WHERE id = :r"), {"r": step.run_id}).one()
     approval = conn.execute(text("SELECT * FROM novrsoc.soar_approvals WHERE step_id = :s"), {"s": step.id}).one()
-    _dispatch(conn, settings, p, request, step, run, approval)
+    _dispatch(conn, settings, actor_of(p, request), step, run, approval)
     _settle_run(conn, run.id)
     return _run_view(conn, run.id)
 
 
 # ---------------------------------------------------------------- operations centre and AI activity
 _CATEGORY = {"SOAR_APPROVAL_REQUESTED": "approval", "SOAR_APPROVAL_DECIDED": "approval", "SOAR_POLICY_UPDATED": "policy",
+             "SOAR_POLICY_AUTHORIZED": "approval", "SOAR_AUTOMATION_CHANGED": "policy", "SOAR_AUTOMATIC_RUN": "execution",
+             "SOAR_AUTOMATIC_CASE": "execution",
              "SOAR_EMERGENCY_STOP": "policy", "SOAR_EMERGENCY_STOP_LIFTED": "policy", "SOAR_LIVE_REFUSED": "policy"}
 
 
@@ -616,7 +835,11 @@ def operations(p: Principal = Depends(require("cases:read")), conn: Connection =
         (SELECT count(*) FROM novrsoc.soar_steps WHERE state = 'refused_by_policy' AND updated_at > now() - interval '24 hours') AS refused,
         (SELECT count(*) FROM novrsoc.soar_runs WHERE created_at > now() - interval '1 hour') AS hour,
         (SELECT count(*) FROM novrsoc.soar_playbooks WHERE status = 'approved' AND enabled) AS approved,
-        (SELECT count(*) FROM novrsoc.soar_playbooks WHERE status = 'pending_approval') AS pending""")).one()
+        (SELECT count(*) FROM novrsoc.soar_playbooks WHERE status = 'pending_approval') AS pending,
+        (SELECT count(*) FROM novrsoc.soar_runs WHERE origin = 'automatic' AND created_at > now() - interval '24 hours') AS auto_runs,
+        (SELECT count(*) FROM novrsoc.soar_approvals WHERE auth_kind = 'policy' AND created_at > now() - interval '24 hours') AS auto_ok,
+        (SELECT count(*) FROM novrsoc.soar_automation_events WHERE decision = 'case_created'
+           AND created_at > now() - interval '24 hours') AS auto_cases""")).one()
     timeline = [SoarTimelineEntry(at=r.occurred_at, category=_CATEGORY.get(r.action, "playbook" if "PLAYBOOK" in r.action else "execution"),
                                   action=r.action, actor_label=r.actor_label, resource_id=r.resource_id,
                                   summary=", ".join(f"{k}: {v}" for k, v in list((r.details or {}).items())[:4])[:300],
@@ -631,7 +854,9 @@ def operations(p: Principal = Depends(require("cases:read")), conn: Connection =
                           live_enabled=pol.live_enabled, awaiting_approval=c.awaiting, running=c.running, completed_24h=c.done,
                           failed_24h=c.failed, dispatched_without_receipt=c.dispatched, refused_24h=c.refused,
                           human_intervention=c.awaiting + c.dispatched, runs_last_hour=c.hour, max_runs_per_hour=pol.max_runs_per_hour,
-                          approved_playbooks=c.approved, pending_playbook_reviews=c.pending, timeline=timeline[:80])
+                          approved_playbooks=c.approved, pending_playbook_reviews=c.pending, timeline=timeline[:80],
+                          automation_enabled=pol.automation.enabled, automatic_runs_24h=c.auto_runs, policy_authorized_24h=c.auto_ok,
+                          automatic_cases_24h=c.auto_cases)
 
 
 @router.get("/ai-activity", response_model=AiActivityList, summary="Every AI analysis, recommendation, failure and review (audit)")
@@ -642,3 +867,16 @@ def ai_activity(kind: str | None = Query(None, pattern=r"^[a-z_]{3,30}$"), modul
                                 AND (CAST(:m AS text) IS NULL OR module = :m) ORDER BY id DESC LIMIT :n"""),
                         {"k": kind, "m": module, "n": limit}).all()
     return AiActivityList(items=[_ai_view(r) for r in rows])
+
+
+# ---------------------------------------------------------------- policy-driven orchestration
+@router.get("/automation/events", response_model=AutomationEventList,
+            summary="What NovrSOAR automation decided for new alerts (cases opened or joined, runs started, skips, failures)")
+def automation_events(limit: int = Query(100, ge=1, le=500), p: Principal = Depends(require("cases:read")),
+                      conn: Connection = Depends(request_connection)) -> AutomationEventList:
+    pol = _policy(conn)
+    rows = conn.execute(text("SELECT * FROM novrsoc.soar_automation_events ORDER BY created_at DESC LIMIT :n"), {"n": limit}).all()
+    return AutomationEventList(enabled=pol.automation.enabled, case_creation=pol.automation.case_creation, since=pol.automation_since,
+                               items=[AutomationEventView(id=r.id, created_at=r.created_at, alert_id=r.alert_id, playbook_name=r.playbook_name,
+                                                          decision=r.decision, confidence=r.confidence, confidence_factors=list(r.factors),
+                                                          case_id=r.case_id, run_id=r.run_id, detail=r.detail) for r in rows])

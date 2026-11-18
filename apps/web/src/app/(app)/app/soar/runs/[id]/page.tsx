@@ -28,7 +28,10 @@ export default function RunPage() {
     return (
         <>
             <PageHeader title={run ? `${run.playbook_name} v${run.playbook_version}` : 'Run'} icon={Workflow}
-                meta={run && <><span>{run.mode === 'live' ? 'Live' : 'Dry run'}</span><span>Requested by {run.requested_by.label} · {fmt(run.created_at)}</span></>}
+                meta={run && <><span>{run.mode === 'live' ? 'Live' : 'Dry run'}</span>
+                    <span data-testid="run-origin">{run.origin === 'automatic'
+                        ? `Started automatically${run.confidence != null ? ` · detection confidence ${run.confidence}` : ''}` : `Requested by ${run.requested_by.label}`} · {fmt(run.created_at)}</span>
+                    {run.trigger_alert_id && <Link className="underline" href={`/app/alerts/${run.trigger_alert_id}`}>Triggering alert</Link>}</>}
                 actions={<Link href="/app/soar" className={btn('secondary')}><ArrowLeft className="w-3.5 h-3.5" aria-hidden /> SOAR</Link>} />
             <Notice msg={msg} />
             {error ? <ApiErrorState error={error} /> : !run ? <LoadingState label="Loading run" /> : (
@@ -37,9 +40,16 @@ export default function RunPage() {
                     <ol className="mt-3 divide-y divide-border" data-testid="run-steps">
                         {run.steps.map((s) => (
                             <li key={s.id} className="py-3 text-sm" data-step={s.step_key} data-state={s.state}>
-                                <p className="flex flex-wrap items-center gap-2"><Tag>{s.action}</Tag>{s.target && <span className="font-mono text-xs">{s.target}</span>}
-                                    <StatusPill tone={STEP_TONE[s.state] ?? 'neutral'} label={s.state.replace(/_/g, ' ')} /></p>
-                                <p className="text-xs text-foreground-muted mt-1">{s.message}</p>
+                                <p className="flex flex-wrap items-center gap-2"><Tag>{s.action}</Tag>{s.target && <span className="font-mono text-xs wrap-any">{s.target}</span>}
+                                    <StatusPill tone={STEP_TONE[s.state] ?? 'neutral'} label={s.state.replace(/_/g, ' ')} />
+                                    {s.authorization && <span data-testid="step-authorization"><StatusPill tone={s.authorization === 'policy' ? 'warning' : 'good'}
+                                        label={s.authorization === 'policy' ? 'pre-authorized by policy' : 'approved by a person'} /></span>}</p>
+                                <p className="text-xs text-foreground-muted mt-1 wrap-any">{s.message}</p>
+                                {s.request && (
+                                    <details className="mt-1" data-testid="step-request">
+                                        <summary className="text-[11px] cursor-pointer underline">Request sent to NovrSOAR (signed)</summary>
+                                        <pre className="mt-1 text-[11px] font-mono whitespace-pre-wrap break-all bg-card-muted border border-border rounded-lg p-2">{JSON.stringify(s.request, null, 2)}</pre>
+                                    </details>)}
                                 {s.receipt && (
                                     <p className="text-[11px] mt-1 font-mono break-all" data-testid="receipt">
                                         receipt: {s.receipt.status} · {s.receipt.adapter === 'simulated' ? 'simulated' : 'NovrSOAR'} · {s.receipt.command ?? '—'} · {fmt(s.receipt.executed_at)} · request {s.receipt.request_id}{s.receipt.replayed ? ' · replayed' : ''}

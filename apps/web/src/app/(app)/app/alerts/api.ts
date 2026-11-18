@@ -14,6 +14,7 @@ const P = {
     evidence: '/api/v1/soc/alerts/{alert_id}/evidence',
     cases: '/api/v1/soc/cases',
     caseOne: '/api/v1/soc/cases/{case_id}',
+    caseCorrelation: '/api/v1/soc/cases/{case_id}/correlation',
     caseNotes: '/api/v1/soc/cases/{case_id}/notes',
     caseStatus: '/api/v1/soc/cases/{case_id}/status',
 } as const satisfies Record<string, ApiPath>;
@@ -36,6 +37,9 @@ export const socApi = {
     cases: (orgId: string | null, f: { status?: string; limit?: number; offset?: number } = {}) =>
         request<Schemas['CaseList']>(`${P.cases}${queryString(f)}`, { orgId }),
     caseDetail: (orgId: string | null, id: string) => request<CaseDetail>(fillPath(P.caseOne, { case_id: id }), { orgId }),
+    /** The case's canonical assets with their alerts and open VMS findings (findings only for vms:read). */
+    caseCorrelation: (orgId: string | null, id: string) =>
+        request<Schemas['CaseCorrelation']>(fillPath(P.caseCorrelation, { case_id: id }), { orgId }),
     addNote: (orgId: string | null, id: string, body: string, kind: Schemas['CaseNoteCreate']['kind'] = 'note') =>
         request<CaseDetail>(fillPath(P.caseNotes, { case_id: id }), { method: 'POST', orgId, body: { body, kind } satisfies Schemas['CaseNoteCreate'] }),
     assignCase: (orgId: string | null, id: string, assigneeId: string | null, note = '') =>

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from app import portal as portals
 from app.audit import service as audit
 from app.auth.deps import Principal, client_ip, current_principal
 from app.authz.org_resolution import Membership
@@ -46,6 +47,11 @@ def session_info(p: Principal, conn: Connection) -> SessionInfo:
 def login(body: LoginRequest, request: Request, response: Response, conn: Connection = Depends(request_connection),
           settings: Settings = Depends(get_settings)) -> LoginResponse:
     email = body.email.strip().lower()
+    here = portals.resolve(conn, request, settings)
+    if here.kind == "unknown":
+        audit.record("LOGIN_FAILED", "denied", actor_label=email, resource_type="session", request_id=request.state.request_id,
+                     ip=client_ip(request), details={"reason": "unknown_portal", "host": here.host[:253]})
+        raise ApiError(404, "portal_not_found", "There is no NovrSOC sign-in at this address")
     row = conn.execute(text("SELECT * FROM novrsoc.auth_user_for_login(:e)"), {"e": email}).first()
     ok = verify_password(body.password, row.password_hash if row else None)
     locked = bool(row and row.locked_until is not None and row.locked_until > datetime.now(timezone.utc))
@@ -59,13 +65,8 @@ def login(body: LoginRequest, request: Request, response: Response, conn: Connec
                      resource_type="session", request_id=request.state.request_id, ip=client_ip(request),
                      details={"reason": reason})
         raise _INVALID
-    conn.execute(text("SELECT novrsoc.auth_record_login(:u, true, :m, :l)"),
-                 {"u": row.user_id, "m": settings.login_max_failures, "l": settings.login_lockout_minutes})
-    token, csrf = new_token(), new_token()
-    conn.execute(text("SELECT novrsoc.auth_create_session(:u, :t, :c, :ttl)"),
-                 {"u": row.user_id, "t": sha256(token), "c": sha256(csrf), "ttl": settings.session_ttl_minutes})
-
-    # Build the session view exactly as an authenticated request would see it (home organization).
+    # Which accounts may sign in at this address: an organization portal admits only its own home members; the platform
+    # host admits everyone except members of an organization whose own portal is enabled (they sign in there).
     set_context(conn, user_id=row.user_id)
     from app.authz.org_resolution import load_memberships
     from app.authz.catalog import permissions_for
@@ -73,6 +74,25 @@ def login(body: LoginRequest, request: Request, response: Response, conn: Connec
     home = next((m for m in ms if m.access_scope == "home"), None)
     if home is None:
         raise ApiError(403, "no_home_org", "This account has no home organization")
+    if here.kind == "tenant" and home.org_id != here.org_id:
+        audit.record("LOGIN_FAILED", "denied", actor_id=row.user_id, actor_label=email, resource_type="session",
+                     request_id=request.state.request_id, ip=client_ip(request),
+                     details={"reason": "wrong_portal", "portal": here.slug})
+        raise _INVALID                                        # same answer as a wrong password: no account enumeration
+    if here.kind == "platform":
+        set_context(conn, org_id=home.org_id)                 # its own organization row is visible under RLS
+        own = conn.execute(text("""SELECT 1 FROM novrsoc.organizations WHERE id = :o AND kind = 'client' AND status = 'active'
+                                   AND portal_enabled"""), {"o": home.org_id}).first()
+        if own is not None:
+            audit.record("LOGIN_FAILED", "denied", actor_id=row.user_id, actor_label=email, resource_type="session",
+                         request_id=request.state.request_id, ip=client_ip(request), details={"reason": "use_organization_portal"})
+            raise ApiError(409, "use_organization_portal", "Sign in at your organization's NovrSOC portal")
+    conn.execute(text("SELECT novrsoc.auth_record_login(:u, true, :m, :l)"),
+                 {"u": row.user_id, "m": settings.login_max_failures, "l": settings.login_lockout_minutes})
+    token, csrf = new_token(), new_token()
+    conn.execute(text("SELECT novrsoc.auth_create_portal_session(:u, :t, :c, :ttl, :p)"),
+                 {"u": row.user_id, "t": sha256(token), "c": sha256(csrf), "ttl": settings.session_ttl_minutes,
+                  "p": here.org_id if here.kind == "tenant" else None})
     u = conn.execute(text("SELECT email, display_name, password_change_required FROM novrsoc.users WHERE id = :id"),
                      {"id": row.user_id}).one()
     p = Principal(user_id=row.user_id, email=str(u.email), display_name=u.display_name, role=home.role, home=home,

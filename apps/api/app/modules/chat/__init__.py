@@ -275,7 +275,35 @@ def t_soar(c: Ctx) -> None:
     for a in pend:
         cid = c.cite("soar_approval", a.id, f"{a.action} {a.target}", f"requested by {a.requested_label}, expires {a.expires_at:%Y-%m-%d %H:%M} UTC",
                      "/app/soar/approvals")
-        c.lines.append(f"  - {a.action} on {a.target}, waiting for a second person [{cid}]")
+        c.lines.append(f"  - {a.action} on {a.target}, waiting for a person's approval [{cid}]")
+    auto = {r[0]: r[1] for r in c.conn.execute(text("""SELECT decision, count(*) FROM novrsoc.soar_automation_events
+                                                      WHERE created_at > now() - interval '24 hours' GROUP BY 1"""))}
+    pol = c.conn.execute(text("SELECT automation_enabled, case_creation, auto_actions FROM novrsoc.soar_policies")).first()
+    if pol is not None and (pol.automation_enabled or pol.case_creation):
+        cid = c.cite("soar_automation", c.p.org_id, "NovrSOAR automation (24 h)",
+                     ", ".join(f"{v} {k.replace('_', ' ')}" for k, v in auto.items()) or "no decision", "/app/soar/automation")
+        c.lines.append("Automation is on" + (f" (pre-authorized: {', '.join(pol.auto_actions)})" if pol.auto_actions else " (nothing pre-authorized)")
+                       + ". Last 24 hours: " + (", ".join(f"{v} {k.replace('_', ' ')}" for k, v in auto.items()) or "no decision") + f" [{cid}].")
+
+
+ROLE_LABEL = {"soc_manager": "SOC managers", "analyst": "analysts", "executive": "executives", "portal_user": "portal users",
+              "super_admin": "platform administrators"}
+
+
+def t_team(c: Ctx) -> None:
+    """People of the organization by role and who is online, from presence heartbeats (never guessed)."""
+    from app.modules.presence import team
+    t = team(c.conn)
+    c.tool("team", "org:read", "ok", f"{t.members} member(s), {t.assigned_staff} assigned NovrSOC staff", len(t.by_role))
+    roles = ", ".join(f"{r.members} {ROLE_LABEL.get(r.role, r.role)}" for r in t.by_role) or "nobody"
+    cid = c.cite("team", c.p.org_id, "Team of the organization", f"{roles}; {t.assigned_staff} NovrSOC staff assigned", "/app/admin")
+    c.lines.append(f"Team: {roles} (including {t.assigned_staff} NovrSOC staff assigned to this organization) [{cid}].")
+    if not t.presence_tracked:
+        c.lines.append("Online now: not tracked yet. Presence comes from open NovrSOC tabs, and none has reported for this organization.")
+        return
+    online = ", ".join(f"{r.online} of {r.members} {ROLE_LABEL.get(r.role, r.role)}" for r in t.by_role if r.members)
+    cid = c.cite("presence", c.p.org_id, "Online now", f"{t.online} online within {t.online_window_minutes} minutes: {online}", "/app/admin")
+    c.lines.append(f"Online now (an open NovrSOC tab within {t.online_window_minutes} minutes): {t.online} - {online} [{cid}].")
 
 
 def t_reports(c: Ctx) -> None:
@@ -327,18 +355,21 @@ TOOLS = [  # (name, permission, trigger, function)
     ("threat_intel", "intel:read", re.compile(r"threat|indicator|\bioc|actor|\bapt|intel|malicious|reputation|[a-f0-9]{64}", re.I), t_intel),
     ("soar", "cases:read", re.compile(r"soar|playbook|approval|response action|automation", re.I), t_soar),
     ("reports", "reports:read", re.compile(r"report", re.I), t_reports),
+    ("team", "org:read", re.compile(r"analyst|team|staff|people|colleague|member|who is (online|working|on shift|on duty)|\bonline\b|"
+                                    r"on shift|on duty|how many (users|people|managers)", re.I), t_team),
 ]
 CAPABILITIES = ("I can answer questions about your organization's alerts, cases, SLA, assets, vulnerabilities and CVEs, security posture, "
-                "threat intelligence (indicators, matches, actors), SOAR approvals and reports, and generate a report when your role allows it. "
+                "threat intelligence (indicators, matches, actors), SOAR approvals and automation, your team (members by role and who is online), "
+                "and reports, and generate a report when your role allows it. "
                 "Try: \"What critical alerts came in today?\", \"Which cases are breaching SLA?\", \"Tell me about CVE-2024-3400\", "
-                "\"What is our security posture?\".")
+                "\"What is our security posture?\", \"How many analysts are online?\".")
 
 
 def answer(conn: Connection, p: Principal, q: str, settings: Settings, request: Request) -> tuple[str, list[ChatCitation], list[ChatToolCall], str]:
     c = Ctx(conn, p, q, settings, request)
     if ACTION.search(q) and not re.search(r"\b(how many|which|what|show|list|were|was)\b", q, re.I):
         return ("NovrChat is read-only. It cannot block, isolate, disable, approve, delete or run anything. Response actions go through "
-                "SOAR, where every consequential step needs a second person's approval.", [], [], "refused")
+                "NovrSOAR, where every consequential step needs a person's approval or the organization's pre-authorization policy.", [], [], "refused")
     chosen = [t for t in TOOLS if t[2].search(q)]
     if not chosen:
         return CAPABILITIES, [], [], "complete"

@@ -10,23 +10,25 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
     Activity, ArrowRightLeft, BarChart3, Bell, Boxes, Briefcase, Bug, Building2, ChevronDown, ClipboardCheck, ClipboardList, CreditCard, Database,
     Download, FileBarChart, Fingerprint, Gauge, Globe2, HeartPulse, KeyRound, LayoutDashboard, LifeBuoy, LogOut, Mail, MapPin, Menu, MessageSquare, Monitor,
-    Moon, Landmark, Network, Radar, ScanSearch, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Sun, Target, Timer, UserCog, Workflow,
+    Moon, Landmark, Network, Radar, Rocket, ScanSearch, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Sun, Target, Timer, UserCog, Workflow,
     Wrench, X, Zap, type LucideIcon,
 } from 'lucide-react';
 import { secopsApi } from '@/foundation/api/modules';
 import { useResource } from '@/foundation/ui/useResource';
 import { Logo } from '@/components/shared/Logo';
+import { BrandMark, usePortal, usePortalTheme } from '@/foundation/portal/portal';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { FOUNDATION_NAV, isActive, visibleNav, type NavIcon, type NavItem } from '@/foundation/navigation';
 import { PasswordChangeForm } from '@/foundation/session/PasswordChange';
 import { useSession } from '@/foundation/session/SessionProvider';
+import { usePresenceHeartbeat } from '@/foundation/session/presence';
 
 const ICONS: Record<NavIcon, LucideIcon> = {
     overview: LayoutDashboard, posture: Gauge, reports: FileBarChart, alerts: Bell, cases: Briefcase, playbooks: Workflow, soar: Zap,
     handover: ArrowRightLeft, sla: Timer, vms: ShieldAlert, surface: Network, findings: Bug, scans: ScanSearch, risk: Target, remediation: Wrench,
     vmsreport: ClipboardCheck, insights: Radar, actors: Fingerprint, cves: Database, nhai: Sparkles, cnii: Landmark, email: Mail, brand: ShieldCheck,
     assets: Boxes, chat: MessageSquare, recovery: LifeBuoy, admin: Building2, users: UserCog, billing: CreditCard, analytics: BarChart3,
-    exports: Download, wazuh: Activity, health: HeartPulse, audit: ScrollText, sites: MapPin, endpoints: Monitor, collectors: ClipboardList, command: Globe2, policy: ShieldCheck,
+    exports: Download, wazuh: Activity, health: HeartPulse, audit: ScrollText, sites: MapPin, endpoints: Monitor, collectors: ClipboardList, command: Globe2, policy: ShieldCheck, onboarding: Rocket,
 };
 
 function NotificationsBell() {
@@ -92,6 +94,12 @@ function ThemeToggle() {
     );
 }
 
+/** The organization's logo and name on its own portal; the NovrSOC logo on the platform. */
+function PortalLogo({ size }: { size: 'sm' | 'md' }) {
+    const p = usePortal();
+    return p.status === 'ready' ? <BrandMark portal={p.portal} size={size} /> : <Logo size={size} />;
+}
+
 function OrgSwitcher() {
     const { orgs, orgId, switchOrg, session } = useSession();
     if (orgs.length <= 1) {
@@ -153,7 +161,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             className={`fixed inset-y-0 left-0 z-50 w-[260px] bg-card border-r border-border flex flex-col transition-transform duration-200 ease-out
                 ${open ? 'translate-x-0 visible shadow-2xl' : '-translate-x-full invisible'} lg:visible lg:translate-x-0 lg:shadow-none`}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <Link href="/app" onClick={onClose} aria-label="NovrSOC overview" className="rounded-md dark:bg-white dark:px-2 dark:py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/60"><Logo size="md" /></Link>
+                <Link href="/app" onClick={onClose} aria-label="Overview" className="rounded-md dark:bg-white dark:px-2 dark:py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/60"><PortalLogo size="md" /></Link>
                 <button type="button" onClick={onClose} className="lg:hidden p-1.5 rounded-lg text-foreground-muted hover:bg-card-muted" aria-label="Close navigation">
                     <X className="w-5 h-5" aria-hidden />
                 </button>
@@ -202,8 +210,10 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+    usePortalTheme(usePortal());                    // the organization's approved theme and name on its portal
     const pathname = usePathname() ?? '/app';
-    const { session } = useSession();
+    const { session, orgId } = useSession();
+    usePresenceHeartbeat(orgId);                    // "online now" comes only from open, visible tabs
     const [navOpen, setNavOpen] = useState(false);
     const menuButton = useRef<HTMLButtonElement>(null);
     const close = useCallback(() => setNavOpen(false), []);
@@ -231,7 +241,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         className="lg:hidden p-2 -ml-1 rounded-lg text-foreground-muted hover:text-foreground hover:bg-card-muted">
                         <Menu className="w-5 h-5" aria-hidden />
                     </button>
-                    <span className="lg:hidden shrink-0 rounded-md dark:bg-white dark:px-1.5 dark:py-0.5"><Logo size="sm" /></span>
+                    <span className="lg:hidden shrink-0 rounded-md dark:bg-white dark:px-1.5 dark:py-0.5"><PortalLogo size="sm" /></span>
                     <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-2 min-w-0 text-sm">
                         {section && <span className="text-foreground-muted">{section}</span>}
                         {section && <span className="text-border" aria-hidden>/</span>}

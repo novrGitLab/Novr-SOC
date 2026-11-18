@@ -169,7 +169,8 @@ try {
     const alertId = alertIds?.[0];
     await go(A.tab, `/app/alerts/${alertId}`);
     await waitFor(A.tab, `!!document.querySelector('[data-testid=alert-detail]') && !!document.querySelector('[data-testid=create-case]')`);
-    const noContainment = await A.tab.eval(`/only through SOAR on a case/i.test(document.body.textContent) && ![...document.querySelectorAll('button')].some((b) => /isolate|contain|block/i.test(b.textContent))`);
+    const noContainment = await A.tab.eval(`/only through (Novr)?SOAR on a case/i.test(document.body.textContent) && ![...document.querySelectorAll('button')].some((b) => /isolate|contain|block/i.test(b.textContent))`);
+    step('desktop: an alert with a long registry-path title has no horizontal page overflow', await noOverflow(A.tab));
     step('alert detail offers no direct containment action and says response goes through SOAR with approval', noContainment);
     await click(A.tab, '[data-testid=create-case]');
     caseId = await waitFor(A.tab, `(() => { const m = /^\\/app\\/cases\\/([0-9a-f-]{36})$/.exec(location.pathname); return m && document.querySelector('[data-testid=case-alerts]') ? m[1] : null; })()`);
@@ -182,6 +183,9 @@ try {
     await click(A.tab, '[data-testid=case-to-resolved]');
     const resolved = await waitFor(A.tab, `/Resolved/.test(document.querySelector('[data-testid=case-status]')?.textContent || '') && /Status changed/.test(document.querySelector('[data-testid=case-timeline]').textContent) || null`);
     step('changing the case status is reflected in the status and the timeline', !!resolved);
+    const corr = await waitFor(A.tab, `document.querySelector('[data-testid=case-correlation]')?.textContent || null`);
+    step('the case shows its assets and their open vulnerability findings (canonical inventory join)', !!corr, String(corr).slice(0, 160));
+    step('desktop: the case page wraps long alert titles and evidence (no horizontal page overflow)', await noOverflow(A.tab));
     await A.tab.screenshot(join(OUT, 'desktop-case.png'));
     await go(A.tab, `/app/alerts/${alertId}`);
     const back = await waitFor(A.tab, `document.querySelector('[data-testid=open-case]')?.getAttribute('href') || null`);
@@ -240,7 +244,7 @@ try {
     for (const path of ['/app/soar', '/app/insights', '/app/nhai', '/app/vms', '/app/email', '/app/brand', '/app/cnii', '/app/admin', '/app/audit',
         '/app/posture', '/app/playbooks', '/app/soar/approvals', '/app/soar/ai', '/app/soar/policy', '/app/handover', '/app/sla', '/app/vms/findings',
         '/app/vms/scans', '/app/vms/risk', '/app/vms/remediation', '/app/vms/surface', '/app/vms/reports', '/app/assets', '/app/assets/collectors',
-        '/app/insights/actors', '/app/insights/cves', '/app/chat', '/app/recovery', '/app/admin/exports', '/app/admin/agent-groups', '/app/cnii/authorizations']) {
+        '/app/insights/actors', '/app/insights/cves', '/app/chat', '/app/recovery', '/app/admin/exports', '/app/admin/agent-groups', '/app/cnii/authorizations', '/app/onboarding', '/app/vms/policy']) {
         await go(M.tab, path);
         const ok = await waitFor(M.tab, `location.pathname === ${JSON.stringify(path)} && !!document.querySelector('main h1') && !document.querySelector('main [aria-busy=true]')`, 30000);
         await sleep(400);
@@ -303,6 +307,17 @@ try {
     }
     step('NHAI explanation is produced asynchronously by the worker, labelled as the test adapter', !!nhai && /test-adapter/.test(nhai), (nhai ?? '').slice(0, 120));
     await N.tab.screenshot(join(OUT, 'pilot-alert-nhai.png'));
+    await go(N.tab, '/app/nhai');
+    const readiness = await waitFor(N.tab, `document.querySelector('[data-testid=nhai-readiness]')?.dataset.state || null`);
+    step('NHAI analysis page shows readiness read from records (backend, worker heartbeat, queue)', !!readiness, String(readiness));
+    await click(N.tab, '[data-testid=nhai-analyse-org]');
+    let latest = null;
+    for (let i = 0; i < 6 && !/succeeded/.test(latest ?? ''); i++) {   // the page polls while a job waits or runs
+        await sleep(5000);
+        latest = await waitFor(N.tab, `document.querySelector('[data-testid=nhai-latest]')?.textContent || null`, 8000);
+    }
+    step('a combined analysis (SIEM, VMS, assets, cases, intel, SOAR, posture) is queued and drafted by the worker', /succeeded/.test(latest ?? ''), (latest ?? '').slice(0, 120));
+    await N.tab.screenshot(join(OUT, 'nhai-analysis.png'));
     await go(M.tab, '/app/assets');
     await waitFor(M.tab, `!!document.querySelector('[data-testid=agent-sync]')`);
     await M.tab.eval(`document.querySelector('[data-testid=agent-sync]').click()`);

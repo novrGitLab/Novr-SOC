@@ -53,10 +53,10 @@ export default function AlertDetailPage() {
                 : !a ? <LoadingState label="Loading alert" />
                 : (
                     <>
-                        <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
+                        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="alert-layout">
                             <Card>
                                 <SectionTitle title="Alert" />
-                                <dl className="mt-3 grid grid-cols-[9rem_1fr] gap-y-2 text-sm" data-testid="alert-detail">
+                                <dl className="mt-3 grid grid-cols-[minmax(6rem,9rem)_minmax(0,1fr)] gap-y-2 text-sm [&>dd]:wrap-any" data-testid="alert-detail">
                                     <dt className="text-foreground-muted">Severity</dt><dd><SeverityBadge severity={a.severity} /> <span className="text-xs text-foreground-muted">(rule level {a.rule_level})</span></dd>
                                     <dt className="text-foreground-muted">Status</dt><dd data-testid="alert-status"><StatusPill tone={STATUS_TONE[a.status] ?? 'neutral'} label={ALERT_STATUS_LABEL[a.status] ?? a.status} />{a.status_reason && <span className="block text-xs text-foreground-muted">{a.status_reason}</span>}</dd>
                                     <dt className="text-foreground-muted">Source</dt><dd className="flex items-center gap-2">{a.source === 'local_fixture' ? <><span>Local fixture</span><FixtureTag /></> : 'NovrSIEM'}</dd>
@@ -96,7 +96,7 @@ export default function AlertDetailPage() {
                                     )}
                                     {!can('alerts:triage') && !can('cases:write') && <p className="text-xs text-foreground-muted">Your role can view this alert but not triage it.</p>}
                                     <Notice msg={msg} />
-                                    <p className="flex items-start gap-1.5 text-[11px] text-foreground-muted"><Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden />Response actions run only through SOAR on a case: every consequential step needs a second person&apos;s approval, and nothing runs automatically.</p>
+                                    <p className="flex items-start gap-1.5 text-[11px] text-foreground-muted"><Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden />Response actions run only through NovrSOAR on a case: a consequential step needs a person&apos;s approval, unless your organization&apos;s automation policy pre-authorizes it.</p>
                                 </div>
                             </Card>
                         </div>

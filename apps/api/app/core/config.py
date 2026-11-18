@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     # rate and concurrency caps). Even then nothing runs until an organization enables its policy AND a worker runs a
     # scanning engine inside a network it declares (services/vms-worker).
     vms_scanning: Literal["disabled", "local_test_targets", "authorized_scopes"] = "disabled"
+    # Platform-wide scan caps across ALL organizations (each organization's own policy cap still applies): they protect
+    # PostgreSQL and the API from result ingestion bursts, and the single Greenbone stack from parallel tasks.
+    vms_max_running_scans: int = Field(default=2, ge=1, le=32)
+    vms_max_running_greenbone: int = Field(default=1, ge=1, le=8)
     # Wazuh agent groups that collect agents but never establish ownership (an agent's organization must come from a
     # group mapped to exactly one organization). Comma-separated; `default` is where Wazuh enrolls every new agent.
     wazuh_collection_groups: str = Field(default="default", pattern=r"^[A-Za-z0-9_.,-]{0,500}$")
@@ -75,12 +79,47 @@ class Settings(BaseSettings):
     brand_resolver: Literal["unconfigured", "test_adapter"] = "unconfigured"
     service_name: str = "novrsoc-api"
 
+    # ---- organization portals (one shared deployment; the host selects branding and restricts sign-in, never grants)
+    # Hosts that serve the central platform (Command Center, every staff sign-in). Comma separated, lower case.
+    platform_hosts: str = Field(default="localhost,127.0.0.1,testserver", pattern=r"^[a-z0-9.,:-]{1,1000}$")
+    # Organization portals are <subdomain>.<portal_base_domain> (wildcard DNS and TLS). Empty = portals off.
+    portal_base_domain: str = Field(default="", pattern=r"^$|^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+    # Take the host from X-Forwarded-Host instead of Host: ONLY behind a proxy that overwrites it (the local Next.js
+    # proxy in development). Production nginx passes the real Host and refuses unknown server names.
+    trust_forwarded_host: bool = False
+    # How links handed to people (invitations, installer downloads) are written.
+    public_scheme: Literal["https", "http"] = "https"
+    public_port: int = Field(default=0, ge=0, le=65535)          # 0: the scheme's default port
+    public_platform_host: str = Field(default="", pattern=r"^$|^[a-z0-9.-]{1,253}$")
+    invitation_ttl_hours: int = Field(default=72, ge=1, le=14 * 24)
+    # NovrAgent enrollment is server-controlled: NovrSOC registers each agent on the NovrSIEM manager itself (manager_api:
+    # a dedicated, least-privilege manager API user, WAZUH_ENROLLMENT_URL / _USER / _PASSWORD / _CA_CERT), in the
+    # organization's provisioned group, against an organization-bound enrollment ticket. disabled = no installer.
+    enrollment_mode: Literal["disabled", "manager_api"] = "disabled"
+    enrollment_ticket_ttl_minutes: int = Field(default=60, ge=10, le=24 * 60)
+    agent_manager_address: str = Field(default="", pattern=r"^$|^[A-Za-z0-9.-]{1,253}$")
+    agent_manager_port: int = Field(default=1514, ge=1, le=65535)
+    # Agent package version. Empty: the manager's own version (read from it). A value must not be newer than the
+    # manager and must share its major version; otherwise installers are refused as incompatible.
+    agent_version: str = Field(default="", pattern=r"^$|^[0-9]+\.[0-9]+\.[0-9]+$")
+    # Scheduled agent -> asset inventory sync per organization (jobs worker). 0 = only on demand.
+    asset_sync_interval_minutes: int = Field(default=60, ge=0, le=7 * 24 * 60)
+    # Abuse protection of the public endpoints (portal identity, invitations, installer, enrollment).
+    rate_limits_enabled: bool = True
+    # Where devices send syslog (shown in the device guides).
+    syslog_collector_address: str = Field(default="", pattern=r"^$|^[A-Za-z0-9.-]{1,253}$")
+    syslog_collector_port: int = Field(default=514, ge=1, le=65535)
+
     @field_validator("database_url")
     @classmethod
     def _db_scheme(cls, v: SecretStr) -> SecretStr:
         if not v.get_secret_value().startswith("postgresql+psycopg://"):
             raise ConfigError("NOVRSOC_DATABASE_URL must use the postgresql+psycopg:// scheme")
         return v
+
+    @property
+    def platform_host_set(self) -> frozenset[str]:
+        return frozenset(h.strip() for h in self.platform_hosts.split(",") if h.strip())
 
     @property
     def collection_groups(self) -> frozenset[str]:
@@ -107,6 +146,10 @@ class Settings(BaseSettings):
             raise ConfigError("NOVRSOC_VMS_SCANNING=local_test_targets is only allowed in development/test")
         if self.brand_resolver == "test_adapter" and self.env not in ("development", "test"):
             raise ConfigError("NOVRSOC_BRAND_RESOLVER=test_adapter is only allowed in development/test")
+        if self.env == "production" and self.trust_forwarded_host:
+            raise ConfigError("NOVRSOC_TRUST_FORWARDED_HOST is a development setting: production nginx passes the real Host")
+        if self.env == "production" and self.public_scheme != "https":
+            raise ConfigError("NOVRSOC_PUBLIC_SCHEME must be https in production")
         if self.docs_enabled is None:
             self.docs_enabled = self.env != "production"
         return self

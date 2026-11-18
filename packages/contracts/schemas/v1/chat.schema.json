@@ -661,7 +661,8 @@
         "case_note_draft",
         "finding_explanation",
         "asset_summary",
-        "chat_answer"
+        "chat_answer",
+        "posture_analysis"
       ],
       "title": "NhaiTask",
       "type": "string"
@@ -825,6 +826,101 @@
         "citation_ids"
       ],
       "title": "Statement",
+      "type": "object"
+    },
+    "TeamPresence": {
+      "additionalProperties": false,
+      "description": "The active organization's people: active members by role and, when presence is tracked, how many sent a\nheartbeat from an open NovrSOC tab within `online_window_minutes`. `presence_tracked` is false until anybody has\never sent a heartbeat for this organization: then `online` is unknown, never zero by assumption.",
+      "properties": {
+        "assigned_staff": {
+          "description": "Active NovrSOC staff assigned to work this organization",
+          "minimum": 0,
+          "title": "Assigned Staff",
+          "type": "integer"
+        },
+        "by_role": {
+          "items": {
+            "$ref": "#/$defs/TeamRoleCount"
+          },
+          "title": "By Role",
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "members": {
+          "description": "Active people whose home is this organization",
+          "minimum": 0,
+          "title": "Members",
+          "type": "integer"
+        },
+        "online": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Online"
+        },
+        "online_window_minutes": {
+          "default": 2,
+          "title": "Online Window Minutes",
+          "type": "integer"
+        },
+        "presence_tracked": {
+          "title": "Presence Tracked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "generated_at",
+        "members",
+        "assigned_staff",
+        "by_role",
+        "presence_tracked"
+      ],
+      "title": "TeamPresence",
+      "type": "object"
+    },
+    "TeamRoleCount": {
+      "additionalProperties": false,
+      "properties": {
+        "members": {
+          "minimum": 0,
+          "title": "Members",
+          "type": "integer"
+        },
+        "online": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unknown (null) while presence is not tracked",
+          "title": "Online"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "members"
+      ],
+      "title": "TeamRoleCount",
       "type": "object"
     }
   },

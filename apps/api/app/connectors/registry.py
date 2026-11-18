@@ -109,3 +109,60 @@ def ollama_state() -> ConnectorState:
     """The API process never calls Ollama. Inference state is reported per NHAI job and by the NHAI worker."""
     return ConnectorState(connector="ollama", state="unconfigured",
                           detail="NHAI analyses run through the NHAI interface, outside the API; see NHAI status.")
+
+
+# ---------------------------------------------------------------- server-controlled agent enrollment (write-capable)
+from app.connectors.enrollment import ManagerEnrollment, enrollment_from_env  # noqa: E402
+
+enrollment_factory: Callable[[Mapping[str, str], str], ManagerEnrollment] = enrollment_from_env
+_enrollment: ManagerEnrollment | None = None
+_enrollment_error: str | None = None
+_version: tuple[float, str | None, str] | None = None
+VERSION_TTL = 300.0
+
+
+def enrollment(settings: Settings) -> ManagerEnrollment | None:
+    """The enrollment client, or None when enrollment is disabled or not configured (see enrollment_problem)."""
+    global _enrollment, _enrollment_error
+    if settings.enrollment_mode != "manager_api":
+        return None
+    with _lock:
+        if _enrollment is None and _enrollment_error is None:
+            try:
+                _enrollment = enrollment_factory(os.environ, settings.env)
+            except (ConnectorUnconfigured, TlsConfigError, KeyError) as e:
+                _enrollment_error = str(e) if not isinstance(e, KeyError) else f"missing setting {e}"
+        return _enrollment
+
+
+def enrollment_problem(settings: Settings) -> str | None:
+    if settings.enrollment_mode != "manager_api":
+        return "Agent enrollment is not enabled in this installation."
+    if enrollment(settings) is None:
+        return "Agent enrollment is not configured in this installation."
+    return None
+
+
+def manager_version(settings: Settings) -> tuple[str | None, str]:
+    """(version, detail) of the NovrSIEM manager as it reports itself, cached for VERSION_TTL seconds."""
+    global _version
+    client = enrollment(settings)
+    if client is None:
+        return None, enrollment_problem(settings) or "unknown"
+    with _lock:
+        if _version is not None and clock() - _version[0] < VERSION_TTL:
+            return _version[1], _version[2]
+    try:
+        v, detail = client.version(), "reported by the manager"
+    except ConnectorError as e:
+        v, detail = None, f"The NovrSIEM manager version could not be read: {e}"[:300]
+    with _lock:
+        _version = (clock(), v, detail)
+    return v, detail
+
+
+def reset_enrollment() -> None:
+    """Forget the enrollment client and cached version (tests and configuration changes)."""
+    global _enrollment, _enrollment_error, _version
+    with _lock:
+        _enrollment, _enrollment_error, _version = None, None, None

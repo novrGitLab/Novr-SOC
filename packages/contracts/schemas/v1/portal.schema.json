@@ -1,0 +1,1314 @@
+{
+  "$defs": {
+    "AgentEnrollmentRequest": {
+      "additionalProperties": false,
+      "description": "Sent by the installer running on the endpoint (public; the ticket is the only key).",
+      "properties": {
+        "hostname": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Hostname",
+          "type": "string"
+        },
+        "os": {
+          "enum": [
+            "windows",
+            "linux",
+            "macos"
+          ],
+          "title": "Os",
+          "type": "string"
+        },
+        "ticket": {
+          "maxLength": 80,
+          "minLength": 30,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Ticket",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticket",
+        "hostname",
+        "os"
+      ],
+      "title": "AgentEnrollmentRequest",
+      "type": "object"
+    },
+    "AgentEnrollmentResult": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "key": {
+          "description": "The agent's key, imported by the installer; returned once over TLS and never stored by NovrSOC",
+          "title": "Key",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_id",
+        "name",
+        "key"
+      ],
+      "title": "AgentEnrollmentResult",
+      "type": "object"
+    },
+    "AgentEnrollmentStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Version"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "enrolled_agents": {
+          "default": 0,
+          "title": "Enrolled Agents",
+          "type": "integer"
+        },
+        "manager_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Manager Version"
+        },
+        "open_tickets": {
+          "default": 0,
+          "title": "Open Tickets",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "available"
+      ],
+      "title": "AgentEnrollmentStatus",
+      "type": "object"
+    },
+    "AgentEnrollmentTicket": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_label": {
+          "title": "Created Label",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "max_uses": {
+          "title": "Max Uses",
+          "type": "integer"
+        },
+        "os": {
+          "enum": [
+            "windows",
+            "linux",
+            "macos"
+          ],
+          "title": "Os",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "used_up",
+            "expired",
+            "revoked"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "uses": {
+          "title": "Uses",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "os",
+        "max_uses",
+        "uses",
+        "state",
+        "created_label",
+        "created_at",
+        "expires_at"
+      ],
+      "title": "AgentEnrollmentTicket",
+      "type": "object"
+    },
+    "AgentEnrollmentTicketList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AgentEnrollmentTicket"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "AgentEnrollmentTicketList",
+      "type": "object"
+    },
+    "AgentGroupView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At"
+        },
+        "group_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Shown only to the organization and NovrSOC administrators",
+          "title": "Group Name"
+        },
+        "manager_detail": {
+          "default": "",
+          "title": "Manager Detail",
+          "type": "string"
+        },
+        "on_manager": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whether the group exists on the NovrSIEM manager (null: not checked)",
+          "title": "On Manager"
+        },
+        "provisioned": {
+          "title": "Provisioned",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "provisioned"
+      ],
+      "title": "AgentGroupView",
+      "type": "object"
+    },
+    "AssetSyncStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "interval_minutes": {
+          "description": "0: scheduled sync is off (on demand only)",
+          "title": "Interval Minutes",
+          "type": "integer"
+        },
+        "last_detail": {
+          "default": "",
+          "title": "Last Detail",
+          "type": "string"
+        },
+        "last_outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Outcome"
+        },
+        "last_run_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Run At"
+        },
+        "next_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Due At"
+        }
+      },
+      "required": [
+        "interval_minutes"
+      ],
+      "title": "AssetSyncStatus",
+      "type": "object"
+    },
+    "InstallerCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_version": {
+          "title": "Agent Version",
+          "type": "string"
+        },
+        "command": {
+          "description": "Downloads the organization's NovrAgent installer and runs it; carries no password",
+          "title": "Command",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "max_endpoints": {
+          "title": "Max Endpoints",
+          "type": "integer"
+        },
+        "notes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "os": {
+          "enum": [
+            "windows",
+            "linux",
+            "macos"
+          ],
+          "title": "Os",
+          "type": "string"
+        },
+        "run_as": {
+          "title": "Run As",
+          "type": "string"
+        },
+        "ticket_id": {
+          "format": "uuid",
+          "title": "Ticket Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "command",
+        "ticket_id",
+        "max_endpoints",
+        "expires_at",
+        "run_as",
+        "agent_version"
+      ],
+      "title": "InstallerCommand",
+      "type": "object"
+    },
+    "InstallerRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "endpoints": {
+          "default": 10,
+          "description": "How many endpoints this command may enroll",
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Endpoints",
+          "type": "integer"
+        },
+        "os": {
+          "enum": [
+            "windows",
+            "linux",
+            "macos"
+          ],
+          "title": "Os",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os"
+      ],
+      "title": "InstallerRequest",
+      "type": "object"
+    },
+    "InvitationAccept": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "password": {
+          "maxLength": 1024,
+          "minLength": 12,
+          "title": "Password",
+          "type": "string"
+        },
+        "token": {
+          "maxLength": 200,
+          "minLength": 20,
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "token",
+        "display_name",
+        "password"
+      ],
+      "title": "InvitationAccept",
+      "type": "object"
+    },
+    "InvitationAccepted": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "sign_in_url": {
+          "title": "Sign In Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "sign_in_url"
+      ],
+      "title": "InvitationAccepted",
+      "type": "object"
+    },
+    "InvitationCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "maxLength": 254,
+          "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+          "title": "Email",
+          "type": "string"
+        },
+        "role": {
+          "default": "soc_manager",
+          "enum": [
+            "soc_manager",
+            "analyst",
+            "executive",
+            "portal_user"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "email"
+      ],
+      "title": "InvitationCreate",
+      "type": "object"
+    },
+    "InvitationCreated": {
+      "additionalProperties": false,
+      "properties": {
+        "invitation": {
+          "$ref": "#/$defs/InvitationView"
+        },
+        "link": {
+          "description": "Shown ONCE: only its SHA-256 is stored. The token is in the URL fragment, never sent to a server log",
+          "title": "Link",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invitation",
+        "link"
+      ],
+      "title": "InvitationCreated",
+      "type": "object"
+    },
+    "InvitationList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/InvitationView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "InvitationList",
+      "type": "object"
+    },
+    "InvitationPreview": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Email"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "organization": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Organization"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "soc_manager",
+                "analyst",
+                "executive",
+                "portal_user"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "accepted",
+            "revoked",
+            "expired",
+            "organization_inactive"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "InvitationPreview",
+      "type": "object"
+    },
+    "InvitationToken": {
+      "additionalProperties": false,
+      "properties": {
+        "token": {
+          "maxLength": 200,
+          "minLength": 20,
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "token"
+      ],
+      "title": "InvitationToken",
+      "type": "object"
+    },
+    "InvitationView": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accepted At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "invited_label": {
+          "title": "Invited Label",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "soc_manager",
+            "analyst",
+            "executive",
+            "portal_user"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "open",
+            "accepted",
+            "revoked",
+            "expired"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "state",
+        "invited_label",
+        "created_at",
+        "expires_at"
+      ],
+      "title": "InvitationView",
+      "type": "object"
+    },
+    "LogoUpload": {
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+            "image/svg+xml"
+          ],
+          "title": "Content Type",
+          "type": "string"
+        },
+        "data_base64": {
+          "maxLength": 360000,
+          "minLength": 4,
+          "title": "Data Base64",
+          "type": "string"
+        }
+      },
+      "required": [
+        "content_type",
+        "data_base64"
+      ],
+      "title": "LogoUpload",
+      "type": "object"
+    },
+    "OnboardingAgents": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "default": 0,
+          "title": "Active",
+          "type": "integer"
+        },
+        "disconnected": {
+          "default": 0,
+          "title": "Disconnected",
+          "type": "integer"
+        },
+        "never_connected": {
+          "default": 0,
+          "title": "Never Connected",
+          "type": "integer"
+        },
+        "pending": {
+          "default": 0,
+          "title": "Pending",
+          "type": "integer"
+        },
+        "state": {
+          "description": "The agent data source state: connected, local_fixture, unconfigured, unavailable, error",
+          "title": "State",
+          "type": "string"
+        },
+        "total": {
+          "default": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "OnboardingAgents",
+      "type": "object"
+    },
+    "OnboardingSources": {
+      "additionalProperties": false,
+      "properties": {
+        "never_received": {
+          "default": 0,
+          "title": "Never Received",
+          "type": "integer"
+        },
+        "pending_verification": {
+          "default": 0,
+          "title": "Pending Verification",
+          "type": "integer"
+        },
+        "receiving": {
+          "default": 0,
+          "title": "Receiving",
+          "type": "integer"
+        },
+        "total": {
+          "default": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "title": "OnboardingSources",
+      "type": "object"
+    },
+    "OnboardingStep": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "done": {
+          "title": "Done",
+          "type": "boolean"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "done"
+      ],
+      "title": "OnboardingStep",
+      "type": "object"
+    },
+    "OnboardingTelemetry": {
+      "additionalProperties": false,
+      "properties": {
+        "alerts_24h": {
+          "default": 0,
+          "title": "Alerts 24H",
+          "type": "integer"
+        },
+        "assets": {
+          "default": 0,
+          "title": "Assets",
+          "type": "integer"
+        },
+        "last_alert_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Alert At"
+        },
+        "vms_enrolled": {
+          "default": 0,
+          "title": "Vms Enrolled",
+          "type": "integer"
+        }
+      },
+      "title": "OnboardingTelemetry",
+      "type": "object"
+    },
+    "OrgPortalUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "portal_enabled": {
+          "default": false,
+          "title": "Portal Enabled",
+          "type": "boolean"
+        },
+        "portal_subdomain": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portal Subdomain"
+        },
+        "primary_color": {
+          "anyOf": [
+            {
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Color"
+        },
+        "secondary_color": {
+          "anyOf": [
+            {
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondary Color"
+        }
+      },
+      "title": "OrgPortalUpdate",
+      "type": "object"
+    },
+    "OrgPortalView": {
+      "additionalProperties": false,
+      "properties": {
+        "contrast_primary_on_white": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contrast Primary On White"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "has_logo": {
+          "title": "Has Logo",
+          "type": "boolean"
+        },
+        "logo_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Logo Sha256"
+        },
+        "portal_enabled": {
+          "title": "Portal Enabled",
+          "type": "boolean"
+        },
+        "portal_subdomain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portal Subdomain"
+        },
+        "primary_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Color"
+        },
+        "secondary_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondary Color"
+        },
+        "text_on_primary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text On Primary"
+        },
+        "theme_applied": {
+          "default": false,
+          "description": "True when the primary color passes the contrast check and themes the portal",
+          "title": "Theme Applied",
+          "type": "boolean"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The portal address, when enabled and the installation has a base domain",
+          "title": "Url"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "portal_enabled",
+        "display_name",
+        "has_logo"
+      ],
+      "title": "OrgPortalView",
+      "type": "object"
+    },
+    "PortalBranding": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "logo_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Relative URL of the logo, versioned by its digest",
+          "title": "Logo Url"
+        },
+        "primary_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Color"
+        },
+        "secondary_color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondary Color"
+        },
+        "text_on_primary": {
+          "default": "#ffffff",
+          "title": "Text On Primary",
+          "type": "string"
+        },
+        "theme": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PortalTheme"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Applied throughout the portal; null when the colors are not approved"
+        }
+      },
+      "required": [
+        "display_name"
+      ],
+      "title": "PortalBranding",
+      "type": "object"
+    },
+    "PortalInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "branding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PortalBranding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "enum": [
+            "platform",
+            "tenant"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "organization": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PortalOrg"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "PortalInfo",
+      "type": "object"
+    },
+    "PortalOrg": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug",
+        "name"
+      ],
+      "title": "PortalOrg",
+      "type": "object"
+    },
+    "PortalTheme": {
+      "additionalProperties": false,
+      "description": "An APPROVED theme: derived from the organization's primary color only when it reaches WCAG AA against white.",
+      "properties": {
+        "on_primary": {
+          "title": "On Primary",
+          "type": "string"
+        },
+        "primary": {
+          "title": "Primary",
+          "type": "string"
+        },
+        "primary_fill": {
+          "title": "Primary Fill",
+          "type": "string"
+        },
+        "primary_hover": {
+          "title": "Primary Hover",
+          "type": "string"
+        },
+        "tint_dark": {
+          "title": "Tint Dark",
+          "type": "string"
+        },
+        "tint_light": {
+          "title": "Tint Light",
+          "type": "string"
+        }
+      },
+      "required": [
+        "primary",
+        "primary_hover",
+        "primary_fill",
+        "tint_light",
+        "tint_dark",
+        "on_primary"
+      ],
+      "title": "PortalTheme",
+      "type": "object"
+    },
+    "SyslogTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "port": {
+          "title": "Port",
+          "type": "integer"
+        },
+        "protocols": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Protocols",
+          "type": "array"
+        }
+      },
+      "required": [
+        "port",
+        "protocols"
+      ],
+      "title": "SyslogTarget",
+      "type": "object"
+    },
+    "TenantOnboarding": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_group": {
+          "$ref": "#/$defs/AgentGroupView"
+        },
+        "agents": {
+          "$ref": "#/$defs/OnboardingAgents"
+        },
+        "asset_sync": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssetSyncStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "completed": {
+          "title": "Completed",
+          "type": "integer"
+        },
+        "enrollment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentEnrollmentStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "installer_available": {
+          "title": "Installer Available",
+          "type": "boolean"
+        },
+        "installer_reason": {
+          "default": "",
+          "title": "Installer Reason",
+          "type": "string"
+        },
+        "organization": {
+          "$ref": "#/$defs/PortalOrg"
+        },
+        "portal_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Portal Url"
+        },
+        "sources": {
+          "$ref": "#/$defs/OnboardingSources"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/OnboardingStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "syslog": {
+          "$ref": "#/$defs/SyslogTarget"
+        },
+        "telemetry": {
+          "$ref": "#/$defs/OnboardingTelemetry"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "organization",
+        "agent_group",
+        "installer_available",
+        "agents",
+        "telemetry",
+        "sources",
+        "syslog",
+        "steps",
+        "completed",
+        "total"
+      ],
+      "title": "TenantOnboarding",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/portal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: portal",
+  "version": "1.0.0"
+}

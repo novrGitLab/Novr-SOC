@@ -38,6 +38,7 @@ class NhaiTask(str, Enum):
     FINDING_EXPLANATION = "finding_explanation"   # consolidation: a VMS finding, with CVE intelligence and the asset
     ASSET_SUMMARY = "asset_summary"               # consolidation: one canonical asset across SIEM, VMS and intelligence
     CHAT_ANSWER = "chat_answer"                   # consolidation: NovrChat prose over retrieved, cited records
+    POSTURE_ANALYSIS = "posture_analysis"         # combined intelligence over SIEM, VMS, assets, cases, intel, SOAR, posture
 
 
 # ---------------------------------------------------------------- requests (human API; org = active org)
@@ -51,6 +52,53 @@ class FindingExplanationRequest(Contract):
 
 class AssetSummaryRequest(Contract):
     asset_id: uuid.UUID
+
+
+class PostureAnalysisRequest(Contract):
+    """Combined analysis: the organization's SIEM alerts, VMS findings, assets, cases, Threat Insights matches, SOAR
+    activity, remediation and posture over a window, as cited aggregates. `platform`: NovrSOC platform staff with the
+    platform organization active get per-organization aggregates of their command scope (no record crosses tenants;
+    the job is stored in the platform organization)."""
+    scope: Literal["organization", "platform"] = "organization"
+    window_days: Annotated[int, Field(ge=1, le=30)] = 7
+
+
+class NhaiReadiness(Contract):
+    """What the API can verify about NHAI, from records only (the API never contacts the model). `state`:
+    ready (backend configured, worker heard from recently, no stuck queue), degraded (worker silent or queue waiting
+    too long, or recent failures only), unavailable (no backend configured)."""
+    state: Literal["ready", "degraded", "unavailable"]
+    reasons: list[str] = []
+    backend_configured: bool
+    model: str | None = None
+    pilot: bool = Field(description="True for a small model run as a limited, labelled pilot (drafts are less reliable)")
+    pilot_note: str = ""
+    worker_state: Literal["ok", "degraded", "failing", "unknown"] = "unknown"
+    worker_last_seen_at: datetime | None = None
+    queued: int = Field(ge=0)
+    running: int = Field(ge=0)
+    oldest_queued_seconds: int | None = None
+    succeeded_24h: int = Field(ge=0)
+    failed_24h: int = Field(ge=0)
+    awaiting_review: int = Field(ge=0)
+    last_success_at: datetime | None = None
+
+
+class NhaiOrgActivity(Contract):
+    org_id: uuid.UUID
+    org_name: str
+    queued: int = Field(ge=0)
+    running: int = Field(ge=0)
+    succeeded_24h: int = Field(ge=0)
+    failed_24h: int = Field(ge=0)
+    awaiting_review: int = Field(ge=0)
+    last_success_at: datetime | None = None
+
+
+class NhaiOverview(Contract):
+    """NHAI across the caller's command scope (platform staff), read under each organization's own RLS."""
+    readiness: NhaiReadiness
+    organizations: list[NhaiOrgActivity]
 
 
 class CaseAssistanceRequest(Contract):

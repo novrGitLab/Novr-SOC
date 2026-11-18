@@ -197,3 +197,19 @@ body {
     100% { background-position: -200% 0; }
   }
 }
+
+/* Organization portal theme: applied only on an organization's portal, and only with colors the API approved (WCAG AA
+   against white). The NovrSOC accent tokens are replaced, so every button, link, focus ring and active item follows it. */
+:root.portal-themed {
+  --brand-purple: var(--portal-primary);
+  --brand-purple-hover: var(--portal-primary-hover);
+  --brand-purple-fill: var(--portal-primary-fill);
+  --brand-purple-tint: var(--portal-tint-light);
+}
+:root.dark.portal-themed {
+  --brand-purple-tint: var(--portal-tint-dark);
+}
+
+/* Long security text (registry paths, file names, URLs, hashes, rule titles) wraps inside its box instead of widening
+   the page; nothing is shortened. */
+.wrap-any { overflow-wrap: anywhere; word-break: normal; min-width: 0; }

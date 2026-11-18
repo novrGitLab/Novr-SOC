@@ -1260,6 +1260,98 @@
       "title": "AssetUpdate",
       "type": "object"
     },
+    "CaseAssetCorrelation": {
+      "additionalProperties": false,
+      "description": "One canonical asset of a case: the case's alerts on it and the asset's open vulnerability findings.",
+      "properties": {
+        "alert_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Alert Ids",
+          "type": "array"
+        },
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "criticality": {
+          "title": "Criticality",
+          "type": "string"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "exposure": {
+          "title": "Exposure",
+          "type": "string"
+        },
+        "open_findings": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AssetFindingRef"
+          },
+          "title": "Open Findings",
+          "type": "array"
+        },
+        "open_findings_total": {
+          "default": 0,
+          "description": "All open findings of the asset; `open_findings` lists the riskiest",
+          "minimum": 0,
+          "title": "Open Findings Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "asset_id",
+        "display_name",
+        "criticality",
+        "exposure",
+        "alert_ids"
+      ],
+      "title": "CaseAssetCorrelation",
+      "type": "object"
+    },
+    "CaseCorrelation": {
+      "additionalProperties": false,
+      "description": "SIEM and VMS evidence of one case joined through the canonical asset inventory (never by hostname guessing).",
+      "properties": {
+        "alerts_without_asset": {
+          "description": "Linked alerts not yet attributed to an inventory asset",
+          "minimum": 0,
+          "title": "Alerts Without Asset",
+          "type": "integer"
+        },
+        "assets": {
+          "items": {
+            "$ref": "#/$defs/CaseAssetCorrelation"
+          },
+          "title": "Assets",
+          "type": "array"
+        },
+        "case_id": {
+          "format": "uuid",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "findings_visible": {
+          "description": "False when the caller may not read VMS findings (vms:read): assets and alerts are still listed, findings are not",
+          "title": "Findings Visible",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "case_id",
+        "assets",
+        "alerts_without_asset",
+        "findings_visible"
+      ],
+      "title": "CaseCorrelation",
+      "type": "object"
+    },
     "Citation": {
       "additionalProperties": false,
       "properties": {
@@ -2037,7 +2129,8 @@
         "case_note_draft",
         "finding_explanation",
         "asset_summary",
-        "chat_answer"
+        "chat_answer",
+        "posture_analysis"
       ],
       "title": "NhaiTask",
       "type": "string"

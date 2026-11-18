@@ -14,9 +14,9 @@ import { CountUp, Unavailable, ToneIcon, Swatch, Skeleton, type Tone } from './u
 // ── Page structure ─────────────────────────────────────────────────────────────────────────────
 export function PageHeader({ title, description, icon: Icon, actions, meta }: { title: string; description?: ReactNode; icon?: LucideIcon; actions?: ReactNode; meta?: ReactNode }) {
     return (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-                <h1 className="text-xl font-black tracking-tight text-foreground flex items-center gap-2">{Icon && <Icon className="w-5 h-5 text-purple dark:text-[var(--vz-prog-4)]" aria-hidden />}{title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3 min-w-0">
+            <div className="min-w-0 flex-1 basis-[18rem]">
+                <h1 className="text-xl font-black tracking-tight text-foreground flex items-start gap-2">{Icon && <Icon className="w-5 h-5 mt-1 shrink-0 text-purple dark:text-[var(--vz-prog-4)]" aria-hidden />}<span className="wrap-any" data-testid="page-title">{title}</span></h1>
                 {description && <p className="text-xs text-foreground-muted mt-1 max-w-3xl leading-relaxed">{description}</p>}
                 {meta && <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-foreground-muted">{meta}</div>}
             </div>
@@ -254,11 +254,11 @@ export function Timeline({ items, empty = 'No history yet.' }: { items: Timeline
     return (
         <ol className="relative border-l border-border ml-1.5 space-y-3">
             {items.map((i) => (
-                <li key={i.id} className="pl-4 relative">
+                <li key={i.id} className="pl-4 relative min-w-0">
                     <span className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-card" style={{ background: i.tone ? DOT[i.tone] : 'var(--vz-prog-3)' }} aria-hidden />
                     <p className="text-xs font-semibold text-foreground">{i.title}</p>
                     {i.meta && <p className="text-[11px] text-foreground-muted">{i.meta}</p>}
-                    {i.body && <div className="text-[11px] text-foreground mt-0.5 break-words">{i.body}</div>}
+                    {i.body && <div className="text-[11px] text-foreground mt-0.5 wrap-any whitespace-pre-wrap">{i.body}</div>}
                 </li>
             ))}
         </ol>

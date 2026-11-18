@@ -72,6 +72,37 @@ read-only report of mappings and inconsistencies.
 
 Quarantined events are visible to platform administrators, with the unmapped groups and unattributed sources.
 
+## Organization portals
+
+One deployment serves the platform address and every organization portal (`<subdomain>.<portal base domain>`, with
+wildcard DNS and TLS).
+
+- **The host chooses branding only.** It selects the branding a page shows (display name, colors, raster logo) and
+  restricts who may sign in there. It never grants access; row-level security and permissions do.
+- **Who signs in where.** A portal admits only its organization's home members. The platform address admits staff,
+  and members of organizations without an enabled portal.
+- **Sessions are host-bound.** A session records the portal it was created on, and is refused (and audited) on any
+  other host. Cookies are host-only. On a portal, no organization switch is possible.
+- **Unknown hosts.** Nested labels, other domains, and unknown or disabled portals are refused.
+- **Spoofed hosts.** In production nginx passes only its own server names, and `X-Forwarded-Host` is never trusted.
+- **Invitations.** They are single use and expire. They are bound to the organization's portal, and only their SHA-256
+  is stored. The token travels in the link's URL fragment. Accepting creates the account and its home membership in one
+  statement, and never a second account for an existing email.
+- **Server-controlled enrollment.** NovrSOC provisions each organization's agent group and creates it on the
+  manager. An installer command carries an enrollment ticket: bound to the organization and an operating system,
+  expiring, limited to a number of endpoints, and revocable. The installer verifies the package signature, installs the
+  agent, and asks NovrSOC to register the endpoint. NovrSOC registers the agent on the manager with that group as its
+  only group, and returns the agent key once. With password enrollment switched off on the manager, no shared
+  password and no guessed group name can put an agent into an organization.
+- **Version compatibility.** The agent version follows the manager version read from the manager. A configured
+  version newer than the manager, or of another major version, is refused.
+- **Abuse protection.** Every public endpoint is rate limited per client address. The counters live in PostgreSQL and
+  store only a digest of the address.
+- **Theme.** An organization's primary color themes its whole portal only when it reaches WCAG AA against white.
+  Otherwise only its logo and name are shown.
+- **Network senders.** A sender an organization registers stays disabled until NovrSOC verifies it, so no organization
+  can claim another organization's device address.
+
 ## Command Center
 
 Platform staff see every organization's alerts, assets, vulnerabilities, scans, cases, intelligence matches, NHAI
@@ -108,6 +139,14 @@ on an address shared by two assets is linked to neither.
 Production scanning (`authorized_scopes`) needs a scanner placed where it has a route to the client network. That is
 an explicit deployment decision (gate G-B2).
 
+### Greenbone
+
+Greenbone runs as a separate compose project on Server 2, with its own PostgreSQL and no published port. NovrVMS
+reaches gvmd only through its GMP socket, as a dedicated Greenbone user, with a standard-library GMP client. Targets
+pass the same route and protected-network checks as every other engine and are handed over as checked addresses; an
+unsafe scan configuration is refused before any task exists. The API caps running scans and Greenbone tasks across
+all organizations.
+
 ## Organizations
 
 A client organization is `active`, `suspended` or `archived`:
@@ -138,10 +177,20 @@ never moved silently. Alerts, VMS findings and cases link to assets.
 ## Security operations flow
 
 ```
-Wazuh ─▶ forwarder ─▶ alerts ─▶ cases (SLA, assignment, notes) ─▶ SOAR run ─▶ approval ─▶ bridge ─▶ signed receipt
+Wazuh ─▶ forwarder ─▶ alerts ─▶ cases (SLA, assignment, notes) ─▶ SOAR run ─▶ approval or pre-authorization ─▶ bridge ─▶ signed receipt
                          │                                    ▲
                          └─▶ Threat Insights matches ─────────┘   NHAI drafts (explanations, recommendations: never actions)
 ```
+
+- **Correlation.** Alerts and VMS findings both point at the canonical asset. A case's page and its NHAI evidence
+  join the open findings of the assets its alerts came from; findings are shown only to callers with `vms:read`.
+- **Policy-driven orchestration.** When an organization switches it on, the jobs worker considers each NEW alert:
+  it computes a deterministic detection confidence, opens or joins an automation case, and starts approved playbook
+  versions marked automatic. A consequential step proceeds without a person only when the organization
+  pre-authorizes the action, the confidence reaches its threshold, the target (from the triggering alert) is
+  authorized and not protected, and the hourly automatic dispatch cap allows it. Otherwise a person approves it. Each
+  step stores the exact signed request it sent; a retry re-sends the same bytes. Every decision is recorded once per
+  alert and playbook.
 
 SOAR rules are in [`SOAR_POLICY.md`](SOAR_POLICY.md).
 
@@ -152,6 +201,10 @@ NHAI tasks are queued in the database and processed asynchronously by the worker
 - alert triage;
 - finding explanation;
 - asset summary;
+- case investigation assistance (with the open findings of the case's assets);
+- combined analysis of an organization (aggregates of SIEM, VMS, assets, cases, Threat Insights, SOAR, remediation
+  and posture) or, for platform staff with the platform organization active, of every organization in scope, each
+  read under its own row-level security;
 - chat answer.
 
 Each job carries an evidence bundle built only from the organization's own records. Each output is checked against
@@ -160,6 +213,13 @@ authoritative severity; a proposal lower than it is flagged. The output is store
 
 NovrChat answers questions with read-only, permission-checked tools over the same records. Each answer cites the
 records it used. NovrChat refuses requests to act.
+
+NHAI readiness is read from records only: the backend setting, the worker's own heartbeat (it can write only its
+own row), the queue and recent outcomes. A model under 7B parameters is labelled a limited pilot. A failed job can be
+retried with evidence assembled afresh.
+
+NovrChat's team tool counts the organization's members by role. "Online" comes only from presence heartbeats that an
+open, visible NovrSOC tab sends every 60 seconds; until one exists, presence is reported as not tracked.
 
 Every AI request, result and review is written to an append-only AI activity log.
 

@@ -48,7 +48,9 @@ def _view(r) -> LogSourceView:
                          site_id=r.site_id, site_name=r.site_name, network=r.network_text, enabled=r.enabled,
                          authorization_reference=r.authorization_reference, notes=r.notes, asset_id=r.asset_id,
                          event_count=r.event_count, last_event_at=r.last_event_at,
-                         status=attribution.status(enabled=r.enabled, retired_at=r.retired_at, last_event_at=r.last_event_at),
+                         verified=r.verified_at is not None, verified_at=r.verified_at,
+                         status=("pending_verification" if r.verified_at is None and r.retired_at is None else
+                                 attribution.status(enabled=r.enabled, retired_at=r.retired_at, last_event_at=r.last_event_at)),
                          retired_at=r.retired_at, retired_reason=r.retired_reason, created_at=r.created_at, updated_at=r.updated_at)
 
 
@@ -91,6 +93,15 @@ def _reconcile(conn: Connection, *, name: str, device_type: str, source_ip: str 
         return None
 
 
+def _platform_staff(conn: Connection, p: Principal) -> bool:
+    """NovrSOC staff (a platform administrator, or platform SOC staff working in an assigned organization) register verified
+    senders. An organization's own members register PENDING senders: disabled until NovrSOC verifies them, so nobody can
+    claim another organization's device by registering its address first."""
+    if p.role == "super_admin" or p.cross_org:
+        return True
+    return conn.execute(text("SELECT kind FROM novrsoc.organizations WHERE id = :o"), {"o": p.org_id}).scalar() == "platform"
+
+
 def _conflict() -> ApiError:
     return ApiError(409, "conflict", "This source is already registered (in this or another organization). One source, one "
                                      "organization: reassign the existing registration instead of registering it twice.")
@@ -109,23 +120,26 @@ def create_source(body: LogSourceCreate, request: Request, p: Principal = Depend
                   conn: Connection = Depends(request_connection)) -> LogSourceView:
     _check_site(conn, body.site_id, body.source_ip)
     value = attribution.match_value(body.kind, body.source_ip, body.host)
+    staff = _platform_staff(conn, p)
     try:
         with conn.begin_nested():
             sid = conn.execute(text("""
                 INSERT INTO novrsoc.log_sources (org_id, name, kind, source_ip, host, match_value, device_type, vendor, protocol, port,
-                                                 site_id, network, enabled, authorization_reference, notes, created_by)
+                                                 site_id, network, enabled, authorization_reference, notes, created_by, verified_at, verified_by)
                 VALUES (novrsoc.app_org(), :n, :k, CAST(:ip AS inet), :h, :mv, :dt, :v, :pr, :po, :site, CAST(:net AS cidr), :en,
-                        :auth, :notes, :u) RETURNING id"""),
+                        :auth, :notes, :u, CASE WHEN :staff THEN now() END, CASE WHEN :staff THEN CAST(:u AS uuid) END) RETURNING id"""),
                 {"n": body.name, "k": body.kind, "ip": body.source_ip, "h": body.host.strip(), "mv": value, "dt": body.device_type,
-                 "v": body.vendor, "pr": body.protocol, "po": body.port, "site": body.site_id, "net": body.network, "en": body.enabled,
-                 "auth": body.authorization_reference, "notes": body.notes, "u": p.user_id}).scalar()
+                 "v": body.vendor, "pr": body.protocol, "po": body.port, "site": body.site_id, "net": body.network,
+                 "en": body.enabled and staff, "auth": body.authorization_reference, "notes": body.notes, "u": p.user_id,
+                 "staff": staff}).scalar()
     except IntegrityError:
         raise _conflict()
     asset = _reconcile(conn, name=body.name, device_type=body.device_type, source_ip=body.source_ip, host=body.host,
                        site_id=body.site_id, actor=p.email)
     conn.execute(text("UPDATE novrsoc.log_sources SET asset_id = :a WHERE id = :id"), {"a": asset, "id": sid})
     _audit(p, request, "LOG_SOURCE_REGISTERED", str(sid), {"kind": body.kind, "match": value, "device_type": body.device_type,
-                                                          "authorization_reference": body.authorization_reference})
+                                                          "authorization_reference": body.authorization_reference,
+                                                          "verification": "verified" if staff else "pending"})
     return _view(_get(conn, sid))
 
 
@@ -157,6 +171,12 @@ def update_source(source_id: uuid.UUID, body: LogSourceUpdate, request: Request,
     _check_site(conn, site, ip)
     host = new.get("host", cur.host)
     value = attribution.match_value(cur.kind, ip, host)
+    staff = _platform_staff(conn, p)
+    unverify = not staff and value != cur.match_value                  # a new address needs a new verification
+    if not staff and new.get("enabled") and (cur.verified_at is None or unverify):
+        raise ApiError(409, "verification_required", "NovrSOC verifies a sender before its events are accepted; it stays disabled until then")
+    if unverify:
+        new["enabled"] = False
     try:
         with conn.begin_nested():
             conn.execute(text("""
@@ -167,6 +187,8 @@ def update_source(source_id: uuid.UUID, body: LogSourceUpdate, request: Request,
                  "v": new.get("vendor", cur.vendor), "pr": protocol, "po": new.get("port", cur.port), "site": site, "net": network,
                  "en": new.get("enabled", cur.enabled), "auth": new.get("authorization_reference", cur.authorization_reference),
                  "notes": new.get("notes", cur.notes), "id": source_id})
+        if unverify:
+            conn.execute(text("UPDATE novrsoc.log_sources SET verified_at = NULL, verified_by = NULL WHERE id = :id"), {"id": source_id})
     except IntegrityError:
         raise _conflict()
     if value != cur.match_value or site != cur.site_id:
@@ -179,6 +201,21 @@ def update_source(source_id: uuid.UUID, body: LogSourceUpdate, request: Request,
     if changed or body.clear_site or body.clear_network:
         _audit(p, request, "LOG_SOURCE_UPDATED", str(source_id), {"fields": changed, "match": value,
                                                                   "previous_match": cur.match_value})
+    return _view(_get(conn, source_id))
+
+
+@router.post("/{source_id}/verify", response_model=LogSourceView,
+             summary="NovrSOC: verify a sender an organization registered, and enable it (audited)")
+def verify_source(source_id: uuid.UUID, request: Request, p: Principal = Depends(require("endpoints:manage")),
+                  conn: Connection = Depends(request_connection)) -> LogSourceView:
+    if not _platform_staff(conn, p):
+        raise ApiError(403, "forbidden", "Only NovrSOC staff verify a sender")
+    cur = _get(conn, source_id)
+    if cur.retired_at is not None:
+        raise ApiError(409, "conflict", "A retired source cannot be verified")
+    conn.execute(text("""UPDATE novrsoc.log_sources SET verified_at = now(), verified_by = :u, enabled = true, updated_at = now()
+                         WHERE id = :id"""), {"u": p.user_id, "id": source_id})
+    _audit(p, request, "LOG_SOURCE_VERIFIED", str(source_id), {"match": cur.match_value})
     return _view(_get(conn, source_id))
 
 
@@ -216,8 +253,8 @@ def reassign_source(source_id: uuid.UUID, body: LogSourceReassign, request: Requ
         with conn.begin_nested():
             sid = conn.execute(text("""
                 INSERT INTO novrsoc.log_sources (org_id, name, kind, source_ip, host, match_value, device_type, vendor, protocol, port,
-                                                 enabled, authorization_reference, notes, created_by)
-                VALUES (novrsoc.app_org(), :n, :k, :ip, :h, :mv, :dt, :v, :pr, :po, :en, :auth, :notes, :u) RETURNING id"""),
+                                                 enabled, authorization_reference, notes, created_by, verified_at, verified_by)
+                VALUES (novrsoc.app_org(), :n, :k, :ip, :h, :mv, :dt, :v, :pr, :po, :en, :auth, :notes, :u, now(), :u) RETURNING id"""),
                 {"n": cur.name, "k": cur.kind, "ip": cur.source_ip, "h": cur.host, "mv": cur.match_value, "dt": cur.device_type,
                  "v": cur.vendor, "pr": cur.protocol, "po": cur.port, "en": cur.enabled, "auth": cur.authorization_reference,
                  "notes": cur.notes, "u": p.user_id}).scalar()

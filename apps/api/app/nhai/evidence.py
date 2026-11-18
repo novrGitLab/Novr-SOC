@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from app import correlation
 from app.core.errors import not_found
 from app.core.redact import redact_string
 from app.insights import stix_store
@@ -35,9 +36,10 @@ def _excerpt(s: str, limit: int = EXCERPT_MAX) -> tuple[str, bool]:
     return red[:limit], red != s
 
 
-def alert_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, alert_id: uuid.UUID, *, max_chars: int) -> ContextBundle:
+def alert_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, alert_id: uuid.UUID, *, max_chars: int,
+                 include_findings: bool = False) -> ContextBundle:
     a = conn.execute(text("""SELECT id, rule_id, rule_level, rule_description, severity, agent_id, agent_name, agent_groups,
-                                    host(src_ip) AS src_ip, mitre_techniques, observed_at, raw
+                                    host(src_ip) AS src_ip, mitre_techniques, observed_at, raw, asset_id
                              FROM novrsoc.alerts WHERE id = :id"""), {"id": alert_id}).first()
     if a is None:
         raise not_found("Alert not found")
@@ -76,6 +78,12 @@ def alert_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, alert_
                         {"g": a.agent_id, "r": a.rule_id, "s": since, "t": a.observed_at, "id": a.id}).scalar()
     add("correlation", f"{a.agent_id}:{a.rule_id}", f"{same} other alert(s) of the same rule on the same agent in the 24 h "
                                                     f"before this alert.")
+    # Combined SIEM + VMS evidence: the open vulnerability findings of the alert's canonical asset (vms:read callers only).
+    if include_findings and a.asset_id:
+        rows, total = correlation.open_findings(conn, [a.asset_id], per_asset=5).get(a.asset_id, ([], 0))
+        add("vms_findings", str(a.asset_id), (f"Open vulnerability findings on the alert's asset: {correlation.findings_line(rows)}"
+                                              + (f" (+{total - len(rows)} more open)" if total > len(rows) else ""))
+            if rows else "The alert's asset has no open vulnerability finding.")
     # Bound the prompt: drop the largest optional items (never E1) until the bundle fits.
     while sum(len(i.excerpt) for i in items) > max_chars and len(items) > 1:
         idx = max(range(1, len(items)), key=lambda k: len(items[k].excerpt))
@@ -200,9 +208,11 @@ def asset_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, asset_
                          evidence=_bounded(b.items, max_chars), assembled_at=datetime.now(timezone.utc), assembled_for=user_id)
 
 
-def case_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, case_id: uuid.UUID, *, max_chars: int) -> ContextBundle:
-    """Investigation assistance: the case, its linked alerts (with Wazuh's authoritative severity), the analysts' notes and
-    timeline, Threat Insights matches of the linked alerts, and the assets involved. Active organization only (RLS)."""
+def case_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, case_id: uuid.UUID, *, max_chars: int,
+                include_findings: bool = False) -> ContextBundle:
+    """Investigation assistance: the case, its linked alerts (with the SIEM's authoritative severity), the analysts' notes
+    and timeline, Threat Insights matches of the linked alerts, the assets involved and (when the caller may read VMS
+    findings) the open vulnerability findings on those assets. Active organization only (RLS)."""
     c = conn.execute(text("SELECT * FROM novrsoc.cases WHERE id = :i"), {"i": case_id}).first()
     if c is None:
         raise not_found("Case not found")
@@ -233,6 +243,12 @@ def case_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, case_id
                                       WHERE x.id = ANY(:a)"""), {"a": [a.asset_id for a in alerts if a.asset_id]}).all()
         if assets:
             b.add("assets", c.id, "; ".join(f"{r.display_name} (criticality {r.criticality}, exposure {r.exposure})" for r in assets))
+        # Combined SIEM + VMS evidence: open vulnerability findings on the same canonical assets (vms:read callers only).
+        if include_findings and assets:
+            names = {r.id: r.display_name for r in assets}
+            for asset_id, (rows, total) in correlation.open_findings(conn, list(names), per_asset=5).items():
+                more = f" (+{total - len(rows)} more open)" if total > len(rows) else ""
+                b.add("vms_findings", asset_id, f"Open findings on {names[asset_id]}: {correlation.findings_line(rows)}{more}")
     return ContextBundle(bundle_id=uuid.uuid4(), org_id=org_id, task=NhaiTask.INVESTIGATION_ASSISTANCE, subject=ResourceRef(type="case", id=str(c.id)),
                          evidence=_bounded(b.items, max_chars), assembled_at=datetime.now(timezone.utc), assembled_for=user_id)
 
@@ -271,5 +287,21 @@ def missing_evidence_for(bundle: ContextBundle) -> list[str]:
         if "wazuh_agent" not in " ".join(e.excerpt for e in bundle.evidence if e.ref.type == "asset_identifiers"):
             gaps.append("No NovrAgent is linked: host telemetry and configuration assessment are not available.")
         gaps.append("Business context (data held, owners' risk appetite) is not in the bundle.")
+        return gaps
+    if bundle.task == NhaiTask.POSTURE_ANALYSIS:
+        gaps = ["These are aggregates (counts and top items): individual events were not read, so causes are not established.",
+                "Assets without a NovrAgent or never scanned are under-represented in alert and finding counts."]
+        posture = next((e.excerpt for e in bundle.evidence if e.ref.type == "posture"), "")
+        if '"score": null' in posture:
+            gaps.append("The posture score has insufficient data in this window.")
+        return gaps
+    if bundle.task == NhaiTask.INVESTIGATION_ASSISTANCE:
+        gaps = []
+        if "assets" not in kinds:
+            gaps.append("The linked alerts are not attributed to inventory assets, so vulnerability context cannot be joined.")
+        elif "vms_findings" not in kinds:
+            gaps.append("No open vulnerability finding is included for the case's assets (none is recorded, or the requester "
+                        "may not read VMS findings); this does not mean the assets were scanned.")
+        gaps.append("Only the case's linked alerts were used; related activity not linked to the case is not in the bundle.")
         return gaps
     return ["Only the records retrieved for this question were used; other records may exist that the tools did not return."]

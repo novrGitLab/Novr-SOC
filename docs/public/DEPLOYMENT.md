@@ -108,12 +108,53 @@ its token file.
 
 Enabling real scanning is a separate decision. It needs:
 
-- a production scanning mode in the API;
-- a scanning engine, and egress for the worker;
+- the production scanning mode in the API (`NOVRSOC_VMS_SCANNING=authorized_scopes`);
+- a scanning engine with a declared route to the client networks (`nmap_service` for ports, or Greenbone below);
 - per-organization scope approvals;
-- scan windows.
+- each organization's enabled scan policy, with its windows and caps (migration 0018).
 
-None of these exist yet.
+### Greenbone (NovrVMS vulnerability scanning, gate G-B)
+
+Greenbone runs on Server 2 as its **own compose project** (`deploy/server2/greenbone/compose.yaml`), isolated from
+NovrSOC's database and API. NovrVMS talks to it only through gvmd's GMP socket, as a dedicated Greenbone user.
+
+| Property | Value |
+|---|---|
+| Stack | gvmd, its own PostgreSQL (`pg-gvm`) and Redis, ospd-openvas with notus-scanner, feed data. No web interface, no published port |
+| Images | every image pinned by digest in `/etc/novrsoc-v2/greenbone.env` (compose refuses an unpinned one). The layout follows Greenbone Community Containers 22.4: check it against the release you pin |
+| Networks | `gb_internal` (internal: no route out) for everything; only `ospd-openvas` also joins `gb_scan`, the one network with egress |
+| NovrVMS bridge | compose service `vms-greenbone` (profile `greenbone`): the NovrVMS worker image, `vms` network only, the gvmd socket from `${NOVRSOC_GREENBONE_RUN_DIR}/gvmd-socket` and `openvas.conf` read-only |
+| GMP client | `services/vms-worker/gmp.py`: standard library only (no python-gvm), one authenticated session per step |
+| Scan safety | refused before any task exists unless the scan configuration has safe checks on and vhost expansion confirmed off (`expand_vhosts = no` is written by `configure-openvas`) |
+| Load | per-service memory and CPU caps; the scanner limited to `GB_MAX_HOSTS` hosts and `GB_MAX_CHECKS` checks; one task at a time per worker, at most `VMS_GREENBONE_MAX_TARGETS` targets; platform caps in the API: `NOVRSOC_VMS_MAX_RUNNING_SCANS` (default 2) and `NOVRSOC_VMS_MAX_RUNNING_GREENBONE` (default 1) across every organization (migration 0023); results ingested in batches of 1000 |
+
+1. **Host directories.** `install -d -m 0750 /srv/novrsoc-greenbone/gvmd-socket /srv/novrsoc-greenbone/openvas-conf`.
+   The socket directory must be writable by gvmd's user in its image. The socket must be connectable by uid 10002
+   (NovrVMS): give both a shared group, or start gvmd with a listen mode that allows the group. Check the pinned
+   image's gvmd user and its `--listen-group` / `--listen-mode` options.
+2. **Pin and start the stack.** Copy `greenbone.env.example` to `/etc/novrsoc-v2/greenbone.env`, pin every image,
+   then `cd deploy/server2/greenbone && docker compose --env-file /etc/novrsoc-v2/greenbone.env up -d`. Wait until the
+   feeds are loaded (gvmd's log reports the NVT and SCAP sync complete).
+3. **Scanner egress.** In the `DOCKER-USER` chain, accept traffic from `GB_SCAN_SUBNET` only to the authorized client
+   networks (over WireGuard), then drop everything else from it. Nothing else may be reachable from the scanner.
+4. **Dedicated Greenbone user.**
+   `docker compose --env-file /etc/novrsoc-v2/greenbone.env exec -u gvmd gvmd gvmd --create-user=novrsoc_vms`
+   prints a generated password. Put it in `/etc/novrsoc-v2/vms-greenbone.env` (from `deploy/server2/vms-greenbone.env.example`;
+   mode 0400, uid 10002) with `VMS_ALLOWED_NETWORKS`, the same networks as step 3. Never use the admin account.
+5. **Verify, read-only.** In NovrSOC's `.env`, set `NOVRSOC_GREENBONE_RUN_DIR=/srv/novrsoc-greenbone` and leave
+   `NOVRSOC_GREENBONE_ENGINE` unset (disabled). Then:
+   `docker compose --profile greenbone run --rm vms-greenbone python v2_adapter.py --greenbone-check`
+   must print `"ok": true`: authenticated, gvmd's version, every feed with its age, and `scan_config_safe: true`.
+   It creates nothing and scans nothing.
+6. **Enable.** Only after steps 1 to 5 pass and the owner approves the scanner host and its routes:
+   - set `NOVRSOC_GREENBONE_ENGINE=greenbone_gmp` in `.env` and `NOVRSOC_VMS_SCANNING=authorized_scopes` in `api.env`;
+   - `docker compose --profile greenbone up -d vms-greenbone`;
+   - for each organization: a scope that allows `vuln_openvas`, and an enabled scan policy.
+   The first scan of each organization should be a single, agreed target in its scan window. Check its job page:
+   the per-target outcomes, the Greenbone task name `novrsoc-<job id>` in the detail, and the findings.
+
+To stop scanning at once, either unset `NOVRSOC_GREENBONE_ENGINE` and recreate `vms-greenbone`, or disable the
+organization's scan policy. A running Greenbone task is stopped and deleted by its job when it times out or fails.
 
 ## 4. First administrator
 
@@ -282,6 +323,87 @@ What changes:
 Rollback: `alembic downgrade 0017_org_management_log_sources`. This removes scan policies, enrollments, the scan-job
 progress columns and `collection_group_only` quarantine entries, and revokes the cases grant. Then restore
 `NOVRSOC_MANAGER_EVENTS=quarantine` behaviour by redeploying the previous image.
+
+**Upgrading to migration 0019 (organization portals, invitations, onboarding)**
+
+`docker compose up -d --wait` applies it, and nothing changes for existing users until a portal is switched on:
+
+- Existing sessions keep working on the platform address.
+- Existing log sources count as verified, because platform staff registered them.
+- Existing agent group mappings stay as they are. The provisioned group is an additional one.
+
+To serve organization portals:
+
+1. **DNS.** Create a wildcard record `*.<portal base domain>` for Server 2.
+2. **TLS.** Obtain a certificate that covers `<public hostname>` and `*.<portal base domain>`. Let's Encrypt issues
+   wildcards through the DNS-01 challenge only.
+3. **nginx.** Install the updated `nginx-novrsoc.conf`. Its default server drops every other host name.
+4. **API settings.** Set `NOVRSOC_PLATFORM_HOSTS`, `NOVRSOC_PUBLIC_PLATFORM_HOST` and `NOVRSOC_PORTAL_BASE_DOMAIN` in
+   `api.env`, then `docker compose up -d --wait`.
+5. **Server-controlled agent enrollment** (optional, separate approval). NovrSOC registers every agent itself. No
+   shared enrollment password and no self-chosen group decides which organization an agent belongs to:
+   - On the NovrSIEM manager (Server 1), create a dedicated API user (for example `novrsoc_enroll`). Give it a role
+     limited to `manager:read`, `group:read`, `group:create`, `agent:create`, `agent:modify_group` and `agent:delete`.
+   - In `api.env`, set:
+     - `NOVRSOC_ENROLLMENT_MODE=manager_api`;
+     - `WAZUH_ENROLLMENT_URL`, `_USER`, `_PASSWORD` and `_CA_CERT`, reached over WireGuard;
+     - `NOVRSOC_AGENT_MANAGER_ADDRESS`, the address endpoints use to reach the manager.
+   - Check compatibility: the onboarding page shows the manager version the API read. Agents install that exact
+     version by default. `NOVRSOC_AGENT_VERSION` may only pin an older version of the same major.
+   - Switch off password enrollment on the manager (`<auth><disabled>yes</disabled></auth>` in `ossec.conf`, then
+     restart the manager), once every existing agent is registered. Existing agents keep their keys. From then on,
+     only NovrSOC can register an agent.
+   - Provision each organization's agent group from its organization page. NovrSOC creates the group on the manager.
+     Administrators then issue installer commands: each has an expiry and an endpoint limit, and can be revoked.
+6. **Scheduled asset sync.** The `jobs` service now reaches the manager's read-only API over the `app` network.
+   `NOVRSOC_ASSET_SYNC_INTERVAL_MINUTES` defaults to 60; 0 means on demand only. An organization's own
+   `wazuh_sync` collector overrides the interval. Each run, and each failure, is recorded per organization and shown on
+   its onboarding page.
+7. **Enroll each organization.** A platform administrator:
+   - creates or opens the organization in the Command Center;
+   - sets its subdomain, branding and logo (Settings tab), then enables the portal;
+   - provisions its agent group (Integrations tab);
+   - invites its administrator (Users tab) and sends the one-time link through an approved channel.
+8. **Rate limits.** Portal identity, invitations, installer downloads and enrollment are rate limited per client
+   address, with counters shared in PostgreSQL by every API worker. They rely on uvicorn's trusted proxy headers
+   (`FORWARDED_ALLOW_IPS`, already set in `compose.yaml`).
+
+What switching a portal on changes:
+
+- **Sign-in.** The organization's members sign in at its portal, and their platform-address sessions end.
+- **Session binding.** A session works only at the address it was created on.
+- **Senders.** A sender the organization registers stays disabled until a NovrSOC administrator verifies it (Verify,
+  in the organization's Integrations tab).
+
+Rollback: `alembic downgrade 0018_vms_policy_attribution`. This removes:
+
+- portals and branding;
+- invitations;
+- session binding (every session then works at the platform address);
+- the provisioned flag on agent group mappings (the mappings stay);
+- sender verification.
+
+Remove the wildcard `server_name` from nginx too.
+
+**Upgrading to migration 0020 (NovrSOAR policy-driven orchestration)**
+
+0020 adds the automation policy, run origin and confidence, policy authorizations, the exact bridge request of each
+step, automation decisions, and an index on `alerts (org_id, received_at, id)`. Building that index locks alert writes
+for the time it takes. On a large `alerts` table, apply 0020 in a quiet window. The forwarder retries, so no alert is
+lost.
+
+1. Back up as in step 1 of every upgrade, then `docker compose up -d --wait` applies 0020.
+2. Automation is **off** for every organization after the upgrade. Existing runs become `manual`. Nothing else
+   changes until a `soar:manage` holder switches it on (Response policy → Automation).
+3. Before switching on pre-authorized actions, run the simulated procedure in `SOAR_POLICY.md` §12 with the bridge
+   on `adapter: simulated` and `allow_live: false`. Live enforcement stays disabled until that procedure and the
+   integration checks pass and the owner approves.
+4. Protected targets: add at least the WireGuard network, both servers' public addresses and the office egress, the
+   same networks as the bridge's `never_block`.
+
+Rollback: `alembic downgrade 0019_org_portals_onboarding`. This removes automatic runs, their steps and policy
+authorizations (the audit log keeps them), the automation decisions and settings, and the stored requests. Manual
+runs and their approvals stay.
 
 **Migrations**
 

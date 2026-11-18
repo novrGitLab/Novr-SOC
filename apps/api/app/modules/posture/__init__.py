@@ -217,7 +217,7 @@ def compliance(conn: Connection, p: Principal, settings: Settings) -> Compliance
                               note="Not permitted for your role.")
     if source is None or state.state not in ("connected", "local_fixture"):
         return ComplianceView(source=state, note="Configuration assessment (NovrAgent SCA) is unavailable: " + (state.detail or state.state))
-    scope = org_scope(conn, p.org_id)
+    scope = org_scope(conn, p.org_id, settings.collection_groups)
     agg: dict[str, dict] = {}
     n = 0
     try:

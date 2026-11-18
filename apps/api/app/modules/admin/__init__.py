@@ -734,3 +734,219 @@ def quarantine(p: Principal = Depends(require("users:manage")), conn: Connection
         kind, value = classify_location(r.loc)
         srcs.append(QuarantinedSource(kind=kind, value=value, reason=r.reason, events=r.n, last_seen_at=r.last))
     return QuarantineSummary(last_24h=n, by_reason=by, unmapped_groups=groups, unattributed_sources=srcs)
+
+
+from app import portal as portals  # noqa: E402
+from app.core.security import new_token, sha256  # noqa: E402
+from app.connectors.base import ConnectorError as _ConnectorError  # noqa: E402
+from novrsoc_contracts.v1.portal import (AgentGroupView, InvitationCreate, InvitationCreated, InvitationList, InvitationView,  # noqa: E402
+                                         LogoUpload, OrgPortalUpdate, OrgPortalView)
+
+
+# ================================================================ organization portals, branding, invitations, agent group
+def _in_org(conn: Connection, org_id: uuid.UUID) -> None:
+    conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(org_id)})
+
+
+def _org_row(conn: Connection, org_id: uuid.UUID):
+    r = conn.execute(text("""SELECT id, slug::text AS slug, name, kind, status, portal_subdomain::text AS sub, portal_enabled,
+                                    brand_display_name, brand_primary_color, brand_secondary_color, brand_logo_sha256
+                             FROM novrsoc.organizations WHERE id = :o"""), {"o": org_id}).first()
+    if r is None:
+        raise not_found("Organization not found")
+    return r
+
+
+def _portal_view(r, settings: _Settings) -> OrgPortalView:
+    warnings = []
+    c = portals.contrast(r.brand_primary_color, "#ffffff") if r.brand_primary_color else None
+    if r.portal_enabled and not settings.portal_base_domain:
+        warnings.append("This installation has no portal base domain: the portal is not reachable until one is configured.")
+    applied = portals.theme_for(r.brand_primary_color) is not None
+    if r.brand_primary_color and not applied:
+        warnings.append(f"The primary color is not applied to the portal theme: it needs a contrast of at least "
+                        f"{portals.THEME_MIN_CONTRAST}:1 against white (it has {c}:1). The logo and name are still shown.")
+    url = portals.base_url(settings, r.sub, r.portal_enabled) if r.portal_enabled and settings.portal_base_domain else None
+    return OrgPortalView(portal_subdomain=r.sub, portal_enabled=r.portal_enabled, url=url, display_name=r.brand_display_name or r.name,
+                         primary_color=r.brand_primary_color, secondary_color=r.brand_secondary_color,
+                         text_on_primary=portals.text_on(r.brand_primary_color) if r.brand_primary_color else None,
+                         contrast_primary_on_white=c, has_logo=r.brand_logo_sha256 is not None, logo_sha256=r.brand_logo_sha256,
+                         theme_applied=applied, warnings=warnings)
+
+
+@router.get("/organizations/{org_id}/portal", response_model=OrgPortalView, summary="An organization's portal address and branding")
+def get_portal(org_id: uuid.UUID, p: Principal = Depends(require("users:manage")), conn: Connection = Depends(request_connection),
+               settings: _Settings = Depends(_get_settings)) -> OrgPortalView:
+    _platform_admin(p)
+    return _portal_view(_org_row(conn, org_id), settings)
+
+
+@router.put("/organizations/{org_id}/portal", response_model=OrgPortalView, summary="Set an organization's portal and branding (audited)")
+def put_portal(org_id: uuid.UUID, body: OrgPortalUpdate, request: Request, p: Principal = Depends(require("users:manage")),
+               conn: Connection = Depends(request_connection), settings: _Settings = Depends(_get_settings)) -> OrgPortalView:
+    _platform_admin(p)
+    cur = _org_row(conn, org_id)
+    if cur.kind != "client" and (body.portal_enabled or body.portal_subdomain):
+        raise ApiError(422, "validation_error", "Portals are for client organizations; the platform has the platform address")
+    sub = body.portal_subdomain.lower() if body.portal_subdomain else None
+    if sub in portals.RESERVED:
+        raise ApiError(422, "subdomain_reserved", f"'{sub}' is reserved")
+    if body.portal_enabled and not sub:
+        raise ApiError(422, "validation_error", "Enabling a portal needs a subdomain")
+    if body.portal_enabled and cur.status != "active":
+        raise ApiError(409, "conflict", "Only an active organization can have an enabled portal")
+    primary = body.primary_color.lower() if body.primary_color else None
+    secondary = body.secondary_color.lower() if body.secondary_color else None
+    try:
+        with conn.begin_nested():
+            conn.execute(text("""UPDATE novrsoc.organizations SET portal_subdomain = :s, portal_enabled = :e, brand_display_name = :d,
+                                   brand_primary_color = :p1, brand_secondary_color = :p2, updated_at = now() WHERE id = :o"""),
+                         {"s": sub, "e": body.portal_enabled, "d": body.display_name.strip(), "p1": primary, "p2": secondary, "o": org_id})
+    except IntegrityError:
+        raise ApiError(409, "subdomain_taken", "Another organization already uses this subdomain") from None
+    changed = {k: [a, b] for k, a, b in (("portal_subdomain", cur.sub, sub), ("portal_enabled", cur.portal_enabled, body.portal_enabled),
+                                         ("display_name", cur.brand_display_name, body.display_name.strip()),
+                                         ("primary_color", cur.brand_primary_color, primary),
+                                         ("secondary_color", cur.brand_secondary_color, secondary)) if a != b}
+    if changed:
+        _audit(p, request, "ORG_PORTAL_UPDATED", "organization", str(org_id), {"changed": changed})
+    if body.portal_enabled and not cur.portal_enabled:
+        # Members signed in on the platform address before the portal existed sign in again at the portal.
+        ended = conn.execute(text("SELECT novrsoc.admin_end_platform_sessions(:o)"), {"o": org_id}).scalar()
+        _audit(p, request, "ORG_PORTAL_ENABLED", "organization", str(org_id), {"platform_sessions_ended": ended})
+    return _portal_view(_org_row(conn, org_id), settings)
+
+
+@router.put("/organizations/{org_id}/logo", response_model=OrgPortalView, summary="Upload an organization's logo (PNG, JPEG, WebP; audited)")
+def put_logo(org_id: uuid.UUID, body: LogoUpload, request: Request, p: Principal = Depends(require("users:manage")),
+             conn: Connection = Depends(request_connection), settings: _Settings = Depends(_get_settings)) -> OrgPortalView:
+    _platform_admin(p)
+    _org_row(conn, org_id)
+    data, digest = portals.check_logo(body.content_type, body.data_base64)
+    conn.execute(text("""UPDATE novrsoc.organizations SET brand_logo = :b, brand_logo_type = :t, brand_logo_sha256 = :h, updated_at = now()
+                         WHERE id = :o"""), {"b": data, "t": body.content_type, "h": digest, "o": org_id})
+    _audit(p, request, "ORG_LOGO_UPDATED", "organization", str(org_id), {"bytes": len(data), "sha256": digest, "type": body.content_type})
+    return _portal_view(_org_row(conn, org_id), settings)
+
+
+@router.delete("/organizations/{org_id}/logo", response_model=OrgPortalView, summary="Remove an organization's logo (audited)")
+def delete_logo(org_id: uuid.UUID, request: Request, p: Principal = Depends(require("users:manage")),
+                conn: Connection = Depends(request_connection), settings: _Settings = Depends(_get_settings)) -> OrgPortalView:
+    _platform_admin(p)
+    _org_row(conn, org_id)
+    conn.execute(text("UPDATE novrsoc.organizations SET brand_logo = NULL, brand_logo_type = NULL, brand_logo_sha256 = NULL WHERE id = :o"),
+                 {"o": org_id})
+    _audit(p, request, "ORG_LOGO_REMOVED", "organization", str(org_id), {})
+    return _portal_view(_org_row(conn, org_id), settings)
+
+
+def _invitation(r) -> InvitationView:
+    now = _NOW()
+    state = "revoked" if r.revoked_at else "accepted" if r.accepted_at else "expired" if r.expires_at <= now else "open"
+    return InvitationView(id=r.id, email=str(r.email), role=r.role_key, state=state, invited_label=r.invited_label, created_at=r.created_at,
+                          expires_at=r.expires_at, accepted_at=r.accepted_at)
+
+
+@router.get("/organizations/{org_id}/invitations", response_model=InvitationList, summary="Invitations of an organization")
+def list_invitations(org_id: uuid.UUID, p: Principal = Depends(require("users:manage")), conn: Connection = Depends(request_connection)) -> InvitationList:
+    _platform_admin(p)
+    _org_row(conn, org_id)
+    _in_org(conn, org_id)
+    rows = conn.execute(text("SELECT * FROM novrsoc.user_invitations ORDER BY created_at DESC LIMIT 200")).all()
+    _in_org(conn, p.org_id)
+    return InvitationList(items=[_invitation(r) for r in rows])
+
+
+@router.post("/organizations/{org_id}/invitations", response_model=InvitationCreated, status_code=201,
+             summary="Invite an organization administrator or member (the link is shown once; audited)")
+def create_invitation(org_id: uuid.UUID, body: InvitationCreate, request: Request, p: Principal = Depends(require("users:manage")),
+                      conn: Connection = Depends(request_connection), settings: _Settings = Depends(_get_settings)) -> InvitationCreated:
+    _platform_admin(p)
+    org = _org_row(conn, org_id)
+    if org.kind != "client" or org.status != "active":
+        raise ApiError(409, "conflict", "Invitations are for active client organizations")
+    email = body.email.strip().lower()
+    if conn.execute(text("SELECT 1 FROM novrsoc.users WHERE email = :e"), {"e": email}).first():   # platform administrators see users
+        raise ApiError(409, "account_exists", "An account with this email already exists: add it to the organization as a member instead")
+    token = new_token()
+    _in_org(conn, org_id)
+    try:
+        with conn.begin_nested():
+            r = conn.execute(text("""INSERT INTO novrsoc.user_invitations (org_id, email, role_key, token_hash, invited_by, invited_label,
+                                                                          expires_at)
+                                     VALUES (:o, :e, :r, :h, :u, :l, now() + make_interval(hours => :ttl)) RETURNING *"""),
+                             {"o": org_id, "e": email, "r": body.role, "h": sha256(token), "u": p.user_id, "l": p.email,
+                              "ttl": settings.invitation_ttl_hours}).one()
+    except IntegrityError:
+        raise ApiError(409, "conflict", "An open invitation for this email already exists: revoke it first") from None
+    finally:
+        _in_org(conn, p.org_id)
+    _audit(p, request, "INVITATION_CREATED", "invitation", str(r.id), {"org": org.slug, "email": email, "role": body.role})
+    link = f"{portals.base_url(settings, org.sub, org.portal_enabled)}/invite#{token}"
+    return InvitationCreated(invitation=_invitation(r), link=link)
+
+
+@router.post("/organizations/{org_id}/invitations/{invitation_id}/revoke", response_model=InvitationView, summary="Revoke an invitation (audited)")
+def revoke_invitation(org_id: uuid.UUID, invitation_id: uuid.UUID, request: Request, p: Principal = Depends(require("users:manage")),
+                      conn: Connection = Depends(request_connection)) -> InvitationView:
+    _platform_admin(p)
+    _org_row(conn, org_id)
+    _in_org(conn, org_id)
+    r = conn.execute(text("""UPDATE novrsoc.user_invitations SET revoked_at = now()
+                             WHERE id = :i AND accepted_at IS NULL AND revoked_at IS NULL RETURNING *"""), {"i": invitation_id}).first()
+    _in_org(conn, p.org_id)
+    if r is None:
+        raise not_found("No open invitation with this id")
+    _audit(p, request, "INVITATION_REVOKED", "invitation", str(invitation_id), {"email": str(r.email)})
+    return _invitation(r)
+
+
+@router.get("/organizations/{org_id}/agent-group", response_model=AgentGroupView, summary="The organization's provisioned agent group")
+def get_agent_group(org_id: uuid.UUID, p: Principal = Depends(require("users:manage")), conn: Connection = Depends(request_connection),
+                    settings: _Settings = Depends(_get_settings)) -> AgentGroupView:
+    _platform_admin(p)
+    _org_row(conn, org_id)
+    _in_org(conn, org_id)
+    g = conn.execute(text("SELECT group_name, created_at FROM novrsoc.wazuh_group_mappings WHERE provisioned")).first()
+    _in_org(conn, p.org_id)
+    on, detail = _on_manager(settings, g.group_name, create=False) if g else (None, "")
+    return AgentGroupView(provisioned=g is not None, group_name=g.group_name if g else None, created_at=g.created_at if g else None,
+                          on_manager=on, manager_detail=detail)
+
+
+def _on_manager(settings: _Settings, group: str, *, create: bool) -> tuple[bool | None, str]:
+    """Whether the group exists on the NovrSIEM manager (created now when `create`). None: enrollment not configured."""
+    client = _registry.enrollment(settings)
+    if client is None:
+        return None, _registry.enrollment_problem(settings) or ""
+    try:
+        if create:
+            return True, "created on the NovrSIEM manager" if client.ensure_group(group) else "present on the NovrSIEM manager"
+        return client.has_group(group), ""
+    except _ConnectorError as e:
+        return False, f"NovrSIEM: {e}"[:300]
+
+
+@router.post("/organizations/{org_id}/agent-group", response_model=AgentGroupView,
+             summary="Provision the organization's agent group: an unguessable name, mapped to it (idempotent; audited)")
+def provision_agent_group(org_id: uuid.UUID, request: Request, p: Principal = Depends(require("users:manage")),
+                          conn: Connection = Depends(request_connection), settings: _Settings = Depends(_get_settings)) -> AgentGroupView:
+    _platform_admin(p)
+    org = _org_row(conn, org_id)
+    if org.kind != "client" or org.status != "active":
+        raise ApiError(409, "conflict", "Agent groups are provisioned for active client organizations")
+    _in_org(conn, org_id)
+    try:
+        g = conn.execute(text("SELECT group_name, created_at FROM novrsoc.wazuh_group_mappings WHERE provisioned")).first()
+        if g is None:
+            name = portals.provisioned_group_name(org.slug)
+            g = conn.execute(text("""INSERT INTO novrsoc.wazuh_group_mappings (org_id, group_name, created_by, provisioned)
+                                     VALUES (:o, :g, :u, true) RETURNING group_name, created_at"""),
+                             {"o": org_id, "g": name, "u": p.user_id}).one()
+            _audit(p, request, "AGENT_GROUP_PROVISIONED", "wazuh_group", g.group_name, {"org": org.slug})
+    finally:
+        _in_org(conn, p.org_id)
+    on, detail = _on_manager(settings, g.group_name, create=True)
+    if on:
+        _audit(p, request, "AGENT_GROUP_ON_MANAGER", "wazuh_group", g.group_name, {"detail": detail})
+    return AgentGroupView(provisioned=True, group_name=g.group_name, created_at=g.created_at, on_manager=on, manager_detail=detail)

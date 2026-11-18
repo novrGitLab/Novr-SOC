@@ -22,7 +22,7 @@ const ACTIONS: { a: Action; label: string; consequential?: boolean }[] = [
     { a: 'disable_account', label: 'Disable an account (needs approval)', consequential: true },
 ];
 type StepDraft = { key: string; action: Action; param: string; timeout: number };
-const EMPTY = { name: '', title: '', description: '', rules: '', mitre: '', minLevel: 0, live: false, minSev: 'low' as 'low' | 'medium' | 'high' | 'critical', perDay: 20,
+const EMPTY = { name: '', title: '', description: '', rules: '', mitre: '', minLevel: 0, live: false, automatic: false, minSev: 'low' as 'low' | 'medium' | 'high' | 'critical', perDay: 20,
     steps: [{ key: 'enrich', action: 'enrich_iocs' as Action, param: '', timeout: 120 }] as StepDraft[] };
 
 function VersionDrawer({ name, onClose, onChanged }: { name: string; onClose: () => void; onChanged: () => void }) {
@@ -44,7 +44,7 @@ function VersionDrawer({ name, onClose, onChanged }: { name: string; onClose: ()
                                     {p.approved_by && <> · approved by {p.approved_by.label} {fmt(p.approved_at)}</>}</p>
                                 {p.description && <p className="text-xs">{p.description}</p>}
                                 <ol className="text-xs list-decimal ml-4">{p.steps.map((s) => <li key={s.step_key}><Tag strong={['block_ip', 'isolate_agent', 'disable_account'].includes(s.action)}>{s.action}</Tag> <span className="font-mono">{s.step_key}</span>{Object.keys(s.parameters).length ? ` ${JSON.stringify(s.parameters)}` : ''}</li>)}</ol>
-                                <p className="text-xs">Modes: {p.execution_policy.modes.join(', ')} · minimum case severity {p.execution_policy.min_case_severity} · {p.execution_policy.max_runs_per_day} runs per day</p>
+                                <p className="text-xs">Modes: {p.execution_policy.modes.join(', ')}{p.execution_policy.automatic ? ' · automatic' : ''} · minimum case severity {p.execution_policy.min_case_severity} · {p.execution_policy.max_runs_per_day} runs per day</p>
                                 {p.validation && (
                                     <div className="text-xs space-y-1" data-testid="validation">
                                         <p><StateTag state={p.validation.valid ? 'ok' : 'failed'} label={p.validation.valid ? 'valid' : 'invalid'} /> checked {fmt(p.validation.checked_at)}</p>
@@ -90,7 +90,7 @@ export default function PlaybooksPage() {
             steps: f.steps.map((s) => ({ step_key: s.key.trim(), action: s.action, timeout_seconds: s.timeout, max_attempts: 3,
                 parameters: (s.action === 'create_task' ? { title: s.param || f.title } : s.action === 'disable_account' && s.param ? { account: s.param } : {}) as Record<string, string> })),
             triggers: { rule_ids: f.rules.split(',').map((r) => r.trim()).filter(Boolean), mitre: f.mitre.split(',').map((r) => r.trim()).filter(Boolean), min_level: f.minLevel },
-            execution_policy: { modes: f.live ? ['dry_run', 'live'] : ['dry_run'], min_case_severity: f.minSev, max_runs_per_day: f.perDay },
+            execution_policy: { modes: f.live ? ['dry_run', 'live'] : ['dry_run'], min_case_severity: f.minSev, max_runs_per_day: f.perDay, automatic: f.automatic },
         };
         const r = await act.run(() => playbookApi.create(orgId, body), (p) => `Saved ${p.name} v${p.version} as a draft. Validate and submit it for approval.`);
         if (r) { list.reload(); setOpen(r.name); setF(EMPTY); }
@@ -100,7 +100,7 @@ export default function PlaybooksPage() {
     return (
         <>
             <PageHeader title="Playbooks" icon={BookOpen}
-                description="Response playbooks, versioned. A version runs only after validation and approval by another manager; consequential steps always wait for a human approval at run time. No playbook is pre-defined." />
+                description="Response playbooks, versioned. A version runs only after validation and approval by another manager. At run time a consequential step waits for a human approval, unless the version is automatic and the response policy pre-authorizes the action. No playbook is pre-defined." />
             {act.notice}
             <Loaded title="Playbooks" hint="Latest version of each" data={list.data} error={list.error} reload={list.reload} testid="playbooks">
                 {(d) => d.items.length === 0 ? <EmptyState title="No playbooks yet" body="Write the first one below. NovrSOC ships none: every playbook reflects your organization's own procedures." />
@@ -108,7 +108,7 @@ export default function PlaybooksPage() {
                         { key: 'n', header: 'Playbook', render: (p) => <button className="text-left" onClick={() => setOpen(p.name)}><strong className="text-purple">{p.title}</strong><span className="block text-[11px] text-foreground-muted font-mono">{p.name} v{p.version}</span></button> },
                         { key: 's', header: 'Status', render: (p) => <StateTag state={p.status} /> },
                         { key: 'st', header: 'Steps', render: (p) => <span className="flex flex-wrap gap-1">{p.steps.map((s) => <Tag key={s.step_key} strong={['block_ip', 'isolate_agent', 'disable_account'].includes(s.action)}>{s.action}</Tag>)}</span> },
-                        { key: 'm', header: 'Modes', render: (p) => <span className="text-xs">{p.execution_policy.modes.join(', ')}</span> },
+                        { key: 'm', header: 'Modes', render: (p) => <span className="text-xs">{p.execution_policy.modes.join(', ')}{p.execution_policy.automatic && <Tag>automatic</Tag>}</span> },
                         { key: 'v', header: 'Validation', render: (p) => (p.validation ? <StateTag state={p.validation.valid ? 'ok' : 'failed'} label={p.validation.valid ? `valid (${p.validation.warnings.length} warning(s))` : `${p.validation.errors.length} error(s)`} /> : '—') },
                     ]} />}
             </Loaded>
@@ -150,6 +150,8 @@ export default function PlaybooksPage() {
                                 {['low', 'medium', 'high', 'critical'].map((s) => <option key={s} value={s}>{s}</option>)}</select></Field>
                             <Field label="Runs per day"><TextInput type="number" min={1} max={500} value={f.perDay} onChange={(e) => setF({ ...f, perDay: Number(e.target.value) })} /></Field>
                         </div>
+                        <label className="text-xs flex items-center gap-1" data-testid="playbook-automatic"><input type="checkbox" checked={f.automatic} onChange={() => setF({ ...f, automatic: !f.automatic })} />
+                            Automatic: once approved, start on matching new alerts while the organization&apos;s automation is on (consequential steps proceed only if the response policy pre-authorizes them)</label>
                         <button className={`${btn('primary', 'md')} w-fit`} type="submit" disabled={act.busy}>Save draft</button>
                     </form>
                 </Card>

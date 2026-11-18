@@ -44,7 +44,7 @@ export default function SoarOperationsPage() {
     return (
         <>
             <PageHeader title="SOAR operations centre" icon={Workflow}
-                description="Security orchestration, automation and response: signals, policies, playbooks, human approvals and authorized response activity. Every consequential action needs the organization's policy, a target from the case's own evidence and a second person's approval; execution happens only through NovrSOAR. AI never authorizes an action." />
+                description="Security orchestration, automation and response: signals, policies, playbooks, human approvals and authorized response activity. Every consequential action needs the organization's policy, a target from the case's own evidence and either a second person's approval or the organization's pre-authorization policy; execution happens only through NovrSOAR. AI never authorizes an action." />
             {ops.error ? <ApiErrorState error={ops.error} onRetry={ops.reload} /> : !o ? <LoadingState label="Loading SOAR operations" /> : (
                 <>
                     {o.emergency_stop && (
@@ -63,6 +63,10 @@ export default function SoarOperationsPage() {
                         <KpiCard label="Need a person" value={o.human_intervention} tone={o.human_intervention ? 'warning' : 'neutral'} />
                         <KpiCard label="Runs this hour" text={`${o.runs_last_hour} / ${o.max_runs_per_hour}`} hint="Organization limit per hour" />
                     </div>
+                    <p className="text-xs flex flex-wrap items-center gap-2" data-testid="soar-automation-kpis">
+                        <StateTag state={o.automation_enabled ? 'ok' : 'disabled'} label={o.automation_enabled ? 'automation on' : 'automation off'} />
+                        <span>Last 24 h: {o.automatic_runs_24h ?? 0} automatic run(s) · {o.policy_authorized_24h ?? 0} pre-authorized step(s) · {o.automatic_cases_24h ?? 0} automatic case(s)</span>
+                        <Link className="underline" href="/app/soar/automation">Automation decisions</Link></p>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <Card className="lg:col-span-2">
                             <SectionTitle title="Live timeline" hint="Engine, approvals, policy and playbooks; AI analysis is labelled and never executes" />

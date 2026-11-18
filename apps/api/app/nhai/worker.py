@@ -136,6 +136,8 @@ def run_once(engine: Engine, settings: Settings, gateway: Gateway, model: str, w
                 WHEN 'asset' THEN EXISTS (SELECT 1 FROM novrsoc.assets x WHERE x.id = CAST(j.subject_id AS uuid))
                 WHEN 'case' THEN EXISTS (SELECT 1 FROM novrsoc.cases x WHERE x.id = CAST(j.subject_id AS uuid))
                 WHEN 'chat_message' THEN true
+                WHEN 'organization' THEN j.subject_id = j.org_id::text
+                WHEN 'platform' THEN j.subject_id = j.org_id::text
                 ELSE false
               END AS present
             FROM novrsoc.nhai_jobs j WHERE j.id = :id"""), {"id": job_id}).one()
@@ -187,7 +189,8 @@ def _record_activity(conn, job, job_id, worker_id, model, status, error, result)
     None of these executes anything."""
     common = dict(task=job.task, subject_type=job.subject_type, subject_id=job.subject_id, actor_type="system",
                   actor_label=f"nhai-worker:{worker_id}"[:200], model=model, nhai_job_id=job_id)
-    module = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat", "case": "soc"}.get(job.subject_type, "nhai")
+    module = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat", "case": "soc",
+              "organization": "nhai", "platform": "nhai"}.get(job.subject_type, "nhai")
     if status != "succeeded":
         activity.ai(conn, "analysis_failed", module, outcome="failure", summary=f"NHAI {job.task} ended {status} ({error})",
                     details={"status": status, "error_code": error}, **common)
@@ -216,14 +219,35 @@ def main(argv=None) -> int:
         return 0
     stopping = {"flag": False}
     signal.signal(signal.SIGTERM, lambda *_: stopping.__setitem__("flag", True))
+    stats = {"done": 0, "failures": 0, "last_beat": 0.0}
     while not stopping["flag"]:
         try:
-            if run_once(engine, settings, gateway, model, worker_id) is None:
+            status = run_once(engine, settings, gateway, model, worker_id)
+            if status is not None:
+                stats["done"] += 1
+                stats["failures"] = 0 if status == "succeeded" else stats["failures"] + (status in ("failed", "timed_out"))
+            if time.time() - stats["last_beat"] >= 60:
+                heartbeat(engine, worker_id, model, stats)
+            if status is None:
                 time.sleep(5)
         except Exception:  # one bad job must not stop the worker; the lease expiry re-queues it
             log.exception("nhai worker cycle failed")
+            stats["failures"] += 1
             time.sleep(10)
     return 0
+
+
+def heartbeat(engine: Engine, worker_id: str, model: str, stats: dict) -> None:
+    """Liveness for NHAI readiness (migration 0021: the worker can write only its own row). Degraded after three
+    consecutive failed jobs; the detail names the model so the readiness view shows what is actually running."""
+    state = "degraded" if stats["failures"] >= 3 else "ok"
+    detail = f"model={model}; jobs since start={stats['done']}; consecutive failures={stats['failures']}"
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT novrsoc.nhai_heartbeat(:i, :s, :d)"), {"i": worker_id, "s": state, "d": detail})
+        stats["last_beat"] = time.time()
+    except Exception:  # a missing heartbeat shows as "not reporting"; it never stops the worker
+        log.exception("nhai heartbeat failed")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@
 export type NavIcon = 'overview' | 'posture' | 'reports' | 'alerts' | 'cases' | 'playbooks' | 'soar' | 'handover' | 'sla'
     | 'vms' | 'surface' | 'findings' | 'scans' | 'risk' | 'remediation' | 'vmsreport' | 'insights' | 'actors' | 'cves' | 'nhai'
     | 'cnii' | 'email' | 'brand' | 'assets' | 'chat' | 'recovery' | 'admin' | 'users' | 'billing' | 'analytics' | 'exports'
-    | 'wazuh' | 'health' | 'audit' | 'sites' | 'endpoints' | 'collectors' | 'command' | 'policy';
+    | 'wazuh' | 'health' | 'audit' | 'sites' | 'endpoints' | 'collectors' | 'command' | 'policy' | 'onboarding';
 
 export interface NavItem {
     key: string;
@@ -31,6 +31,7 @@ export const FOUNDATION_NAV: NavSection[] = [
         items: [
             live('overview', 'Executive overview', 'overview', '/app'),
             live('posture', 'Security posture', 'posture', '/app/posture'),
+            live('onboarding', 'Onboarding', 'onboarding', '/app/onboarding', 'endpoints:read'),
             live('reports', 'Reports', 'reports', '/app/reports', 'reports:read'),
             live('command', 'Command Center', 'command', '/app/command', 'platform:monitor'),
         ],
@@ -65,7 +66,7 @@ export const FOUNDATION_NAV: NavSection[] = [
             live('insights', 'Threat Insights', 'insights', '/app/insights', 'intel:read'),
             live('actors', 'Threat actors', 'actors', '/app/insights/actors', 'intel:read'),
             live('cves', 'CVE intelligence', 'cves', '/app/insights/cves', 'intel:read'),
-            live('nhai', 'NHAI analyses', 'nhai', '/app/nhai', 'nhai:analyze'),
+            live('nhai', 'NHAI analysis', 'nhai', '/app/nhai', 'nhai:analyze'),
         ],
     },
     {

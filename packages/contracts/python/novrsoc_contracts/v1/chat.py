@@ -71,3 +71,23 @@ class ChatMessageCreate(Contract):
 class ChatExchange(Contract):
     question: ChatMessageView
     answer: ChatMessageView
+
+
+# ---------------------------------------------------------------- team and presence (additive)
+class TeamRoleCount(Contract):
+    role: str
+    members: int = Field(ge=0)
+    online: int | None = Field(default=None, ge=0, description="Unknown (null) while presence is not tracked")
+
+
+class TeamPresence(Contract):
+    """The active organization's people: active members by role and, when presence is tracked, how many sent a
+    heartbeat from an open NovrSOC tab within `online_window_minutes`. `presence_tracked` is false until anybody has
+    ever sent a heartbeat for this organization: then `online` is unknown, never zero by assumption."""
+    generated_at: datetime
+    members: int = Field(ge=0, description="Active people whose home is this organization")
+    assigned_staff: int = Field(ge=0, description="Active NovrSOC staff assigned to work this organization")
+    by_role: list[TeamRoleCount]
+    presence_tracked: bool
+    online: int | None = Field(default=None, ge=0)
+    online_window_minutes: int = 2

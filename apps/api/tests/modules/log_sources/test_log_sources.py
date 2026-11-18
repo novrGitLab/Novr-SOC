@@ -110,9 +110,21 @@ def test_agentless_events_are_attributed_by_their_configured_host(fixture_app, a
     host = f"srv-{uuid.uuid4().hex[:6]}.lab.internal"
     src = _register(as_user("manager_b"), world.beta, kind="agentless", source_ip=None, host=host, protocol="ssh",
                     device_type="linux_server", port=22).json()
+    # registered by the organization itself: pending until NovrSOC verifies it, and its events are quarantined meanwhile
+    assert (src["status"], src["verified"], src["enabled"]) == ("pending_verification", False, False)
+    early = _event(f"(ssh_integrity_check_linux) root@{host}->/etc")
+    assert _ingest(fixture_app, forwarder_token, [early])["quarantined"] == 1
+    mb = as_user("manager_b")
+    assert mb.patch(f"{SRC}/{src['id']}", {"enabled": True}, org=world.beta).json()["error"]["code"] == "verification_required"
+    assert mb.post(f"{SRC}/{src['id']}/verify", {}, org=world.beta).status_code == 403          # not NovrSOC staff
+    v = as_user("admin").post(f"{SRC}/{src['id']}/verify", {}, org=world.beta)
+    assert v.status_code == 200 and v.json()["verified"] is True and v.json()["enabled"] is True
     ev = _event(f"(ssh_integrity_check_linux) root@{host}->/etc")
     assert _ingest(fixture_app, forwarder_token, [ev])["accepted"] == 1
     assert [x["external_id"] for x in as_user("analyst_b").get(f"/api/v1/soc/alerts?log_source_id={src['id']}").json()["items"]] == [ev["id"]]
+    # changing the verified address sends it back to verification
+    moved = mb.patch(f"{SRC}/{src['id']}", {"host": f"other-{host}"}, org=world.beta).json()
+    assert (moved["status"], moved["verified"], moved["enabled"]) == ("pending_verification", False, False)
 
 
 def test_reassignment_moves_future_events_only_and_needs_a_platform_administrator(fixture_app, as_user, forwarder_token, world, owner):
@@ -233,3 +245,20 @@ def test_attribution_audit_reports_inconsistencies_and_changes_nothing(owner, wo
         with owner.begin() as c:
             c.execute(text("DELETE FROM novrsoc.wazuh_group_mappings WHERE group_name = 'default'"))
             c.execute(text("DELETE FROM novrsoc.alerts WHERE agent_id = :a"), {"a": agent})
+
+
+def test_a_legacy_collection_group_mapping_never_widens_what_an_organization_sees(owner, world):
+    """An older release may have mapped `default`: the organization's agent scope (endpoint pages, posture, reports,
+    onboarding) still leaves it out, so it never lists every tenant's newly enrolled agents."""
+    from app.modules.endpoints import org_scope
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO novrsoc.wazuh_group_mappings (org_id, group_name) VALUES (:o, 'default')"), {"o": world.gamma})
+    try:
+        with owner.begin() as c:
+            c.execute(text("SELECT set_config('app.org_id', :o, true)"), {"o": str(world.gamma)})
+            scoped = org_scope(c, world.gamma, frozenset({"default"}))
+            assert "default" not in scoped.wazuh_agent_groups
+            assert "default" not in org_scope(c, world.gamma).wazuh_agent_groups      # the safe default without settings
+    finally:
+        with owner.begin() as c:
+            c.execute(text("DELETE FROM novrsoc.wazuh_group_mappings WHERE group_name = 'default'"))

@@ -106,7 +106,8 @@ services:
       NOVRSOC_JOBS_INTERVAL_SECONDS: "60"
     volumes:
       - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/files:/run/novrsoc:ro
-    networks: [db]
+    # app: the scheduled asset sync reads agents from the NovrSIEM manager's READ-ONLY API (as the api service does).
+    networks: [db, app]
     tmpfs: ["/tmp:size=32m"]
     mem_limit: 512m
     depends_on:
@@ -149,6 +150,38 @@ services:
     networks: [vms]
     tmpfs: ["/tmp:size=16m"]
     mem_limit: 256m
+    pids_limit: 64
+    depends_on:
+      api: {condition: service_healthy}
+
+  # ---- NovrVMS Greenbone worker (profile "greenbone": gate G-B, after the isolated Greenbone stack is verified) ----
+  # The bridge between NovrVMS and the separate Greenbone stack (deploy/server2/greenbone/compose.yaml). It speaks GMP
+  # (gmp.py, a dedicated Greenbone user from vms-greenbone.env, 0400) to gvmd through gvmd's Unix socket, shared from the
+  # Greenbone stack in ${NOVRSOC_GREENBONE_RUN_DIR}: no Greenbone port exists. Its only network is `vms` (internal: the
+  # API, nothing else); scanning traffic leaves only from the Greenbone scanner. VMS_ENGINE stays `disabled` until the
+  # dedicated scanner host and its routes are verified: then NOVRSOC_GREENBONE_ENGINE=greenbone_gmp in .env.
+  # One Greenbone task at a time per worker; the API also caps Greenbone at NOVRSOC_VMS_MAX_RUNNING_GREENBONE platform-wide.
+  vms-greenbone:
+    <<: *hardening
+    image: novrsoc-vms-worker:${NOVRSOC_IMAGE_TAG:?set NOVRSOC_IMAGE_TAG in .env}
+    profiles: [greenbone]
+    restart: unless-stopped
+    env_file: ["${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/vms-greenbone.env"]
+    environment:
+      NOVRSOC_API_URL: http://api:8000
+      NOVRSOC_API_TRANSPORT: compose-internal
+      NOVRSOC_VMS_TOKEN_DIR: /run/novrsoc-vms
+      VMS_ENGINE: ${NOVRSOC_GREENBONE_ENGINE:-disabled}
+      GVM_SOCKET: /run/gvmd/gvmd.sock
+      GVM_OPENVAS_CONF: /run/openvas-conf/openvas.conf
+    volumes:
+      - ${NOVRSOC_CONFIG_DIR:-/etc/novrsoc-v2}/vms:/run/novrsoc-vms:ro
+      - ${NOVRSOC_GREENBONE_RUN_DIR:-/srv/novrsoc-greenbone}/gvmd-socket:/run/gvmd
+      - ${NOVRSOC_GREENBONE_RUN_DIR:-/srv/novrsoc-greenbone}/openvas-conf:/run/openvas-conf:ro
+    networks: [vms]
+    tmpfs: ["/tmp:size=64m"]
+    mem_limit: 512m
+    cpus: 1.0
     pids_limit: 64
     depends_on:
       api: {condition: service_healthy}

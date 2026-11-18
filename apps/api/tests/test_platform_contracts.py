@@ -21,7 +21,13 @@ from app.auth.deps import current_principal, current_service
 from app.modules import ModuleError, ModuleInfo, discover, validate
 from tests.helpers.rls import assert_tenant_isolation
 
-PUBLIC_ROUTES = {("POST", "/api/v1/auth/login")}  # reviewed: the only unauthenticated /api/v1 endpoint
+# Reviewed unauthenticated /api/v1 endpoints. Each reads or does one narrowly gated thing (tests/modules/portal):
+#   sign-in; a portal's public branding (name, colors, logo) by host; an invitation preview/acceptance (the 256-bit token
+#   is the only key); a NovrAgent installer download and agent enrollment (an organization-bound, expiring, revocable,
+#   use-limited enrollment ticket is the only key; no password). All are rate limited per client address.
+PUBLIC_ROUTES = {("POST", "/api/v1/auth/login"), ("GET", "/api/v1/portal"), ("GET", "/api/v1/portal/logo"),
+                 ("POST", "/api/v1/invitations/preview"), ("POST", "/api/v1/invitations/accept"), ("GET", "/api/v1/install/{script}"),
+                 ("POST", "/api/v1/install/enroll")}
 GLOBAL_TABLES_WITHOUT_RLS = {"roles", "permissions", "role_permissions", "alembic_version"}
 MIGRATIONS = Path(__file__).resolve().parents[3] / "packages" / "db" / "migrations" / "versions"
 

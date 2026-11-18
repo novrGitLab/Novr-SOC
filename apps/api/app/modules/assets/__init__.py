@@ -202,7 +202,7 @@ def sync_wazuh(conn: Connection, settings: Settings, org_id: uuid.UUID, label: s
         outcome, detail = "source_unavailable", f"NovrSIEM {manager_state.state}: {manager_state.detail}"[:300]
     else:
         try:
-            scope = org_scope(conn, org_id)
+            scope = org_scope(conn, org_id, settings.collection_groups)
             for agent in source.list_agents(scope):
                 raw = source.raw_agent(agent.agent_id) or {}
                 os = os_view(raw.get("os"))
@@ -346,7 +346,7 @@ def _wazuh_context(conn: Connection, settings: Settings, org_id: uuid.UUID, agen
     source = registry.wazuh(settings)
     if source is None or manager_state.state not in ("connected", "local_fixture"):
         return WazuhAgentContext(source=manager_state, agent_id=agent_id)
-    scope = org_scope(conn, org_id)
+    scope = org_scope(conn, org_id, settings.collection_groups)
     try:
         agent = source.get_agent(scope, agent_id)
     except ConnectorError as e:

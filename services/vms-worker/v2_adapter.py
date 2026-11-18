@@ -20,6 +20,13 @@ this host - the default image has none):
                     or `refused_out_of_scope` and never probed. A name is scanned at the address it resolved to (pinned:
                     no second lookup). The packet rate is the lower of the job's policy ceiling and VMS_NMAP_MAX_RATE.
                     It reports exposed services and versions; it does not claim vulnerabilities.
+  greenbone_gmp     a live Greenbone/OpenVAS scan of the `vuln_openvas` activity through gvmd's GMP (gmp.py: standard library,
+                    a dedicated Greenbone user, gvmd's Unix socket shared from the isolated Greenbone stack or verified TLS).
+                    Targets pass the same checks as nmap_service and are handed over as the addresses checked; the tested
+                    worker.GreenboneScan flow refuses an unsafe scan configuration (safe checks off, vhost expansion on),
+                    resumes rather than duplicates a task after a crash, bounds the scan time and deletes its task and target;
+                    results are attributed only to the submitted addresses (worker.openvas_results). One task at a time per
+                    worker, at most VMS_GREENBONE_MAX_TARGETS targets; results are delivered in batches of 1000.
 
   python v2_adapter.py --once      claim at most one job, run it, finish it
   python v2_adapter.py             loop (heartbeat every 60 s)
@@ -49,7 +56,7 @@ from datetime import datetime, timezone
 
 VERSION = "2.0.0"
 DEFAULT_PORTS = (22, 80, 443, 3210, 5432, 8000, 8080, 55432)
-ENGINES = ("disabled", "tcp_connect", "greenbone_report", "nmap_service")
+ENGINES = ("disabled", "tcp_connect", "greenbone_report", "nmap_service", "greenbone_gmp")
 NMAP_ACTIVITIES = ("ports",)
 
 
@@ -239,14 +246,122 @@ def nmap_service(job: dict, cfg: NmapConfig) -> tuple[list[dict], dict[str, str]
     return obs, outcome, why
 
 
-def run_once(api: Api, engine: str, report: str | None, ports=DEFAULT_PORTS, nmap: NmapConfig | None = None) -> str:
+GREENBONE_ACTIVITIES = ("vuln_openvas",)
+
+
+class GreenboneConfig:
+    """The greenbone_gmp engine's own limits: the networks the Greenbone scanner has a route to (VMS_ALLOWED_NETWORKS,
+    required, the same declaration as nmap_service), the most targets one task may hold, and how the scanner is reached
+    (gmp.session_from_env: gvmd's socket shared from the isolated Greenbone stack, or verified TLS)."""
+
+    def __init__(self, allowed: str, max_targets: int = 16, factory=None, resolver=None):
+        self.net = NmapConfig(allowed, resolver=resolver)   # same declaration rules (required, nothing wider than /8)
+        if not 1 <= int(max_targets) <= 256:
+            raise SystemExit("VMS_GREENBONE_MAX_TARGETS must be 1..256")
+        self.max_targets = int(max_targets)
+        if factory is None:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import gmp  # noqa: PLC0415
+            factory = gmp.session_from_env
+        self.factory = factory
+
+    @classmethod
+    def from_env(cls, env=os.environ) -> "GreenboneConfig":
+        return cls(env.get("VMS_ALLOWED_NETWORKS", ""), int(env.get("VMS_GREENBONE_MAX_TARGETS", "16")))
+
+
+def greenbone_gmp(job: dict, cfg: GreenboneConfig, cancel=None) -> tuple[list[dict], dict[str, str], dict[str, str]]:
+    """(observations, per-target outcome, per-target reason). Targets are checked exactly as for nmap_service (inside the
+    declared networks, outside the job's protected networks) and handed to Greenbone as the ADDRESSES checked (pinned).
+    Results are attributed only to those addresses (worker.openvas_results' attribution contract); anything OpenVAS
+    discovers by itself is dropped. The scan configuration must be safe (safe checks on, vhost expansion off) or the job
+    is refused before a task exists (worker.GreenboneScan.prepare)."""
+    import threading
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import worker  # noqa: PLC0415  (the tested Greenbone flow and report parser)
+    protected = list(job.get("protected_networks") or [])
+    outcome, why, pinned = {}, {}, {}
+    for t in job["targets"]:
+        value, kind = t["value"], t["kind"]
+        try:
+            addresses = [str(ipaddress.ip_address(value))] if kind == "ip" else cfg.net.resolver(value)
+        except (OSError, ValueError):
+            outcome[value], why[value] = "failed", "the name does not resolve from this worker"
+            continue
+        if not addresses:
+            outcome[value], why[value] = "failed", "the name does not resolve from this worker"
+        elif any(_in_any(a, protected) for a in addresses):
+            outcome[value], why[value] = "refused_out_of_scope", "inside a protected network of the organization's scan policy"
+        elif not all(cfg.net.routable(a) for a in addresses):
+            outcome[value], why[value] = "no_route", "outside VMS_ALLOWED_NETWORKS: the scanner declares no route to it; not attempted"
+        else:
+            pinned[addresses[0]] = (value, kind)
+    if len(pinned) > cfg.max_targets:
+        for a in list(pinned)[cfg.max_targets:]:
+            v, _ = pinned.pop(a)
+            outcome[v], why[v] = "failed", f"more than {cfg.max_targets} targets in one Greenbone task (VMS_GREENBONE_MAX_TARGETS); not attempted"
+    if not pinned:
+        return [], outcome, why
+    sub = worker.OpenvasSubmission()
+    sub.ips.update(pinned)
+    scan = worker.GreenboneScan(str(job["job_id"]), sub, cancel or threading.Event(), factory=cfg.factory)
+    try:
+        scan.prepare()
+        scan.wait()
+        xml = scan.report()
+    except worker.GreenboneError as e:
+        for v, _ in pinned.values():
+            outcome[v], why[v] = "failed", str(e)[:200]
+        return [], outcome, why
+    finally:
+        scan.cleanup()
+    findings, _ = worker.openvas_results(xml, attribute=lambda ip, name: (ip or "") if (ip or "") in pinned else None)
+    obs = []
+    for f_ in findings:
+        if f_.get("host") not in pinned:   # attribution guarantees this; checked again, never guessed
+            continue
+        value, kind = pinned[f_["host"]]
+        obs.append({"kind": "finding", "target": {"kind": kind, "value": value}, "port": f_.get("port"),
+                    "protocol": f_.get("protocol") or "tcp", "check_id": f_.get("rule_id"), "title": (f_.get("title") or "")[:200],
+                    "severity": f_.get("severity"), "cvss_v3": f_.get("cvss"),
+                    "cves": [c for c in (f_.get("cve_ids") or []) if c.startswith("CVE-")][:50],
+                    "evidence_ref": f"greenbone:{scan.report_id or 'report'}"})
+    for v, _ in pinned.values():
+        outcome[v], why[v] = "completed", f"Greenbone task {scan.name}: {scan.safety}"[:200]
+    return obs, outcome, why
+
+
+def _run_greenbone_job(api: Api, job: dict, cfg: GreenboneConfig | None) -> str:
+    jid = job["job_id"]
+    if cfg is None:
+        api.call(f"/jobs/{jid}/finish", {"outcome": "failed", "detail": "greenbone_gmp is not configured on this worker"})
+        return "failed"
+    if job.get("activity") not in GREENBONE_ACTIVITIES:
+        api.call(f"/jobs/{jid}/finish", {"outcome": "failed", "detail": f"engine greenbone_gmp runs vuln_openvas only, not {job.get('activity')}"})
+        return "refused"
+    obs, outcome, why = greenbone_gmp(job, cfg)
+    for i in range(0, max(1, len(obs)), 1000):   # bounded batches: the API and PostgreSQL ingest a large report in steps
+        api.call(f"/jobs/{jid}/results", {"batch_id": f"res-{jid}-{i // 1000}-{uuid.uuid4().hex[:6]}", "job_id": jid,
+                                          "observations": obs[i:i + 1000], "per_target_outcome": outcome})
+    done = sum(1 for o in outcome.values() if o == "completed")
+    summary = ", ".join(f"{n} {k}" for k, n in sorted({o: list(outcome.values()).count(o) for o in set(outcome.values())}.items()))
+    failed_all = done == 0 and any(o == "failed" for o in outcome.values())   # nothing scanned and Greenbone failed
+    api.call(f"/jobs/{jid}/finish", {"outcome": "failed" if failed_all else "completed",
+                                     "detail": (f"greenbone_gmp: {len(obs)} finding(s); {summary or 'no target'}; "
+                                                + "; ".join(f"{t}: {r}" for t, r in why.items()))[:500]})
+    return "failed" if failed_all else "completed"
+
+
+def run_once(api: Api, engine: str, report: str | None, ports=DEFAULT_PORTS, nmap: NmapConfig | None = None,
+             greenbone: "GreenboneConfig | None" = None) -> str:
     if engine == "disabled":   # heartbeat only: the worker reports that it is present and never claims a job
         api.call("/heartbeat", {"sent_at": datetime.now(timezone.utc).isoformat(), "component_version": VERSION, "state": "ok",
                                 "dependencies": [{"name": "engine.disabled", "state": "unconfigured",
                                                   "detail": "scanning disabled on this worker; no job is claimed"}]})
         return "disabled"
     detail = (f"declared networks: {', '.join(str(n) for n in nmap.allowed)}; max {nmap.max_rate} pps" if engine == "nmap_service" and nmap
-              else "local test targets only")
+              else f"Greenbone GMP; declared networks: {', '.join(str(n) for n in greenbone.net.allowed)}; max {greenbone.max_targets} targets per task"
+              if engine == "greenbone_gmp" and greenbone else "local test targets only")
     api.call("/heartbeat", {"sent_at": datetime.now(timezone.utc).isoformat(), "component_version": VERSION, "state": "ok",
                             "dependencies": [{"name": f"engine.{engine}", "state": "ok", "detail": detail[:300]}]})
     status, claim = api.call("/claim")
@@ -256,6 +371,8 @@ def run_once(api: Api, engine: str, report: str | None, ports=DEFAULT_PORTS, nma
     targets = [t["value"] for t in job["targets"]]
     if engine == "nmap_service":
         return _run_nmap_job(api, job, nmap)
+    if engine == "greenbone_gmp":
+        return _run_greenbone_job(api, job, greenbone)
     if not all(is_local_test_target(t) for t in targets):  # defence in depth: never touch a non-test target
         api.call(f"/jobs/{job['job_id']}/finish", {"outcome": "failed", "detail": "refused: target is not a local test target"})
         return "refused"
@@ -303,8 +420,36 @@ def token_files(env=os.environ) -> list[str]:
     raise SystemExit("set NOVRSOC_VMS_TOKEN_DIR or NOVRSOC_VMS_TOKEN_FILE")
 
 
+def greenbone_check(factory=None) -> dict:
+    """Read-only verification of the Greenbone connection (deployment step; nothing is created or scanned): the socket
+    or TLS session, the dedicated user's authentication, gvmd's version, the feeds' age, and whether the scan
+    configuration NovrVMS will use is safe (safe checks on, vhost expansion confirmed off)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import worker  # noqa: PLC0415
+    if factory is None:
+        import gmp  # noqa: PLC0415
+        factory = gmp.session_from_env
+    out: dict = {"ok": False}
+    try:
+        with factory() as g:
+            g.authenticate(worker.GVM_USER, worker.GVM_PASSWORD)
+            out["authenticated"] = True
+            out["gvmd_version"] = g.get_version().findtext("version")
+            out["feeds"] = worker.gvm_feed_rows(g.get_feeds())
+            safe, why = worker.gvm_config_safety(g.get_scan_config(worker.GVM_CONFIG_ID), worker.read_openvas_conf())
+            out["scan_config_safe"], out["scan_config_detail"] = safe, why
+        out["ok"] = bool(out["scan_config_safe"])
+    except Exception as e:  # noqa: BLE001  (every failure is reported with its plain reason, never a credential)
+        out["error"] = str(worker.gvm_problem(e))
+    return out
+
+
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if "--greenbone-check" in argv:
+        r = greenbone_check()
+        print(json.dumps(r, default=str, indent=2))
+        return 0 if r["ok"] else 1
     engine = os.environ.get("VMS_ENGINE", "disabled")
     if engine not in ENGINES:
         raise SystemExit(f"VMS_ENGINE must be one of {', '.join(ENGINES)}")
@@ -316,13 +461,14 @@ def main(argv=None) -> int:
     report = os.environ.get("VMS_GREENBONE_REPORT")
     ports = tuple(int(p) for p in os.environ.get("VMS_TCP_PORTS", "").split(",") if p.strip()) or DEFAULT_PORTS
     nmap = NmapConfig.from_env() if engine == "nmap_service" else None
+    greenbone = GreenboneConfig.from_env() if engine == "greenbone_gmp" else None
     if "--once" in argv:
         for api in apis:
-            print(json.dumps({"event": "run_once", "result": run_once(api, engine, report, ports, nmap)}), flush=True)
+            print(json.dumps({"event": "run_once", "result": run_once(api, engine, report, ports, nmap, greenbone)}), flush=True)
         return 0
     while True:
         for api in apis:   # each organization's credential is used only for its own heartbeat, claims and results
-            print(json.dumps({"event": "cycle", "result": run_once(api, engine, report, ports, nmap)}), flush=True)
+            print(json.dumps({"event": "cycle", "result": run_once(api, engine, report, ports, nmap, greenbone)}), flush=True)
         time.sleep(60)
 
 

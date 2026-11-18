@@ -508,6 +508,252 @@
         "title": "AdminUserList",
         "type": "object"
       },
+      "AgentEnrollmentRequest": {
+        "additionalProperties": false,
+        "description": "Sent by the installer running on the endpoint (public; the ticket is the only key).",
+        "properties": {
+          "hostname": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Hostname",
+            "type": "string"
+          },
+          "os": {
+            "enum": [
+              "windows",
+              "linux",
+              "macos"
+            ],
+            "title": "Os",
+            "type": "string"
+          },
+          "ticket": {
+            "maxLength": 80,
+            "minLength": 30,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Ticket",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket",
+          "hostname",
+          "os"
+        ],
+        "title": "AgentEnrollmentRequest",
+        "type": "object"
+      },
+      "AgentEnrollmentResult": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_id": {
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "key": {
+            "description": "The agent's key, imported by the installer; returned once over TLS and never stored by NovrSOC",
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "key"
+        ],
+        "title": "AgentEnrollmentResult",
+        "type": "object"
+      },
+      "AgentEnrollmentStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "enrolled_agents": {
+            "default": 0,
+            "title": "Enrolled Agents",
+            "type": "integer"
+          },
+          "manager_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Version"
+          },
+          "open_tickets": {
+            "default": 0,
+            "title": "Open Tickets",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "AgentEnrollmentStatus",
+        "type": "object"
+      },
+      "AgentEnrollmentTicket": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_label": {
+            "title": "Created Label",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_uses": {
+            "title": "Max Uses",
+            "type": "integer"
+          },
+          "os": {
+            "enum": [
+              "windows",
+              "linux",
+              "macos"
+            ],
+            "title": "Os",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "used_up",
+              "expired",
+              "revoked"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "uses": {
+            "title": "Uses",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "os",
+          "max_uses",
+          "uses",
+          "state",
+          "created_label",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "AgentEnrollmentTicket",
+        "type": "object"
+      },
+      "AgentEnrollmentTicketList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentEnrollmentTicket"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AgentEnrollmentTicketList",
+        "type": "object"
+      },
+      "AgentGroupView": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown only to the organization and NovrSOC administrators",
+            "title": "Group Name"
+          },
+          "manager_detail": {
+            "default": "",
+            "title": "Manager Detail",
+            "type": "string"
+          },
+          "on_manager": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the group exists on the NovrSIEM manager (null: not checked)",
+            "title": "On Manager"
+          },
+          "provisioned": {
+            "title": "Provisioned",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "provisioned"
+        ],
+        "title": "AgentGroupView",
+        "type": "object"
+      },
       "AiActivityList": {
         "additionalProperties": false,
         "properties": {
@@ -1243,6 +1489,15 @@
         "properties": {
           "action": {
             "$ref": "#/components/schemas/ActionType"
+          },
+          "authorization": {
+            "default": "human",
+            "enum": [
+              "human",
+              "policy"
+            ],
+            "title": "Authorization",
+            "type": "string"
           },
           "created_at": {
             "format": "date-time",
@@ -2381,6 +2636,61 @@
         "title": "AssetSummaryRequest",
         "type": "object"
       },
+      "AssetSyncStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "interval_minutes": {
+            "description": "0: scheduled sync is off (on demand only)",
+            "title": "Interval Minutes",
+            "type": "integer"
+          },
+          "last_detail": {
+            "default": "",
+            "title": "Last Detail",
+            "type": "string"
+          },
+          "last_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Outcome"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "next_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Due At"
+          }
+        },
+        "required": [
+          "interval_minutes"
+        ],
+        "title": "AssetSyncStatus",
+        "type": "object"
+      },
       "AssetTrendPoint": {
         "additionalProperties": false,
         "properties": {
@@ -2678,6 +2988,139 @@
           "items"
         ],
         "title": "AuditEventList",
+        "type": "object"
+      },
+      "AutomationDecision": {
+        "enum": [
+          "case_created",
+          "case_joined",
+          "run_started",
+          "skipped_emergency_stop",
+          "skipped_limit",
+          "skipped_severity",
+          "failed"
+        ],
+        "title": "AutomationDecision",
+        "type": "string"
+      },
+      "AutomationEventList": {
+        "additionalProperties": false,
+        "properties": {
+          "case_creation": {
+            "title": "Case Creation",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationEventView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          }
+        },
+        "required": [
+          "items",
+          "enabled",
+          "case_creation"
+        ],
+        "title": "AutomationEventList",
+        "type": "object"
+      },
+      "AutomationEventView": {
+        "additionalProperties": false,
+        "description": "One decision NovrSOAR automation took for one new alert (and playbook, when one matched).",
+        "properties": {
+          "alert_id": {
+            "format": "uuid",
+            "title": "Alert Id",
+            "type": "string"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "confidence": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "confidence_factors": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Confidence Factors",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/AutomationDecision"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "playbook_name": {
+            "default": "",
+            "title": "Playbook Name",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "alert_id",
+          "decision",
+          "confidence"
+        ],
+        "title": "AutomationEventView",
         "type": "object"
       },
       "BackupRunList": {
@@ -3170,6 +3613,61 @@
         "title": "BrandFindingView",
         "type": "object"
       },
+      "CaseAssetCorrelation": {
+        "additionalProperties": false,
+        "description": "One canonical asset of a case: the case's alerts on it and the asset's open vulnerability findings.",
+        "properties": {
+          "alert_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Alert Ids",
+            "type": "array"
+          },
+          "asset_id": {
+            "format": "uuid",
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "criticality": {
+            "title": "Criticality",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "exposure": {
+            "title": "Exposure",
+            "type": "string"
+          },
+          "open_findings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AssetFindingRef"
+            },
+            "title": "Open Findings",
+            "type": "array"
+          },
+          "open_findings_total": {
+            "default": 0,
+            "description": "All open findings of the asset; `open_findings` lists the riskiest",
+            "minimum": 0.0,
+            "title": "Open Findings Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset_id",
+          "display_name",
+          "criticality",
+          "exposure",
+          "alert_ids"
+        ],
+        "title": "CaseAssetCorrelation",
+        "type": "object"
+      },
       "CaseAssistanceRequest": {
         "additionalProperties": false,
         "description": "Investigation assistance for one case: its linked alerts (authoritative severities), notes, timeline and the\nThreat Insights matches of those alerts. A draft for the analyst; it never changes the case.",
@@ -3184,6 +3682,43 @@
           "case_id"
         ],
         "title": "CaseAssistanceRequest",
+        "type": "object"
+      },
+      "CaseCorrelation": {
+        "additionalProperties": false,
+        "description": "SIEM and VMS evidence of one case joined through the canonical asset inventory (never by hostname guessing).",
+        "properties": {
+          "alerts_without_asset": {
+            "description": "Linked alerts not yet attributed to an inventory asset",
+            "minimum": 0.0,
+            "title": "Alerts Without Asset",
+            "type": "integer"
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/CaseAssetCorrelation"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "findings_visible": {
+            "description": "False when the caller may not read VMS findings (vms:read): assets and alerts are still listed, findings are not",
+            "title": "Findings Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "case_id",
+          "assets",
+          "alerts_without_asset",
+          "findings_visible"
+        ],
+        "title": "CaseCorrelation",
         "type": "object"
       },
       "CaseDetail": {
@@ -8668,6 +9203,364 @@
         "title": "InsightMatchView",
         "type": "object"
       },
+      "InstallerCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_version": {
+            "title": "Agent Version",
+            "type": "string"
+          },
+          "command": {
+            "description": "Downloads the organization's NovrAgent installer and runs it; carries no password",
+            "title": "Command",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "max_endpoints": {
+            "title": "Max Endpoints",
+            "type": "integer"
+          },
+          "notes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "os": {
+            "enum": [
+              "windows",
+              "linux",
+              "macos"
+            ],
+            "title": "Os",
+            "type": "string"
+          },
+          "run_as": {
+            "title": "Run As",
+            "type": "string"
+          },
+          "ticket_id": {
+            "format": "uuid",
+            "title": "Ticket Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "os",
+          "command",
+          "ticket_id",
+          "max_endpoints",
+          "expires_at",
+          "run_as",
+          "agent_version"
+        ],
+        "title": "InstallerCommand",
+        "type": "object"
+      },
+      "InstallerRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "endpoints": {
+            "default": 10,
+            "description": "How many endpoints this command may enroll",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Endpoints",
+            "type": "integer"
+          },
+          "os": {
+            "enum": [
+              "windows",
+              "linux",
+              "macos"
+            ],
+            "title": "Os",
+            "type": "string"
+          }
+        },
+        "required": [
+          "os"
+        ],
+        "title": "InstallerRequest",
+        "type": "object"
+      },
+      "InvitationAccept": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 1024,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "display_name",
+          "password"
+        ],
+        "title": "InvitationAccept",
+        "type": "object"
+      },
+      "InvitationAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "sign_in_url": {
+            "title": "Sign In Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "sign_in_url"
+        ],
+        "title": "InvitationAccepted",
+        "type": "object"
+      },
+      "InvitationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "maxLength": 254,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "default": "soc_manager",
+            "enum": [
+              "soc_manager",
+              "analyst",
+              "executive",
+              "portal_user"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "InvitationCreate",
+        "type": "object"
+      },
+      "InvitationCreated": {
+        "additionalProperties": false,
+        "properties": {
+          "invitation": {
+            "$ref": "#/components/schemas/InvitationView"
+          },
+          "link": {
+            "description": "Shown ONCE: only its SHA-256 is stored. The token is in the URL fragment, never sent to a server log",
+            "title": "Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invitation",
+          "link"
+        ],
+        "title": "InvitationCreated",
+        "type": "object"
+      },
+      "InvitationList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvitationView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InvitationList",
+        "type": "object"
+      },
+      "InvitationPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "soc_manager",
+                  "analyst",
+                  "executive",
+                  "portal_user"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "accepted",
+              "revoked",
+              "expired",
+              "organization_inactive"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "InvitationPreview",
+        "type": "object"
+      },
+      "InvitationToken": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 200,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "InvitationToken",
+        "type": "object"
+      },
+      "InvitationView": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invited_label": {
+            "title": "Invited Label",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "soc_manager",
+              "analyst",
+              "executive",
+              "portal_user"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "accepted",
+              "revoked",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "state",
+          "invited_label",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "InvitationView",
+        "type": "object"
+      },
       "LogSourceCreate": {
         "additionalProperties": false,
         "properties": {
@@ -9222,7 +10115,8 @@
               "silent",
               "never_received",
               "disabled",
-              "retired"
+              "retired",
+              "pending_verification"
             ],
             "title": "Status",
             "type": "string"
@@ -9235,6 +10129,24 @@
           "vendor": {
             "title": "Vendor",
             "type": "string"
+          },
+          "verified": {
+            "default": true,
+            "description": "False until a NovrSOC administrator verifies a sender the organization registered itself; until then it stays disabled and its events are quarantined",
+            "title": "Verified",
+            "type": "boolean"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
           }
         },
         "required": [
@@ -9304,6 +10216,33 @@
           "csrf_token"
         ],
         "title": "LoginResponse",
+        "type": "object"
+      },
+      "LogoUpload": {
+        "additionalProperties": false,
+        "properties": {
+          "content_type": {
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/webp",
+              "image/svg+xml"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "data_base64": {
+            "maxLength": 360000,
+            "minLength": 4,
+            "title": "Data Base64",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_type",
+          "data_base64"
+        ],
+        "title": "LogoUpload",
         "type": "object"
       },
       "MatchConfidence": {
@@ -9852,6 +10791,221 @@
         "title": "NhaiJobList",
         "type": "object"
       },
+      "NhaiOrgActivity": {
+        "additionalProperties": false,
+        "properties": {
+          "awaiting_review": {
+            "minimum": 0.0,
+            "title": "Awaiting Review",
+            "type": "integer"
+          },
+          "failed_24h": {
+            "minimum": 0.0,
+            "title": "Failed 24H",
+            "type": "integer"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "queued": {
+            "minimum": 0.0,
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "minimum": 0.0,
+            "title": "Running",
+            "type": "integer"
+          },
+          "succeeded_24h": {
+            "minimum": 0.0,
+            "title": "Succeeded 24H",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "org_id",
+          "org_name",
+          "queued",
+          "running",
+          "succeeded_24h",
+          "failed_24h",
+          "awaiting_review"
+        ],
+        "title": "NhaiOrgActivity",
+        "type": "object"
+      },
+      "NhaiOverview": {
+        "additionalProperties": false,
+        "description": "NHAI across the caller's command scope (platform staff), read under each organization's own RLS.",
+        "properties": {
+          "organizations": {
+            "items": {
+              "$ref": "#/components/schemas/NhaiOrgActivity"
+            },
+            "title": "Organizations",
+            "type": "array"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/NhaiReadiness"
+          }
+        },
+        "required": [
+          "readiness",
+          "organizations"
+        ],
+        "title": "NhaiOverview",
+        "type": "object"
+      },
+      "NhaiReadiness": {
+        "additionalProperties": false,
+        "description": "What the API can verify about NHAI, from records only (the API never contacts the model). `state`:\nready (backend configured, worker heard from recently, no stuck queue), degraded (worker silent or queue waiting\ntoo long, or recent failures only), unavailable (no backend configured).",
+        "properties": {
+          "awaiting_review": {
+            "minimum": 0.0,
+            "title": "Awaiting Review",
+            "type": "integer"
+          },
+          "backend_configured": {
+            "title": "Backend Configured",
+            "type": "boolean"
+          },
+          "failed_24h": {
+            "minimum": 0.0,
+            "title": "Failed 24H",
+            "type": "integer"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "oldest_queued_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Queued Seconds"
+          },
+          "pilot": {
+            "description": "True for a small model run as a limited, labelled pilot (drafts are less reliable)",
+            "title": "Pilot",
+            "type": "boolean"
+          },
+          "pilot_note": {
+            "default": "",
+            "title": "Pilot Note",
+            "type": "string"
+          },
+          "queued": {
+            "minimum": 0.0,
+            "title": "Queued",
+            "type": "integer"
+          },
+          "reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "running": {
+            "minimum": 0.0,
+            "title": "Running",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "succeeded_24h": {
+            "minimum": 0.0,
+            "title": "Succeeded 24H",
+            "type": "integer"
+          },
+          "worker_last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Last Seen At"
+          },
+          "worker_state": {
+            "default": "unknown",
+            "enum": [
+              "ok",
+              "degraded",
+              "failing",
+              "unknown"
+            ],
+            "title": "Worker State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "backend_configured",
+          "pilot",
+          "queued",
+          "running",
+          "succeeded_24h",
+          "failed_24h",
+          "awaiting_review"
+        ],
+        "title": "NhaiReadiness",
+        "type": "object"
+      },
       "NhaiResult": {
         "additionalProperties": false,
         "properties": {
@@ -10032,7 +11186,8 @@
           "case_note_draft",
           "finding_explanation",
           "asset_summary",
-          "chat_answer"
+          "chat_answer",
+          "posture_analysis"
         ],
         "title": "NhaiTask",
         "type": "string"
@@ -10264,6 +11419,73 @@
         "title": "ObservationKind",
         "type": "string"
       },
+      "OnboardingAgents": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "default": 0,
+            "title": "Active",
+            "type": "integer"
+          },
+          "disconnected": {
+            "default": 0,
+            "title": "Disconnected",
+            "type": "integer"
+          },
+          "never_connected": {
+            "default": 0,
+            "title": "Never Connected",
+            "type": "integer"
+          },
+          "pending": {
+            "default": 0,
+            "title": "Pending",
+            "type": "integer"
+          },
+          "state": {
+            "description": "The agent data source state: connected, local_fixture, unconfigured, unavailable, error",
+            "title": "State",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "OnboardingAgents",
+        "type": "object"
+      },
+      "OnboardingSources": {
+        "additionalProperties": false,
+        "properties": {
+          "never_received": {
+            "default": 0,
+            "title": "Never Received",
+            "type": "integer"
+          },
+          "pending_verification": {
+            "default": 0,
+            "title": "Pending Verification",
+            "type": "integer"
+          },
+          "receiving": {
+            "default": 0,
+            "title": "Receiving",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "OnboardingSources",
+        "type": "object"
+      },
       "OnboardingStatus": {
         "additionalProperties": false,
         "properties": {
@@ -10325,6 +11547,69 @@
           "steps"
         ],
         "title": "OnboardingStatus",
+        "type": "object"
+      },
+      "OnboardingStep": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "done"
+        ],
+        "title": "OnboardingStep",
+        "type": "object"
+      },
+      "OnboardingTelemetry": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts_24h": {
+            "default": 0,
+            "title": "Alerts 24H",
+            "type": "integer"
+          },
+          "assets": {
+            "default": 0,
+            "title": "Assets",
+            "type": "integer"
+          },
+          "last_alert_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Alert At"
+          },
+          "vms_enrolled": {
+            "default": 0,
+            "title": "Vms Enrolled",
+            "type": "integer"
+          }
+        },
+        "title": "OnboardingTelemetry",
         "type": "object"
       },
       "OrgAnalyticsRow": {
@@ -10970,6 +12255,176 @@
         "title": "OrgList",
         "type": "object"
       },
+      "OrgPortalUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "portal_enabled": {
+            "default": false,
+            "title": "Portal Enabled",
+            "type": "boolean"
+          },
+          "portal_subdomain": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portal Subdomain"
+          },
+          "primary_color": {
+            "anyOf": [
+              {
+                "pattern": "^#[0-9a-fA-F]{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Color"
+          },
+          "secondary_color": {
+            "anyOf": [
+              {
+                "pattern": "^#[0-9a-fA-F]{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondary Color"
+          }
+        },
+        "title": "OrgPortalUpdate",
+        "type": "object"
+      },
+      "OrgPortalView": {
+        "additionalProperties": false,
+        "properties": {
+          "contrast_primary_on_white": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contrast Primary On White"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "has_logo": {
+            "title": "Has Logo",
+            "type": "boolean"
+          },
+          "logo_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Sha256"
+          },
+          "portal_enabled": {
+            "title": "Portal Enabled",
+            "type": "boolean"
+          },
+          "portal_subdomain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portal Subdomain"
+          },
+          "primary_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Color"
+          },
+          "secondary_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondary Color"
+          },
+          "text_on_primary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text On Primary"
+          },
+          "theme_applied": {
+            "default": false,
+            "description": "True when the primary color passes the contrast check and themes the portal",
+            "title": "Theme Applied",
+            "type": "boolean"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The portal address, when enabled and the installation has a base domain",
+            "title": "Url"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "portal_enabled",
+          "display_name",
+          "has_logo"
+        ],
+        "title": "OrgPortalView",
+        "type": "object"
+      },
       "OrgPosture": {
         "additionalProperties": false,
         "description": "One organization's security posture, computed from its own records at request time.",
@@ -11448,6 +12903,7 @@
           "execution_policy": {
             "$ref": "#/components/schemas/PlaybookExecutionPolicy",
             "default": {
+              "automatic": false,
               "max_runs_per_day": 20,
               "min_case_severity": "low",
               "modes": [
@@ -11494,8 +12950,13 @@
       },
       "PlaybookExecutionPolicy": {
         "additionalProperties": false,
-        "description": "Consolidation: how an APPROVED playbook version may run. Live mode still needs the organization's response\npolicy (live_enabled) and a human approval for every consequential step; this policy can only narrow that.",
+        "description": "Consolidation: how an APPROVED playbook version may run. Live mode still needs the organization's response\npolicy (live_enabled); this policy can only narrow that. `automatic`: the version may also be started by NovrSOAR\nautomation when a new alert matches its triggers (the organization's automation must be on as well). A\nconsequential step of an automatic run proceeds without a person only when the organization's policy\npre-authorizes the action and every guard passes; otherwise it waits for a human approval.",
         "properties": {
+          "automatic": {
+            "default": false,
+            "title": "Automatic",
+            "type": "boolean"
+          },
           "max_runs_per_day": {
             "default": 20,
             "maximum": 500.0,
@@ -11801,6 +13262,7 @@
           "execution_policy": {
             "$ref": "#/components/schemas/PlaybookExecutionPolicy",
             "default": {
+              "automatic": false,
               "max_runs_per_day": 20,
               "min_case_severity": "low",
               "modes": [
@@ -11907,6 +13369,191 @@
           "end_minute"
         ],
         "title": "PolicyWindow",
+        "type": "object"
+      },
+      "PortalBranding": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relative URL of the logo, versioned by its digest",
+            "title": "Logo Url"
+          },
+          "primary_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Color"
+          },
+          "secondary_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondary Color"
+          },
+          "text_on_primary": {
+            "default": "#ffffff",
+            "title": "Text On Primary",
+            "type": "string"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortalTheme"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applied throughout the portal; null when the colors are not approved"
+          }
+        },
+        "required": [
+          "display_name"
+        ],
+        "title": "PortalBranding",
+        "type": "object"
+      },
+      "PortalInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "branding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortalBranding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "platform",
+              "tenant"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortalOrg"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "PortalInfo",
+        "type": "object"
+      },
+      "PortalOrg": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "PortalOrg",
+        "type": "object"
+      },
+      "PortalTheme": {
+        "additionalProperties": false,
+        "description": "An APPROVED theme: derived from the organization's primary color only when it reaches WCAG AA against white.",
+        "properties": {
+          "on_primary": {
+            "title": "On Primary",
+            "type": "string"
+          },
+          "primary": {
+            "title": "Primary",
+            "type": "string"
+          },
+          "primary_fill": {
+            "title": "Primary Fill",
+            "type": "string"
+          },
+          "primary_hover": {
+            "title": "Primary Hover",
+            "type": "string"
+          },
+          "tint_dark": {
+            "title": "Tint Dark",
+            "type": "string"
+          },
+          "tint_light": {
+            "title": "Tint Light",
+            "type": "string"
+          }
+        },
+        "required": [
+          "primary",
+          "primary_hover",
+          "primary_fill",
+          "tint_light",
+          "tint_dark",
+          "on_primary"
+        ],
+        "title": "PortalTheme",
+        "type": "object"
+      },
+      "PostureAnalysisRequest": {
+        "additionalProperties": false,
+        "description": "Combined analysis: the organization's SIEM alerts, VMS findings, assets, cases, Threat Insights matches, SOAR\nactivity, remediation and posture over a window, as cited aggregates. `platform`: NovrSOC platform staff with the\nplatform organization active get per-organization aggregates of their command scope (no record crosses tenants;\nthe job is stored in the platform organization).",
+        "properties": {
+          "scope": {
+            "default": "organization",
+            "enum": [
+              "organization",
+              "platform"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "window_days": {
+            "default": 7,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "title": "PostureAnalysisRequest",
         "type": "object"
       },
       "PostureAssessment": {
@@ -13783,6 +15430,20 @@
             "title": "Case Id",
             "type": "string"
           },
+          "confidence": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Automatic runs: the detection confidence",
+            "title": "Confidence"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -13795,6 +15456,15 @@
           },
           "mode": {
             "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "origin": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "automatic"
+            ],
+            "title": "Origin",
+            "type": "string"
           },
           "playbook_id": {
             "format": "uuid",
@@ -13822,6 +15492,18 @@
             },
             "title": "Steps",
             "type": "array"
+          },
+          "trigger_alert_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Alert Id"
           },
           "updated_at": {
             "format": "date-time",
@@ -15078,6 +16760,69 @@
         "title": "SnapshotView",
         "type": "object"
       },
+      "SoarAutomationPolicy": {
+        "additionalProperties": false,
+        "description": "Policy-driven orchestration of one organization. Off by default.\n\n* `case_creation`: new alerts at or above `case_min_severity` open (or join) an automation case without a person.\n* `enabled`: approved playbook versions marked `automatic` start on matching new alerts.\n* `pre_authorized_actions`: consequential actions that may proceed WITHOUT a per-event human approval, and only when\n  the detection confidence is at least `min_confidence`, the target comes from the alert's own evidence, its agent\n  groups are authorized, it is not a protected target, and fewer than `max_dispatches_per_hour` automatic dispatches\n  happened in the last hour. Each must also be in the policy's `allowed_actions`. Everything else waits for a person.\n* `protected_targets`: IP addresses or networks (CIDR), NovrAgent ids and account names that no response action\n  (automatic or approved) may ever target.",
+        "properties": {
+          "case_creation": {
+            "default": false,
+            "title": "Case Creation",
+            "type": "boolean"
+          },
+          "case_min_severity": {
+            "default": "high",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "title": "Case Min Severity",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "max_dispatches_per_hour": {
+            "default": 20,
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Max Dispatches Per Hour",
+            "type": "integer"
+          },
+          "min_confidence": {
+            "default": 80,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Min Confidence",
+            "type": "integer"
+          },
+          "pre_authorized_actions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ActionType"
+            },
+            "title": "Pre Authorized Actions",
+            "type": "array"
+          },
+          "protected_targets": {
+            "default": [],
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:/\\\\-]{1,64}$",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Protected Targets",
+            "type": "array"
+          }
+        },
+        "title": "SoarAutomationPolicy",
+        "type": "object"
+      },
       "SoarOperations": {
         "additionalProperties": false,
         "description": "The operations centre view. `ai_analysis` entries are analysis only; execution entries come from the engine.",
@@ -15086,6 +16831,23 @@
             "minimum": 0.0,
             "title": "Approved Playbooks",
             "type": "integer"
+          },
+          "automatic_cases_24h": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Automatic Cases 24H",
+            "type": "integer"
+          },
+          "automatic_runs_24h": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Automatic Runs 24H",
+            "type": "integer"
+          },
+          "automation_enabled": {
+            "default": false,
+            "title": "Automation Enabled",
+            "type": "boolean"
           },
           "awaiting_approval": {
             "minimum": 0.0,
@@ -15137,6 +16899,13 @@
           "pending_playbook_reviews": {
             "minimum": 0.0,
             "title": "Pending Playbook Reviews",
+            "type": "integer"
+          },
+          "policy_authorized_24h": {
+            "default": 0,
+            "description": "Consequential steps dispatched under pre-authorization",
+            "minimum": 0.0,
+            "title": "Policy Authorized 24H",
             "type": "integer"
           },
           "refused_24h": {
@@ -15208,6 +16977,17 @@
             "title": "Approval Ttl Minutes",
             "type": "integer"
           },
+          "automation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SoarAutomationPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omitted: the automation policy is unchanged"
+          },
           "live_enabled": {
             "default": false,
             "title": "Live Enabled",
@@ -15259,6 +17039,23 @@
             "minimum": 5.0,
             "title": "Approval Ttl Minutes",
             "type": "integer"
+          },
+          "automation": {
+            "$ref": "#/components/schemas/SoarAutomationPolicy",
+            "description": "Policy-driven orchestration (off by default)"
+          },
+          "automation_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When automation was last switched on: only alerts received after this are ever acted on",
+            "title": "Automation Since"
           },
           "emergency_at": {
             "anyOf": [
@@ -15428,6 +17225,22 @@
             ],
             "title": "Approval Id"
           },
+          "authorization": {
+            "anyOf": [
+              {
+                "enum": [
+                  "human",
+                  "policy"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who authorized a consequential step: a person, or the pre-authorization policy",
+            "title": "Authorization"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -15446,6 +17259,19 @@
                 "type": "null"
               }
             ]
+          },
+          "request": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The exact request body signed and sent to NovrSOAR (no secret is part of it)",
+            "title": "Request"
           },
           "request_id": {
             "anyOf": [
@@ -15897,6 +17723,39 @@
         "title": "SyncRunView",
         "type": "object"
       },
+      "SyslogTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "port": {
+            "title": "Port",
+            "type": "integer"
+          },
+          "protocols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Protocols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "port",
+          "protocols"
+        ],
+        "title": "SyslogTarget",
+        "type": "object"
+      },
       "TeamCreate": {
         "additionalProperties": false,
         "properties": {
@@ -15994,6 +17853,99 @@
         "title": "TeamMemberView",
         "type": "object"
       },
+      "TeamPresence": {
+        "additionalProperties": false,
+        "description": "The active organization's people: active members by role and, when presence is tracked, how many sent a\nheartbeat from an open NovrSOC tab within `online_window_minutes`. `presence_tracked` is false until anybody has\never sent a heartbeat for this organization: then `online` is unknown, never zero by assumption.",
+        "properties": {
+          "assigned_staff": {
+            "description": "Active NovrSOC staff assigned to work this organization",
+            "minimum": 0.0,
+            "title": "Assigned Staff",
+            "type": "integer"
+          },
+          "by_role": {
+            "items": {
+              "$ref": "#/components/schemas/TeamRoleCount"
+            },
+            "title": "By Role",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "members": {
+            "description": "Active people whose home is this organization",
+            "minimum": 0.0,
+            "title": "Members",
+            "type": "integer"
+          },
+          "online": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Online"
+          },
+          "online_window_minutes": {
+            "default": 2,
+            "title": "Online Window Minutes",
+            "type": "integer"
+          },
+          "presence_tracked": {
+            "title": "Presence Tracked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "generated_at",
+          "members",
+          "assigned_staff",
+          "by_role",
+          "presence_tracked"
+        ],
+        "title": "TeamPresence",
+        "type": "object"
+      },
+      "TeamRoleCount": {
+        "additionalProperties": false,
+        "properties": {
+          "members": {
+            "minimum": 0.0,
+            "title": "Members",
+            "type": "integer"
+          },
+          "online": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Unknown (null) while presence is not tracked",
+            "title": "Online"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "members"
+        ],
+        "title": "TeamRoleCount",
+        "type": "object"
+      },
       "TeamView": {
         "additionalProperties": false,
         "properties": {
@@ -16031,6 +17983,98 @@
           "created_at"
         ],
         "title": "TeamView",
+        "type": "object"
+      },
+      "TenantOnboarding": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_group": {
+            "$ref": "#/components/schemas/AgentGroupView"
+          },
+          "agents": {
+            "$ref": "#/components/schemas/OnboardingAgents"
+          },
+          "asset_sync": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetSyncStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "integer"
+          },
+          "enrollment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentEnrollmentStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "installer_available": {
+            "title": "Installer Available",
+            "type": "boolean"
+          },
+          "installer_reason": {
+            "default": "",
+            "title": "Installer Reason",
+            "type": "string"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/PortalOrg"
+          },
+          "portal_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portal Url"
+          },
+          "sources": {
+            "$ref": "#/components/schemas/OnboardingSources"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/OnboardingStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "syslog": {
+            "$ref": "#/components/schemas/SyslogTarget"
+          },
+          "telemetry": {
+            "$ref": "#/components/schemas/OnboardingTelemetry"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "organization",
+          "agent_group",
+          "installer_available",
+          "agents",
+          "telemetry",
+          "sources",
+          "syslog",
+          "steps",
+          "completed",
+          "total"
+        ],
+        "title": "TenantOnboarding",
         "type": "object"
       },
       "ThreatActorCreate": {
@@ -19759,6 +21803,785 @@
           }
         },
         "summary": "Edit an organization's profile (audited)",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/organizations/{org_id}/agent-group": {
+      "get": {
+        "operationId": "get_agent_group_api_v1_admin_organizations__org_id__agent_group_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentGroupView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "The organization's provisioned agent group",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "provision_agent_group_api_v1_admin_organizations__org_id__agent_group_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentGroupView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Provision the organization's agent group: an unguessable name, mapped to it (idempotent; audited)",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/organizations/{org_id}/invitations": {
+      "get": {
+        "operationId": "list_invitations_api_v1_admin_organizations__org_id__invitations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Invitations of an organization",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_invitation_api_v1_admin_organizations__org_id__invitations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Invite an organization administrator or member (the link is shown once; audited)",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/organizations/{org_id}/invitations/{invitation_id}/revoke": {
+      "post": {
+        "operationId": "revoke_invitation_api_v1_admin_organizations__org_id__invitations__invitation_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invitation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invitation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Revoke an invitation (audited)",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/organizations/{org_id}/logo": {
+      "delete": {
+        "operationId": "delete_logo_api_v1_admin_organizations__org_id__logo_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgPortalView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Remove an organization's logo (audited)",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "put_logo_api_v1_admin_organizations__org_id__logo_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgPortalView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Upload an organization's logo (PNG, JPEG, WebP; audited)",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/organizations/{org_id}/portal": {
+      "get": {
+        "operationId": "get_portal_api_v1_admin_organizations__org_id__portal_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgPortalView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "An organization's portal address and branding",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "put_portal_api_v1_admin_organizations__org_id__portal_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrgPortalUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgPortalView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Set an organization's portal and branding (audited)",
         "tags": [
           "admin"
         ]
@@ -28363,6 +31186,339 @@
         ]
       }
     },
+    "/api/v1/install/enroll": {
+      "post": {
+        "operationId": "enroll_api_v1_install_enroll_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentEnrollmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentEnrollmentResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "The installer registers this endpoint with an enrollment ticket; NovrSOC registers the agent on the manager",
+        "tags": [
+          "install"
+        ]
+      }
+    },
+    "/api/v1/install/{script}": {
+      "get": {
+        "operationId": "download_api_v1_install__script__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "script",
+            "required": true,
+            "schema": {
+              "pattern": "^novragent\\.(sh|ps1)$",
+              "title": "Script",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 30,
+              "title": "T",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {}
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Download the organization's NovrAgent installer (link from the portal's onboarding page)",
+        "tags": [
+          "install"
+        ]
+      }
+    },
+    "/api/v1/invitations/accept": {
+      "post": {
+        "operationId": "accept_api_v1_invitations_accept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationAccept"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Accept an invitation: create the account (public)",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/preview": {
+      "post": {
+        "operationId": "preview_api_v1_invitations_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "What an invitation is for, before accepting it (public)",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
     "/api/v1/log-sources": {
       "get": {
         "operationId": "list_sources_api_v1_log_sources_get",
@@ -28885,6 +32041,89 @@
         ]
       }
     },
+    "/api/v1/log-sources/{source_id}/verify": {
+      "post": {
+        "operationId": "verify_source_api_v1_log_sources__source_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogSourceView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "NovrSOC: verify a sender an organization registered, and enable it (audited)",
+        "tags": [
+          "log_sources"
+        ]
+      }
+    },
     "/api/v1/nhai/alert-explanations": {
       "post": {
         "operationId": "request_alert_explanation_api_v1_nhai_alert_explanations_post",
@@ -29394,6 +32633,89 @@
         ]
       }
     },
+    "/api/v1/nhai/jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_job_api_v1_nhai_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NhaiJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Queue the same request again for a failed or timed-out job (evidence assembled afresh)",
+        "tags": [
+          "nhai"
+        ]
+      }
+    },
     "/api/v1/nhai/jobs/{job_id}/review": {
       "post": {
         "operationId": "review_job_api_v1_nhai_jobs__job_id__review_post",
@@ -29484,6 +32806,535 @@
         "summary": "Accept or reject a draft (human review)",
         "tags": [
           "nhai"
+        ]
+      }
+    },
+    "/api/v1/nhai/overview": {
+      "get": {
+        "operationId": "overview_api_v1_nhai_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NhaiOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "NHAI across the command scope (platform staff), per organization",
+        "tags": [
+          "nhai"
+        ]
+      }
+    },
+    "/api/v1/nhai/posture-analyses": {
+      "post": {
+        "operationId": "request_posture_analysis_api_v1_nhai_posture_analyses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostureAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NhaiJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Queue a combined analysis: SIEM, VMS, assets, cases, Threat Insights, SOAR, remediation and posture",
+        "tags": [
+          "nhai"
+        ]
+      }
+    },
+    "/api/v1/nhai/readiness": {
+      "get": {
+        "operationId": "get_readiness_api_v1_nhai_readiness_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NhaiReadiness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "NHAI readiness from records: backend, worker heartbeat, queue, outcomes",
+        "tags": [
+          "nhai"
+        ]
+      }
+    },
+    "/api/v1/onboarding/installer": {
+      "post": {
+        "operationId": "installer_api_v1_onboarding_installer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallerCommand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "An enrollment ticket and NovrAgent installer command (audited)",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/v1/onboarding/status": {
+      "get": {
+        "operationId": "status_api_v1_onboarding_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantOnboarding"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Onboarding progress of the active organization",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/v1/onboarding/tickets": {
+      "get": {
+        "operationId": "tickets_api_v1_onboarding_tickets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentEnrollmentTicketList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Enrollment tickets of the active organization",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/api/v1/onboarding/tickets/{ticket_id}/revoke": {
+      "post": {
+        "operationId": "revoke_ticket_api_v1_onboarding_tickets__ticket_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ticket Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentEnrollmentTicket"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Revoke an enrollment ticket (audited)",
+        "tags": [
+          "onboarding"
         ]
       }
     },
@@ -29629,6 +33480,146 @@
         ]
       }
     },
+    "/api/v1/portal": {
+      "get": {
+        "operationId": "portal_info_api_v1_portal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "Which portal this address is, with its public branding (no sign-in needed)",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/api/v1/portal/logo": {
+      "get": {
+        "operationId": "portal_logo_api_v1_portal_logo_get",
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {},
+              "image/png": {},
+              "image/webp": {}
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "The organization's logo for this portal (PNG, JPEG or WebP; no sign-in needed)",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
     "/api/v1/posture/assessment": {
       "get": {
         "operationId": "assessment_api_v1_posture_assessment_get",
@@ -29768,6 +33759,141 @@
         "summary": "Executive overview: posture, incidents, vulnerabilities, SLA, priorities",
         "tags": [
           "posture"
+        ]
+      }
+    },
+    "/api/v1/presence/heartbeat": {
+      "post": {
+        "operationId": "heartbeat_api_v1_presence_heartbeat_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "I am here: the signed-in person has this organization open (every 60 s)",
+        "tags": [
+          "presence"
+        ]
+      }
+    },
+    "/api/v1/presence/team": {
+      "get": {
+        "operationId": "get_team_api_v1_presence_team_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamPresence"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "The active organization's people by role, and who is online now",
+        "tags": [
+          "presence"
         ]
       }
     },
@@ -32563,6 +36689,91 @@
         ]
       }
     },
+    "/api/v1/soar/automation/events": {
+      "get": {
+        "operationId": "automation_events_api_v1_soar_automation_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationEventList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "What NovrSOAR automation decided for new alerts (cases opened or joined, runs started, skips, failures)",
+        "tags": [
+          "soar"
+        ]
+      }
+    },
     "/api/v1/soar/emergency-stop": {
       "post": {
         "operationId": "emergency_stop_api_v1_soar_emergency_stop_post",
@@ -34803,6 +39014,89 @@
           }
         },
         "summary": "Assign a case to an analyst (or unassign)",
+        "tags": [
+          "soc"
+        ]
+      }
+    },
+    "/api/v1/soc/cases/{case_id}/correlation": {
+      "get": {
+        "operationId": "get_case_correlation_api_v1_soc_cases__case_id__correlation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseCorrelation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not authenticated"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden (permission, organization or CSRF)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (also returned for another organization's record)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          }
+        },
+        "summary": "The case's assets (from the canonical inventory) with their alerts and open vulnerability findings",
         "tags": [
           "soc"
         ]

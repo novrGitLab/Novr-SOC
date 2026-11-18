@@ -16,6 +16,7 @@ Prerequisite: `next build` with NOVRSOC_API_ORIGIN=http://127.0.0.1:8000.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import tempfile
 import os
@@ -119,7 +120,15 @@ def main() -> int:
             for org, groups in ((org_a, ("nv-alpha-servers", "nv-alpha-workstations")), (org_b, ("nv-beta-servers",))):
                 for g in groups:
                     c.execute(text("INSERT INTO novrsoc.wazuh_group_mappings (org_id, group_name) VALUES (:o, :g)"), {"o": org, "g": g})
-            counts = ingest_alerts(c, [WazuhAlertIn.model_validate(a) for a in load_fixture()["alerts"]], source="local_fixture")
+            # The newest alert carries a very long, unbroken title (a Windows registry path), as real detections do: the
+            # alert and case pages must wrap it instead of widening the page (checked on desktop and mobile).
+            long_path = r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell_Folders" + "\\" + "VeryLongValueName_" * 8
+            fixture = load_fixture()["alerts"] + [{
+                "id": f"e2e-long-{secrets.token_hex(4)}", "timestamp": datetime.now(timezone.utc).isoformat(),
+                "rule": {"id": "594", "level": 10, "description": f"Registry Key Integrity Checksum Changed for: '{long_path}'"},
+                "agent": {"id": "001", "name": "web-01.alpha.e2e", "groups": ["nv-alpha-servers"]},
+                "raw": {"full_log": f"Registry Key '{long_path}' modified\nPath: " + r"C:\Users\Administrator\AppData\Local" + "\\" + "x" * 160}}]
+            counts = ingest_alerts(c, [WazuhAlertIn.model_validate(a) for a in fixture], source="local_fixture")
             print(f"fixture alerts: accepted={counts.accepted} quarantined={counts.quarantined}")
         eng.dispose()
 

@@ -8,8 +8,16 @@ Per cycle, for every active organization, in its own transaction and organizatio
   * VMS schedules: due, enabled schedules create scan jobs ONLY where scanning is enabled (disabled by default);
   * CNII schedules: due checks are recorded honestly (no probe is configured: `not_run` with the reason);
   * SOAR approvals: expired approvals expire their step and settle the run;
-  * asset links: stored alerts and VMS findings without a canonical asset are reconciled (bounded per cycle).
-It never executes a response action, never contacts Wazuh, a scanner or a server, and runs as the API's database role.
+  * asset links: stored alerts and VMS findings without a canonical asset are reconciled (bounded per cycle);
+  * asset sync: when due (Settings.asset_sync_interval_minutes, or the organization's own wazuh_sync collector), the
+    organization's agents are read (read-only) from the agent data source and reconciled into the canonical inventory
+    shared with VMS. Each organization syncs in its OWN transaction; a failure is recorded as that organization's failed
+    sync run (visible on its onboarding page) and never affects another organization.
+  * SOAR orchestration (app.soar.automation; off unless the organization's automation policy is on): new alerts open
+    or join automation cases and start approved automatic playbooks. A consequential step is dispatched to the
+    NovrSOAR bridge only under the organization's pre-authorization policy (otherwise it waits for a person); the
+    bridge applies its own tenant authorization, target guards and live-execution switch.
+It never contacts a scanner, and runs as the API's database role.
 A heartbeat in platform_heartbeats lets Platform Health show whether it is running.
 """
 from __future__ import annotations
@@ -20,6 +28,7 @@ import signal
 import socket
 import sys
 import time
+from datetime import datetime, timezone
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -46,7 +55,8 @@ def run_cycle(engine: Engine, settings: Settings) -> dict:
     from app.modules.secops import escalate
     from app.modules.vms import run_due_schedules
     from app.assets.reconcile import link_unlinked
-    totals = {"orgs": 0, "escalated": 0, "scan_jobs": 0, "cnii_checks": 0, "approvals_expired": 0, "assets_linked": 0, "errors": 0}
+    totals = {"orgs": 0, "escalated": 0, "scan_jobs": 0, "cnii_checks": 0, "approvals_expired": 0, "assets_linked": 0, "errors": 0,
+              "asset_syncs": 0, "asset_sync_errors": 0, "soar_alerts": 0, "soar_cases": 0, "soar_runs": 0, "soar_errors": 0}
     with engine.connect() as c:
         orgs = [r[0] for r in c.execute(text("SELECT * FROM novrsoc.jobs_org_ids()"))]
     for org in orgs:
@@ -58,11 +68,66 @@ def run_cycle(engine: Engine, settings: Settings) -> dict:
                 totals["cnii_checks"] += run_due_checks(conn)
                 totals["approvals_expired"] += _expire_approvals(conn)
                 totals["assets_linked"] += link_unlinked(conn)
+                conn.execute(text("DELETE FROM novrsoc.user_presence WHERE last_seen_at < now() - interval '30 days'"))
             totals["orgs"] += 1
         except Exception:  # one organization's failure never stops the others
             totals["errors"] += 1
             log.exception("jobs cycle failed for an organization")
+        sync_assets_if_due(engine, settings, org, totals)
+        orchestrate(engine, settings, org, totals)
     return totals
+
+
+def orchestrate(engine: Engine, settings: Settings, org, totals: dict) -> None:
+    """NovrSOAR policy-driven orchestration for one organization, in its OWN transaction (after the asset links of this
+    cycle, so new alerts carry their canonical asset). Off unless the organization switched it on."""
+    from app.soar import automation
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(org)})
+            r = automation.process(conn, settings, org)
+        totals["soar_alerts"] += r["alerts"]
+        totals["soar_cases"] += r["cases"]
+        totals["soar_runs"] += r["runs"]
+        totals["soar_errors"] += r["failed"]
+    except Exception:
+        totals["soar_errors"] += 1
+        log.exception("SOAR automation failed for an organization")
+
+
+def _sync_due(conn, settings: Settings) -> bool:
+    from app.modules.onboarding import asset_sync_status
+    st = asset_sync_status(conn, settings)
+    return bool(st.interval_minutes) and st.next_due_at is not None and st.next_due_at <= datetime.now(timezone.utc)
+
+
+def sync_assets_if_due(engine: Engine, settings: Settings, org, totals: dict) -> None:
+    """The scheduled agent -> inventory sync of ONE organization, isolated from every other organization."""
+    from app.connectors import registry
+    from app.modules.assets import sync_wazuh
+    from app.modules.endpoints import org_scope
+    if registry.wazuh(settings) is None:
+        return
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(org)})
+            if not org_scope(conn, org, settings.collection_groups).wazuh_agent_groups or not _sync_due(conn, settings):
+                return
+            r = sync_wazuh(conn, settings, org, "scheduled sync")
+            conn.execute(text("UPDATE novrsoc.collectors SET last_run_at = now(), last_outcome = :o WHERE kind = 'wazuh_sync'"), {"o": r.outcome})
+            totals["asset_syncs"] += 1
+            totals["asset_sync_errors"] += r.outcome != "completed"
+    except Exception as e:  # recorded for THIS organization only; the next organization still syncs
+        totals["asset_sync_errors"] += 1
+        log.exception("scheduled asset sync failed for an organization")
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(org)})
+                conn.execute(text("""INSERT INTO novrsoc.asset_sync_runs (org_id, source, source_state, finished_at, outcome, detail, requested_label)
+                                     VALUES (:o, 'wazuh', 'error', now(), 'failed', :d, 'scheduled sync')"""),
+                             {"o": org, "d": f"The scheduled sync failed ({type(e).__name__}); it is retried at the next interval."})
+        except Exception:
+            log.exception("could not record the failed asset sync")
 
 
 def heartbeat(engine: Engine, instance: str, totals: dict) -> None:

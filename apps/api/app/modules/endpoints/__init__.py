@@ -55,9 +55,11 @@ def unavailable(exc: ConnectorError) -> ApiError:
                     if not isinstance(exc, ScopeViolation) else "The NovrSIEM connector returned out-of-scope data")
 
 
-def org_scope(conn: Connection, org_id: uuid.UUID) -> OrgScope:
-    """The organization's Wazuh scope, read under RLS (only its own mappings are visible)."""
-    groups = frozenset(r[0] for r in conn.execute(text("SELECT group_name FROM novrsoc.wazuh_group_mappings")))
+def org_scope(conn: Connection, org_id: uuid.UUID, collection_groups: frozenset[str] | None = None) -> OrgScope:
+    """The organization's agent scope, read under RLS (only its own mappings are visible). Collection groups (`default`)
+    are left out even when an older release mapped them: they hold every organization's new agents."""
+    excluded = frozenset({"default"}) if collection_groups is None else collection_groups
+    groups = frozenset(r[0] for r in conn.execute(text("SELECT group_name FROM novrsoc.wazuh_group_mappings"))) - excluded
     return OrgScope(org_id=org_id, wazuh_agent_groups=groups)
 
 
@@ -79,7 +81,7 @@ def _summary(source, agent) -> EndpointSummary:
 def inventory(p: Principal = Depends(require("endpoints:read")), conn: Connection = Depends(request_connection),
               settings: Settings = Depends(get_settings)) -> EndpointInventory:
     manager_state = registry.wazuh_states(settings)[0]
-    scope = org_scope(conn, p.org_id)
+    scope = org_scope(conn, p.org_id, settings.collection_groups)
     source = registry.wazuh(settings)
     if source is None:
         return EndpointInventory(source=manager_state, items=[], by_status={}, mapped_groups=len(scope.wazuh_agent_groups))
@@ -156,7 +158,7 @@ def detail(agent_id: str = AgentId, p: Principal = Depends(require("endpoints:re
         raise ApiError(503, "integration_unconfigured", "No NovrSIEM connection is configured, so endpoint details are unavailable")
     if manager_state.state not in ("connected", "local_fixture"):
         raise ApiError(503, "integration_unavailable", f"NovrSIEM is {manager_state.state}: {manager_state.detail}"[:300])
-    scope = org_scope(conn, p.org_id)
+    scope = org_scope(conn, p.org_id, settings.collection_groups)
     try:
         agent = source.get_agent(scope, agent_id)
     except ConnectorError as e:

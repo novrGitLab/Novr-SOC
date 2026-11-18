@@ -356,10 +356,17 @@ def claim(request: Request, s: ServicePrincipal = Depends(current_service), conn
         running = conn.execute(text("SELECT count(*) FROM novrsoc.vms_scan_jobs WHERE state = 'running'")).scalar()
         if running >= pol["max_concurrent_scans"]:
             return ScanClaimResult(job=None, reason="concurrency_limit")
+    # Platform caps across every organization (a count only; migration 0023): result ingestion and the one Greenbone stack.
+    if conn.execute(text("SELECT novrsoc.vms_running_scans()")).scalar() >= settings.vms_max_running_scans:
+        return ScanClaimResult(job=None, reason="concurrency_limit")
+    greenbone_free = conn.execute(text("SELECT novrsoc.vms_running_scans('vuln_openvas')")).scalar() < settings.vms_max_running_greenbone
     run_due_schedules(conn, settings)
     job = conn.execute(text("""SELECT j.*, s.kind, s.value, s.valid_until, s.allowed_activities FROM novrsoc.vms_scan_jobs j
                                JOIN novrsoc.vms_scopes s ON s.id = j.scope_id AND s.org_id = j.org_id
-                               WHERE j.state = 'queued' ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1""")).first()
+                               WHERE j.state = 'queued' AND (j.activity <> 'vuln_openvas' OR :gb)
+                               ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1"""), {"gb": greenbone_free}).first()
+    if job is None and not greenbone_free:
+        return ScanClaimResult(job=None, reason="concurrency_limit")
     if job is None:
         return ScanClaimResult(job=None, reason="no_job")
     protected_nets = pol["protected_networks"] if pol else []

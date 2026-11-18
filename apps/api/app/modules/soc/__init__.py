@@ -33,6 +33,8 @@ from app.modules import ModuleInfo
 from app.modules.soc.service import Attribution, classify_alerts, ingest_alerts
 from app.secops import sla
 from app.routers._responses import ERRORS
+from app import correlation
+from novrsoc_contracts.v1.inventory import AssetFindingRef, CaseAssetCorrelation, CaseCorrelation
 from novrsoc_contracts.v1.soar import AlertToCasePromotion, CasePromotionResult
 from novrsoc_contracts.v1.endpoints import ConnectorState
 from novrsoc_contracts.v1.soc import (AlertClassification, AlertClassifyRequest, AlertClassifyResult, AlertDetail, AlertEvidence,
@@ -259,7 +261,7 @@ def alert_evidence(alert_id: uuid.UUID, p: Principal = Depends(require("alerts:r
     if indexer_state.state != "connected":
         return answer(indexer_state, None)
     try:
-        doc = registry.wazuh(settings).alert_document(org_scope(conn, p.org_id), row.agent_id, row.external_id)
+        doc = registry.wazuh(settings).alert_document(org_scope(conn, p.org_id, settings.collection_groups), row.agent_id, row.external_id)
     except ConnectorError as e:
         return answer(indexer_state.model_copy(update={"state": "unavailable", "detail": str(e)[:300]}), None)
     if doc is None:
@@ -363,6 +365,27 @@ def _case_detail(conn: Connection, case_id: uuid.UUID) -> CaseDetail:
 def get_case(case_id: uuid.UUID, p: Principal = Depends(require("cases:read")),
              conn: Connection = Depends(request_connection)) -> CaseDetail:
     return _case_detail(conn, case_id)
+
+
+@router.get("/cases/{case_id}/correlation", response_model=CaseCorrelation,
+            summary="The case's assets (from the canonical inventory) with their alerts and open vulnerability findings")
+def get_case_correlation(case_id: uuid.UUID, p: Principal = Depends(require("cases:read")),
+                         conn: Connection = Depends(request_connection)) -> CaseCorrelation:
+    if not conn.execute(text("SELECT 1 FROM novrsoc.cases WHERE id = :id"), {"id": case_id}).first():
+        raise not_found("Case not found")
+    assets, alert_ids, unlinked = correlation.case_assets(conn, case_id)
+    visible = p.has("vms:read")
+    findings = correlation.open_findings(conn, [a.id for a in assets]) if visible else {}
+    out = []
+    for a in assets:
+        rows, total = findings.get(a.id, ([], 0))
+        out.append(CaseAssetCorrelation(
+            asset_id=a.id, display_name=a.display_name, criticality=a.criticality, exposure=a.exposure, alert_ids=alert_ids[a.id],
+            open_findings=[AssetFindingRef(id=r.id, title=r.title, severity=r.severity, status=r.status, priority=r.priority,
+                                           risk_score=r.risk_score, cves=list(r.cves or []), port=r.port, last_seen_at=r.last_seen_at)
+                           for r in rows],
+            open_findings_total=total))
+    return CaseCorrelation(case_id=case_id, assets=out, alerts_without_asset=unlinked, findings_visible=visible)
 
 
 @router.post("/cases/{case_id}/notes", response_model=CaseDetail, status_code=201, summary="Add a note to the case timeline")

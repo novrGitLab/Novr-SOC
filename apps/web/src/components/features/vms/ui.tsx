@@ -68,7 +68,7 @@ export function CountUp({ value, suffix = '', className = '' }: { value: number;
 
 // ── Layout ─────────────────────────────────────────────────────────────────────────────────────
 export function Card({ children, className = '', as: As = 'section', ...rest }: { children: ReactNode; className?: string; as?: 'section' | 'div'; 'aria-label'?: string; 'aria-busy'?: boolean }) {
-    return <As {...rest} className={`bg-card border border-border rounded-2xl p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors ${className}`}>{children}</As>;
+    return <As {...rest} className={`min-w-0 bg-card border border-border rounded-2xl p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors ${className}`}>{children}</As>;
 }
 
 export function SectionTitle({ title, hint, action, level = 2 }: { title: string; hint?: string; action?: ReactNode; level?: 2 | 3 }) {

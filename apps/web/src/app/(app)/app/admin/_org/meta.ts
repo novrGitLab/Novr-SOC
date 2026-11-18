@@ -38,6 +38,7 @@ export const SOURCE_STATUS: Record<Schemas['LogSourceView']['status'], { label: 
     receiving: { label: 'Receiving', tone: 'good' }, quiet: { label: 'Quiet (last 24 h)', tone: 'warning' },
     silent: { label: 'Silent', tone: 'serious' }, never_received: { label: 'No event yet', tone: 'neutral' },
     disabled: { label: 'Disabled', tone: 'neutral' }, retired: { label: 'Retired', tone: 'neutral' },
+    pending_verification: { label: 'Awaiting NovrSOC verification', tone: 'warning' },
 };
 
 export const DEVICE_TYPES: readonly (readonly [Schemas['LogSourceCreate']['device_type'], string])[] = [

@@ -252,6 +252,129 @@ export interface components {
             /** Items */
             items: components["schemas"]["AdminUser"][];
         };
+        /**
+         * AgentEnrollmentRequest
+         * @description Sent by the installer running on the endpoint (public; the ticket is the only key).
+         */
+        AgentEnrollmentRequest: {
+            /** Hostname */
+            hostname: string;
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+            /** Ticket */
+            ticket: string;
+        };
+        /** AgentEnrollmentResult */
+        AgentEnrollmentResult: {
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Key
+             * @description The agent's key, imported by the installer; returned once over TLS and never stored by NovrSOC
+             */
+            key: string;
+            /** Name */
+            name: string;
+        };
+        /** AgentEnrollmentStatus */
+        AgentEnrollmentStatus: {
+            /**
+             * Agent Version
+             * @default null
+             */
+            agent_version: string | null;
+            /** Available */
+            available: boolean;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Enrolled Agents
+             * @default 0
+             */
+            enrolled_agents: number;
+            /**
+             * Manager Version
+             * @default null
+             */
+            manager_version: string | null;
+            /**
+             * Open Tickets
+             * @default 0
+             */
+            open_tickets: number;
+        };
+        /** AgentEnrollmentTicket */
+        AgentEnrollmentTicket: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created Label */
+            created_label: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Max Uses */
+            max_uses: number;
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "used_up" | "expired" | "revoked";
+            /** Uses */
+            uses: number;
+        };
+        /** AgentEnrollmentTicketList */
+        AgentEnrollmentTicketList: {
+            /** Items */
+            items: components["schemas"]["AgentEnrollmentTicket"][];
+        };
+        /** AgentGroupView */
+        AgentGroupView: {
+            /**
+             * Created At
+             * @default null
+             */
+            created_at: string | null;
+            /**
+             * Group Name
+             * @description Shown only to the organization and NovrSOC administrators
+             * @default null
+             */
+            group_name: string | null;
+            /**
+             * Manager Detail
+             * @default
+             */
+            manager_detail: string;
+            /**
+             * On Manager
+             * @description Whether the group exists on the NovrSIEM manager (null: not checked)
+             * @default null
+             */
+            on_manager: boolean | null;
+            /** Provisioned */
+            provisioned: boolean;
+        };
         /** AiActivityList */
         AiActivityList: {
             /** Items */
@@ -632,6 +755,12 @@ export interface components {
         /** ApprovalView */
         ApprovalView: {
             action: components["schemas"]["ActionType"];
+            /**
+             * Authorization
+             * @default human
+             * @enum {string}
+             */
+            authorization: "human" | "policy";
             /**
              * Created At
              * Format: date-time
@@ -1250,6 +1379,34 @@ export interface components {
              */
             asset_id: string;
         };
+        /** AssetSyncStatus */
+        AssetSyncStatus: {
+            /**
+             * Interval Minutes
+             * @description 0: scheduled sync is off (on demand only)
+             */
+            interval_minutes: number;
+            /**
+             * Last Detail
+             * @default
+             */
+            last_detail: string;
+            /**
+             * Last Outcome
+             * @default null
+             */
+            last_outcome: string | null;
+            /**
+             * Last Run At
+             * @default null
+             */
+            last_run_at: string | null;
+            /**
+             * Next Due At
+             * @default null
+             */
+            next_due_at: string | null;
+        };
         /** AssetTrendPoint */
         AssetTrendPoint: {
             /** Alerts */
@@ -1369,6 +1526,74 @@ export interface components {
              * @default null
              */
             total: number | null;
+        };
+        /**
+         * AutomationDecision
+         * @enum {string}
+         */
+        AutomationDecision: "case_created" | "case_joined" | "run_started" | "skipped_emergency_stop" | "skipped_limit" | "skipped_severity" | "failed";
+        /** AutomationEventList */
+        AutomationEventList: {
+            /** Case Creation */
+            case_creation: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Items */
+            items: components["schemas"]["AutomationEventView"][];
+            /**
+             * Since
+             * @default null
+             */
+            since: string | null;
+        };
+        /**
+         * AutomationEventView
+         * @description One decision NovrSOAR automation took for one new alert (and playbook, when one matched).
+         */
+        AutomationEventView: {
+            /**
+             * Alert Id
+             * Format: uuid
+             */
+            alert_id: string;
+            /**
+             * Case Id
+             * @default null
+             */
+            case_id: string | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Confidence Factors
+             * @default []
+             */
+            confidence_factors: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            decision: components["schemas"]["AutomationDecision"];
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Playbook Name
+             * @default
+             */
+            playbook_name: string;
+            /**
+             * Run Id
+             * @default null
+             */
+            run_id: string | null;
         };
         /**
          * BackupAgentReport
@@ -1766,6 +1991,36 @@ export interface components {
          */
         Capability: "syslog_receive" | "windows_event_forward" | "file_tail" | "network_discovery" | "scan_relay" | "wazuh_agent_bridge";
         /**
+         * CaseAssetCorrelation
+         * @description One canonical asset of a case: the case's alerts on it and the asset's open vulnerability findings.
+         */
+        CaseAssetCorrelation: {
+            /** Alert Ids */
+            alert_ids: string[];
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            /** Criticality */
+            criticality: string;
+            /** Display Name */
+            display_name: string;
+            /** Exposure */
+            exposure: string;
+            /**
+             * Open Findings
+             * @default []
+             */
+            open_findings: components["schemas"]["AssetFindingRef"][];
+            /**
+             * Open Findings Total
+             * @description All open findings of the asset; `open_findings` lists the riskiest
+             * @default 0
+             */
+            open_findings_total: number;
+        };
+        /**
          * CaseAssistanceRequest
          * @description Investigation assistance for one case: its linked alerts (authoritative severities), notes, timeline and the
          *     Threat Insights matches of those alerts. A draft for the analyst; it never changes the case.
@@ -1776,6 +2031,29 @@ export interface components {
              * Format: uuid
              */
             case_id: string;
+        };
+        /**
+         * CaseCorrelation
+         * @description SIEM and VMS evidence of one case joined through the canonical asset inventory (never by hostname guessing).
+         */
+        CaseCorrelation: {
+            /**
+             * Alerts Without Asset
+             * @description Linked alerts not yet attributed to an inventory asset
+             */
+            alerts_without_asset: number;
+            /** Assets */
+            assets: components["schemas"]["CaseAssetCorrelation"][];
+            /**
+             * Case Id
+             * Format: uuid
+             */
+            case_id: string;
+            /**
+             * Findings Visible
+             * @description False when the caller may not read VMS findings (vms:read): assets and alerts are still listed, findings are not
+             */
+            findings_visible: boolean;
         };
         /** CaseDetail */
         CaseDetail: {
@@ -4993,6 +5271,54 @@ export interface components {
              */
             verdict: "unreviewed" | "true_positive" | "false_positive" | "benign";
         };
+        /** InstallerCommand */
+        InstallerCommand: {
+            /** Agent Version */
+            agent_version: string;
+            /**
+             * Command
+             * @description Downloads the organization's NovrAgent installer and runs it; carries no password
+             */
+            command: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Max Endpoints */
+            max_endpoints: number;
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+            /** Run As */
+            run_as: string;
+            /**
+             * Ticket Id
+             * Format: uuid
+             */
+            ticket_id: string;
+        };
+        /** InstallerRequest */
+        InstallerRequest: {
+            /**
+             * Endpoints
+             * @description How many endpoints this command may enroll
+             * @default 10
+             */
+            endpoints: number;
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+        };
         /** InvestigationAssistRequest */
         InvestigationAssistRequest: {
             /**
@@ -5002,6 +5328,117 @@ export interface components {
             case_id: string;
             /** Question */
             question: string;
+        };
+        /** InvitationAccept */
+        InvitationAccept: {
+            /** Display Name */
+            display_name: string;
+            /** Password */
+            password: string;
+            /** Token */
+            token: string;
+        };
+        /** InvitationAccepted */
+        InvitationAccepted: {
+            /** Email */
+            email: string;
+            /** Sign In Url */
+            sign_in_url: string;
+        };
+        /** InvitationCreate */
+        InvitationCreate: {
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @default soc_manager
+             * @enum {string}
+             */
+            role: "soc_manager" | "analyst" | "executive" | "portal_user";
+        };
+        /** InvitationCreated */
+        InvitationCreated: {
+            invitation: components["schemas"]["InvitationView"];
+            /**
+             * Link
+             * @description Shown ONCE: only its SHA-256 is stored. The token is in the URL fragment, never sent to a server log
+             */
+            link: string;
+        };
+        /** InvitationList */
+        InvitationList: {
+            /** Items */
+            items: components["schemas"]["InvitationView"][];
+        };
+        /** InvitationPreview */
+        InvitationPreview: {
+            /**
+             * Email
+             * @default null
+             */
+            email: string | null;
+            /**
+             * Expires At
+             * @default null
+             */
+            expires_at: string | null;
+            /**
+             * Organization
+             * @default null
+             */
+            organization: string | null;
+            /**
+             * Role
+             * @default null
+             */
+            role: ("soc_manager" | "analyst" | "executive" | "portal_user") | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "accepted" | "revoked" | "expired" | "organization_inactive";
+        };
+        /** InvitationToken */
+        InvitationToken: {
+            /** Token */
+            token: string;
+        };
+        /** InvitationView */
+        InvitationView: {
+            /**
+             * Accepted At
+             * @default null
+             */
+            accepted_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invited Label */
+            invited_label: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "soc_manager" | "analyst" | "executive" | "portal_user";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "accepted" | "revoked" | "expired";
         };
         /**
          * JobRun
@@ -5344,7 +5781,7 @@ export interface components {
              * @description receiving: an event in the last hour; quiet: in the last 24 hours; silent: none for 24 hours or more; never_received; disabled; retired (reassigned or removed, kept for history)
              * @enum {string}
              */
-            status: "receiving" | "quiet" | "silent" | "never_received" | "disabled" | "retired";
+            status: "receiving" | "quiet" | "silent" | "never_received" | "disabled" | "retired" | "pending_verification";
             /**
              * Updated At
              * Format: date-time
@@ -5352,6 +5789,17 @@ export interface components {
             updated_at: string;
             /** Vendor */
             vendor: string;
+            /**
+             * Verified
+             * @description False until a NovrSOC administrator verifies a sender the organization registered itself; until then it stays disabled and its events are quarantined
+             * @default true
+             */
+            verified: boolean;
+            /**
+             * Verified At
+             * @default null
+             */
+            verified_at: string | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -5368,6 +5816,16 @@ export interface components {
              */
             csrf_token: string;
             session: components["schemas"]["SessionInfo"];
+        };
+        /** LogoUpload */
+        LogoUpload: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
+            /** Data Base64 */
+            data_base64: string;
         };
         /**
          * MatchConfidence
@@ -5667,6 +6125,106 @@ export interface components {
             /** Items */
             items: components["schemas"]["NhaiJob"][];
         };
+        /** NhaiOrgActivity */
+        NhaiOrgActivity: {
+            /** Awaiting Review */
+            awaiting_review: number;
+            /** Failed 24H */
+            failed_24h: number;
+            /**
+             * Last Success At
+             * @default null
+             */
+            last_success_at: string | null;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /** Org Name */
+            org_name: string;
+            /** Queued */
+            queued: number;
+            /** Running */
+            running: number;
+            /** Succeeded 24H */
+            succeeded_24h: number;
+        };
+        /**
+         * NhaiOverview
+         * @description NHAI across the caller's command scope (platform staff), read under each organization's own RLS.
+         */
+        NhaiOverview: {
+            /** Organizations */
+            organizations: components["schemas"]["NhaiOrgActivity"][];
+            readiness: components["schemas"]["NhaiReadiness"];
+        };
+        /**
+         * NhaiReadiness
+         * @description What the API can verify about NHAI, from records only (the API never contacts the model). `state`:
+         *     ready (backend configured, worker heard from recently, no stuck queue), degraded (worker silent or queue waiting
+         *     too long, or recent failures only), unavailable (no backend configured).
+         */
+        NhaiReadiness: {
+            /** Awaiting Review */
+            awaiting_review: number;
+            /** Backend Configured */
+            backend_configured: boolean;
+            /** Failed 24H */
+            failed_24h: number;
+            /**
+             * Last Success At
+             * @default null
+             */
+            last_success_at: string | null;
+            /**
+             * Model
+             * @default null
+             */
+            model: string | null;
+            /**
+             * Oldest Queued Seconds
+             * @default null
+             */
+            oldest_queued_seconds: number | null;
+            /**
+             * Pilot
+             * @description True for a small model run as a limited, labelled pilot (drafts are less reliable)
+             */
+            pilot: boolean;
+            /**
+             * Pilot Note
+             * @default
+             */
+            pilot_note: string;
+            /** Queued */
+            queued: number;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+            /** Running */
+            running: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "degraded" | "unavailable";
+            /** Succeeded 24H */
+            succeeded_24h: number;
+            /**
+             * Worker Last Seen At
+             * @default null
+             */
+            worker_last_seen_at: string | null;
+            /**
+             * Worker State
+             * @default unknown
+             * @enum {string}
+             */
+            worker_state: "ok" | "degraded" | "failing" | "unknown";
+        };
         /** NhaiResult */
         NhaiResult: {
             /** Citations */
@@ -5756,7 +6314,7 @@ export interface components {
          * NhaiTask
          * @enum {string}
          */
-        NhaiTask: "alert_explanation" | "behavioural_insight_summary" | "investigation_assistance" | "case_note_draft" | "finding_explanation" | "asset_summary" | "chat_answer";
+        NhaiTask: "alert_explanation" | "behavioural_insight_summary" | "investigation_assistance" | "case_note_draft" | "finding_explanation" | "asset_summary" | "chat_answer" | "posture_analysis";
         /** NotificationList */
         NotificationList: {
             /** Items */
@@ -5849,6 +6407,62 @@ export interface components {
          * @enum {string}
          */
         ObservationKind: "host" | "service" | "technology" | "finding";
+        /** OnboardingAgents */
+        OnboardingAgents: {
+            /**
+             * Active
+             * @default 0
+             */
+            active: number;
+            /**
+             * Disconnected
+             * @default 0
+             */
+            disconnected: number;
+            /**
+             * Never Connected
+             * @default 0
+             */
+            never_connected: number;
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * State
+             * @description The agent data source state: connected, local_fixture, unconfigured, unavailable, error
+             */
+            state: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** OnboardingSources */
+        OnboardingSources: {
+            /**
+             * Never Received
+             * @default 0
+             */
+            never_received: number;
+            /**
+             * Pending Verification
+             * @default 0
+             */
+            pending_verification: number;
+            /**
+             * Receiving
+             * @default 0
+             */
+            receiving: number;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
         /** OnboardingStatus */
         OnboardingStatus: {
             /**
@@ -5883,6 +6497,43 @@ export interface components {
              * @default 0
              */
             total: number;
+        };
+        /** OnboardingStep */
+        OnboardingStep: {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Done */
+            done: boolean;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** OnboardingTelemetry */
+        OnboardingTelemetry: {
+            /**
+             * Alerts 24H
+             * @default 0
+             */
+            alerts_24h: number;
+            /**
+             * Assets
+             * @default 0
+             */
+            assets: number;
+            /**
+             * Last Alert At
+             * @default null
+             */
+            last_alert_at: string | null;
+            /**
+             * Vms Enrolled
+             * @default 0
+             */
+            vms_enrolled: number;
         };
         /** OrgAnalyticsRow */
         OrgAnalyticsRow: {
@@ -6195,6 +6846,90 @@ export interface components {
             /** Items */
             items: components["schemas"]["OrgSummary"][];
         };
+        /** OrgPortalUpdate */
+        OrgPortalUpdate: {
+            /**
+             * Display Name
+             * @default
+             */
+            display_name: string;
+            /**
+             * Portal Enabled
+             * @default false
+             */
+            portal_enabled: boolean;
+            /**
+             * Portal Subdomain
+             * @default null
+             */
+            portal_subdomain: string | null;
+            /**
+             * Primary Color
+             * @default null
+             */
+            primary_color: string | null;
+            /**
+             * Secondary Color
+             * @default null
+             */
+            secondary_color: string | null;
+        };
+        /** OrgPortalView */
+        OrgPortalView: {
+            /**
+             * Contrast Primary On White
+             * @default null
+             */
+            contrast_primary_on_white: number | null;
+            /** Display Name */
+            display_name: string;
+            /** Has Logo */
+            has_logo: boolean;
+            /**
+             * Logo Sha256
+             * @default null
+             */
+            logo_sha256: string | null;
+            /** Portal Enabled */
+            portal_enabled: boolean;
+            /**
+             * Portal Subdomain
+             * @default null
+             */
+            portal_subdomain: string | null;
+            /**
+             * Primary Color
+             * @default null
+             */
+            primary_color: string | null;
+            /**
+             * Secondary Color
+             * @default null
+             */
+            secondary_color: string | null;
+            /**
+             * Text On Primary
+             * @default null
+             */
+            text_on_primary: string | null;
+            /**
+             * Theme Applied
+             * @description True when the primary color passes the contrast check and themes the portal
+             * @default false
+             */
+            theme_applied: boolean;
+            /**
+             * Url
+             * @description The portal address, when enabled and the installation has a base domain
+             * @default null
+             */
+            url: string | null;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
         /**
          * OrgPosture
          * @description One organization's security posture, computed from its own records at request time.
@@ -6501,6 +7236,7 @@ export interface components {
             description: string;
             /**
              * @default {
+             *       "automatic": false,
              *       "max_runs_per_day": 20,
              *       "min_case_severity": "low",
              *       "modes": [
@@ -6527,9 +7263,17 @@ export interface components {
         /**
          * PlaybookExecutionPolicy
          * @description Consolidation: how an APPROVED playbook version may run. Live mode still needs the organization's response
-         *     policy (live_enabled) and a human approval for every consequential step; this policy can only narrow that.
+         *     policy (live_enabled); this policy can only narrow that. `automatic`: the version may also be started by NovrSOAR
+         *     automation when a new alert matches its triggers (the organization's automation must be on as well). A
+         *     consequential step of an automatic run proceeds without a person only when the organization's policy
+         *     pre-authorizes the action and every guard passes; otherwise it waits for a human approval.
          */
         PlaybookExecutionPolicy: {
+            /**
+             * Automatic
+             * @default false
+             */
+            automatic: boolean;
             /**
              * Max Runs Per Day
              * @default 20
@@ -6704,6 +7448,7 @@ export interface components {
             enabled: boolean;
             /**
              * @default {
+             *       "automatic": false,
              *       "max_runs_per_day": 20,
              *       "min_case_severity": "low",
              *       "modes": [
@@ -6755,6 +7500,94 @@ export interface components {
              * @description 0 = Monday
              */
             weekday: number;
+        };
+        /** PortalBranding */
+        PortalBranding: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Logo Url
+             * @description Relative URL of the logo, versioned by its digest
+             * @default null
+             */
+            logo_url: string | null;
+            /**
+             * Primary Color
+             * @default null
+             */
+            primary_color: string | null;
+            /**
+             * Secondary Color
+             * @default null
+             */
+            secondary_color: string | null;
+            /**
+             * Text On Primary
+             * @default #ffffff
+             */
+            text_on_primary: string;
+            /**
+             * @description Applied throughout the portal; null when the colors are not approved
+             * @default null
+             */
+            theme: components["schemas"]["PortalTheme"] | null;
+        };
+        /** PortalInfo */
+        PortalInfo: {
+            /** @default null */
+            branding: components["schemas"]["PortalBranding"] | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "platform" | "tenant";
+            /** @default null */
+            organization: components["schemas"]["PortalOrg"] | null;
+        };
+        /** PortalOrg */
+        PortalOrg: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PortalTheme
+         * @description An APPROVED theme: derived from the organization's primary color only when it reaches WCAG AA against white.
+         */
+        PortalTheme: {
+            /** On Primary */
+            on_primary: string;
+            /** Primary */
+            primary: string;
+            /** Primary Fill */
+            primary_fill: string;
+            /** Primary Hover */
+            primary_hover: string;
+            /** Tint Dark */
+            tint_dark: string;
+            /** Tint Light */
+            tint_light: string;
+        };
+        /**
+         * PostureAnalysisRequest
+         * @description Combined analysis: the organization's SIEM alerts, VMS findings, assets, cases, Threat Insights matches, SOAR
+         *     activity, remediation and posture over a window, as cited aggregates. `platform`: NovrSOC platform staff with the
+         *     platform organization active get per-organization aggregates of their command scope (no record crosses tenants;
+         *     the job is stored in the platform organization).
+         */
+        PostureAnalysisRequest: {
+            /**
+             * Scope
+             * @default organization
+             * @enum {string}
+             */
+            scope: "organization" | "platform";
+            /**
+             * Window Days
+             * @default 7
+             */
+            window_days: number;
         };
         /** PostureAssessment */
         PostureAssessment: {
@@ -7805,6 +8638,12 @@ export interface components {
              */
             case_id: string;
             /**
+             * Confidence
+             * @description Automatic runs: the detection confidence
+             * @default null
+             */
+            confidence: number | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -7815,6 +8654,12 @@ export interface components {
              */
             id: string;
             mode: components["schemas"]["ExecutionMode"];
+            /**
+             * Origin
+             * @default manual
+             * @enum {string}
+             */
+            origin: "manual" | "automatic";
             /**
              * Playbook Id
              * Format: uuid
@@ -7831,6 +8676,11 @@ export interface components {
              * @default []
              */
             steps: components["schemas"]["StepView"][];
+            /**
+             * Trigger Alert Id
+             * @default null
+             */
+            trigger_alert_id: string | null;
             /**
              * Updated At
              * Format: date-time
@@ -8601,7 +9451,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "SOAR_RUN_REQUESTED" | "SOAR_RUN_STATE" | "SOAR_APPROVAL_REQUESTED" | "SOAR_APPROVAL_DECIDED" | "SOAR_STEP_EXECUTED" | "SOAR_STEP_RETRY_SCHEDULED" | "SOAR_LIVE_REFUSED";
+            action: "SOAR_RUN_REQUESTED" | "SOAR_RUN_STATE" | "SOAR_APPROVAL_REQUESTED" | "SOAR_APPROVAL_DECIDED" | "SOAR_STEP_EXECUTED" | "SOAR_STEP_RETRY_SCHEDULED" | "SOAR_LIVE_REFUSED" | "SOAR_AUTOMATION_CHANGED" | "SOAR_AUTOMATIC_RUN" | "SOAR_POLICY_AUTHORIZED" | "SOAR_AUTOMATIC_CASE";
             actor: components["schemas"]["ActorRef"];
             /** @default null */
             from_state: components["schemas"]["RunState"] | null;
@@ -8619,12 +9469,78 @@ export interface components {
             to_state: components["schemas"]["RunState"] | null;
         };
         /**
+         * SoarAutomationPolicy
+         * @description Policy-driven orchestration of one organization. Off by default.
+         *
+         *     * `case_creation`: new alerts at or above `case_min_severity` open (or join) an automation case without a person.
+         *     * `enabled`: approved playbook versions marked `automatic` start on matching new alerts.
+         *     * `pre_authorized_actions`: consequential actions that may proceed WITHOUT a per-event human approval, and only when
+         *       the detection confidence is at least `min_confidence`, the target comes from the alert's own evidence, its agent
+         *       groups are authorized, it is not a protected target, and fewer than `max_dispatches_per_hour` automatic dispatches
+         *       happened in the last hour. Each must also be in the policy's `allowed_actions`. Everything else waits for a person.
+         *     * `protected_targets`: IP addresses or networks (CIDR), NovrAgent ids and account names that no response action
+         *       (automatic or approved) may ever target.
+         */
+        SoarAutomationPolicy: {
+            /**
+             * Case Creation
+             * @default false
+             */
+            case_creation: boolean;
+            /**
+             * Case Min Severity
+             * @default high
+             * @enum {string}
+             */
+            case_min_severity: "low" | "medium" | "high" | "critical";
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Max Dispatches Per Hour
+             * @default 20
+             */
+            max_dispatches_per_hour: number;
+            /**
+             * Min Confidence
+             * @default 80
+             */
+            min_confidence: number;
+            /**
+             * Pre Authorized Actions
+             * @default []
+             */
+            pre_authorized_actions: components["schemas"]["ActionType"][];
+            /**
+             * Protected Targets
+             * @default []
+             */
+            protected_targets: string[];
+        };
+        /**
          * SoarOperations
          * @description The operations centre view. `ai_analysis` entries are analysis only; execution entries come from the engine.
          */
         SoarOperations: {
             /** Approved Playbooks */
             approved_playbooks: number;
+            /**
+             * Automatic Cases 24H
+             * @default 0
+             */
+            automatic_cases_24h: number;
+            /**
+             * Automatic Runs 24H
+             * @default 0
+             */
+            automatic_runs_24h: number;
+            /**
+             * Automation Enabled
+             * @default false
+             */
+            automation_enabled: boolean;
             /** Awaiting Approval */
             awaiting_approval: number;
             /** Completed 24H */
@@ -8653,6 +9569,12 @@ export interface components {
             max_runs_per_hour: number;
             /** Pending Playbook Reviews */
             pending_playbook_reviews: number;
+            /**
+             * Policy Authorized 24H
+             * @description Consequential steps dispatched under pre-authorization
+             * @default 0
+             */
+            policy_authorized_24h: number;
             /** Refused 24H */
             refused_24h: number;
             /** Running */
@@ -8673,6 +9595,11 @@ export interface components {
              * @default 60
              */
             approval_ttl_minutes: number;
+            /**
+             * @description Omitted: the automation policy is unchanged
+             * @default null
+             */
+            automation: components["schemas"]["SoarAutomationPolicy"] | null;
             /**
              * Live Enabled
              * @default false
@@ -8700,6 +9627,14 @@ export interface components {
             allowed_agent_groups: string[];
             /** Approval Ttl Minutes */
             approval_ttl_minutes: number;
+            /** @description Policy-driven orchestration (off by default) */
+            automation?: components["schemas"]["SoarAutomationPolicy"];
+            /**
+             * Automation Since
+             * @description When automation was last switched on: only alerts received after this are ever acted on
+             * @default null
+             */
+            automation_since: string | null;
             /**
              * Emergency At
              * @default null
@@ -8805,6 +9740,12 @@ export interface components {
              */
             approval_id: string | null;
             /**
+             * Authorization
+             * @description Who authorized a consequential step: a person, or the pre-authorization policy
+             * @default null
+             */
+            authorization: ("human" | "policy") | null;
+            /**
              * Id
              * Format: uuid
              */
@@ -8813,6 +9754,14 @@ export interface components {
             message: string;
             /** @default null */
             receipt: components["schemas"]["ExecutionReceipt"] | null;
+            /**
+             * Request
+             * @description The exact request body signed and sent to NovrSOAR (no secret is part of it)
+             * @default null
+             */
+            request: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Request Id
              * @default null
@@ -9012,6 +9961,18 @@ export interface components {
             /** Updated */
             updated: number;
         };
+        /** SyslogTarget */
+        SyslogTarget: {
+            /**
+             * Address
+             * @default null
+             */
+            address: string | null;
+            /** Port */
+            port: number;
+            /** Protocols */
+            protocols: string[];
+        };
         /**
          * TaskExecution
          * @description One step attempt, written by the SOAR worker (API reads). Unique (run_id, step_key, attempt).
@@ -9089,6 +10050,56 @@ export interface components {
              * Format: uuid
              */
             user_id: string;
+        };
+        /**
+         * TeamPresence
+         * @description The active organization's people: active members by role and, when presence is tracked, how many sent a
+         *     heartbeat from an open NovrSOC tab within `online_window_minutes`. `presence_tracked` is false until anybody has
+         *     ever sent a heartbeat for this organization: then `online` is unknown, never zero by assumption.
+         */
+        TeamPresence: {
+            /**
+             * Assigned Staff
+             * @description Active NovrSOC staff assigned to work this organization
+             */
+            assigned_staff: number;
+            /** By Role */
+            by_role: components["schemas"]["TeamRoleCount"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Members
+             * @description Active people whose home is this organization
+             */
+            members: number;
+            /**
+             * Online
+             * @default null
+             */
+            online: number | null;
+            /**
+             * Online Window Minutes
+             * @default 2
+             */
+            online_window_minutes: number;
+            /** Presence Tracked */
+            presence_tracked: boolean;
+        };
+        /** TeamRoleCount */
+        TeamRoleCount: {
+            /** Members */
+            members: number;
+            /**
+             * Online
+             * @description Unknown (null) while presence is not tracked
+             * @default null
+             */
+            online: number | null;
+            /** Role */
+            role: string;
         };
         /** TeamView */
         TeamView: {
@@ -9175,6 +10186,37 @@ export interface components {
              * Format: uuid
              */
             source_id: string;
+        };
+        /** TenantOnboarding */
+        TenantOnboarding: {
+            agent_group: components["schemas"]["AgentGroupView"];
+            agents: components["schemas"]["OnboardingAgents"];
+            /** @default null */
+            asset_sync: components["schemas"]["AssetSyncStatus"] | null;
+            /** Completed */
+            completed: number;
+            /** @default null */
+            enrollment: components["schemas"]["AgentEnrollmentStatus"] | null;
+            /** Installer Available */
+            installer_available: boolean;
+            /**
+             * Installer Reason
+             * @default
+             */
+            installer_reason: string;
+            organization: components["schemas"]["PortalOrg"];
+            /**
+             * Portal Url
+             * @default null
+             */
+            portal_url: string | null;
+            sources: components["schemas"]["OnboardingSources"];
+            /** Steps */
+            steps: components["schemas"]["OnboardingStep"][];
+            syslog: components["schemas"]["SyslogTarget"];
+            telemetry: components["schemas"]["OnboardingTelemetry"];
+            /** Total */
+            total: number;
         };
         /**
          * ThreatActorCreate

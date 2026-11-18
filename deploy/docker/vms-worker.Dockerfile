@@ -13,7 +13,7 @@ RUN groupadd --system --gid 10002 novrsoc-vms \
 WORKDIR /srv/vms-worker
 COPY services/vms-worker/requirements.lock requirements.lock
 RUN pip install --no-deps -r requirements.lock && pip check
-COPY services/vms-worker/v2_adapter.py services/vms-worker/worker.py ./
+COPY services/vms-worker/v2_adapter.py services/vms-worker/worker.py services/vms-worker/gmp.py ./
 RUN python -m compileall -q . \
  && ! command -v nmap && ! python -c "import gvm" 2>/dev/null
 

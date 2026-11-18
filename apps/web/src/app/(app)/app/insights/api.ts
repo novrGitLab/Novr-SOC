@@ -8,6 +8,8 @@ const P = {
     matches: '/api/v1/insights/matches', verdict: '/api/v1/insights/matches/{match_id}/verdict', correlations: '/api/v1/insights/correlations',
     bundles: '/api/v1/insights/stix/bundles', feedRuns: '/api/v1/insights/feed-runs',
     explain: '/api/v1/nhai/alert-explanations', jobs: '/api/v1/nhai/jobs', job: '/api/v1/nhai/jobs/{job_id}', review: '/api/v1/nhai/jobs/{job_id}/review',
+    readiness: '/api/v1/nhai/readiness', overview: '/api/v1/nhai/overview', posture: '/api/v1/nhai/posture-analyses',
+    retry: '/api/v1/nhai/jobs/{job_id}/retry',
 } as const satisfies Record<string, ApiPath>;
 
 export const insightsApi = {
@@ -29,4 +31,9 @@ export const nhaiApi = {
     job: (orgId: string | null, id: string) => request<NhaiJob>(fillPath(P.job, { job_id: id }), { orgId }),
     review: (orgId: string | null, id: string, decision: Schemas['NhaiReviewRequest']['decision'], note: string) =>
         request<NhaiJob>(fillPath(P.review, { job_id: id }), { method: 'POST', orgId, body: { decision, note } }),
+    readiness: (orgId: string | null) => request<Schemas['NhaiReadiness']>(P.readiness, { orgId }),
+    overview: (orgId: string | null) => request<Schemas['NhaiOverview']>(P.overview, { orgId }),
+    analyse: (orgId: string | null, scope: 'organization' | 'platform', windowDays: number) =>
+        request<NhaiJob>(P.posture, { method: 'POST', orgId, body: { scope, window_days: windowDays } satisfies Schemas['PostureAnalysisRequest'] }),
+    retry: (orgId: string | null, id: string) => request<NhaiJob>(fillPath(P.retry, { job_id: id }), { method: 'POST', orgId }),
 };

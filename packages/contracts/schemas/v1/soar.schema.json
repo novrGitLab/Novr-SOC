@@ -378,6 +378,15 @@
         "action": {
           "$ref": "#/$defs/ActionType"
         },
+        "authorization": {
+          "default": "human",
+          "enum": [
+            "human",
+            "policy"
+          ],
+          "title": "Authorization",
+          "type": "string"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -465,6 +474,142 @@
         "created_at"
       ],
       "title": "ApprovalView",
+      "type": "object"
+    },
+    "AutomationDecision": {
+      "enum": [
+        "case_created",
+        "case_joined",
+        "run_started",
+        "skipped_emergency_stop",
+        "skipped_limit",
+        "skipped_severity",
+        "failed"
+      ],
+      "title": "AutomationDecision",
+      "type": "string"
+    },
+    "AutomationEventList": {
+      "additionalProperties": false,
+      "properties": {
+        "case_creation": {
+          "title": "Case Creation",
+          "type": "boolean"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AutomationEventView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Since"
+        }
+      },
+      "required": [
+        "items",
+        "enabled",
+        "case_creation"
+      ],
+      "title": "AutomationEventList",
+      "type": "object"
+    },
+    "AutomationEventView": {
+      "additionalProperties": false,
+      "description": "One decision NovrSOAR automation took for one new alert (and playbook, when one matched).",
+      "properties": {
+        "alert_id": {
+          "format": "uuid",
+          "title": "Alert Id",
+          "type": "string"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        },
+        "confidence": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "integer"
+        },
+        "confidence_factors": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Confidence Factors",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/AutomationDecision"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "playbook_name": {
+          "default": "",
+          "title": "Playbook Name",
+          "type": "string"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        }
+      },
+      "required": [
+        "id",
+        "created_at",
+        "alert_id",
+        "decision",
+        "confidence"
+      ],
+      "title": "AutomationEventView",
       "type": "object"
     },
     "CasePromotionResult": {
@@ -681,6 +826,7 @@
         "execution_policy": {
           "$ref": "#/$defs/PlaybookExecutionPolicy",
           "default": {
+            "automatic": false,
             "max_runs_per_day": 20,
             "min_case_severity": "low",
             "modes": [
@@ -727,8 +873,13 @@
     },
     "PlaybookExecutionPolicy": {
       "additionalProperties": false,
-      "description": "Consolidation: how an APPROVED playbook version may run. Live mode still needs the organization's response\npolicy (live_enabled) and a human approval for every consequential step; this policy can only narrow that.",
+      "description": "Consolidation: how an APPROVED playbook version may run. Live mode still needs the organization's response\npolicy (live_enabled); this policy can only narrow that. `automatic`: the version may also be started by NovrSOAR\nautomation when a new alert matches its triggers (the organization's automation must be on as well). A\nconsequential step of an automatic run proceeds without a person only when the organization's policy\npre-authorizes the action and every guard passes; otherwise it waits for a human approval.",
       "properties": {
+        "automatic": {
+          "default": false,
+          "title": "Automatic",
+          "type": "boolean"
+        },
         "max_runs_per_day": {
           "default": 20,
           "maximum": 500,
@@ -1077,6 +1228,7 @@
         "execution_policy": {
           "$ref": "#/$defs/PlaybookExecutionPolicy",
           "default": {
+            "automatic": false,
             "max_runs_per_day": 20,
             "min_case_severity": "low",
             "modes": [
@@ -1306,6 +1458,21 @@
           "title": "Case Id",
           "type": "string"
         },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Automatic runs: the detection confidence",
+          "title": "Confidence"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -1318,6 +1485,15 @@
         },
         "mode": {
           "$ref": "#/$defs/ExecutionMode"
+        },
+        "origin": {
+          "default": "manual",
+          "enum": [
+            "manual",
+            "automatic"
+          ],
+          "title": "Origin",
+          "type": "string"
         },
         "playbook_id": {
           "format": "uuid",
@@ -1345,6 +1521,19 @@
           },
           "title": "Steps",
           "type": "array"
+        },
+        "trigger_alert_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trigger Alert Id"
         },
         "updated_at": {
           "format": "date-time",
@@ -1390,7 +1579,11 @@
             "SOAR_APPROVAL_DECIDED",
             "SOAR_STEP_EXECUTED",
             "SOAR_STEP_RETRY_SCHEDULED",
-            "SOAR_LIVE_REFUSED"
+            "SOAR_LIVE_REFUSED",
+            "SOAR_AUTOMATION_CHANGED",
+            "SOAR_AUTOMATIC_RUN",
+            "SOAR_POLICY_AUTHORIZED",
+            "SOAR_AUTOMATIC_CASE"
           ],
           "title": "Action",
           "type": "string"
@@ -1446,6 +1639,69 @@
       "title": "SoarAuditEvent",
       "type": "object"
     },
+    "SoarAutomationPolicy": {
+      "additionalProperties": false,
+      "description": "Policy-driven orchestration of one organization. Off by default.\n\n* `case_creation`: new alerts at or above `case_min_severity` open (or join) an automation case without a person.\n* `enabled`: approved playbook versions marked `automatic` start on matching new alerts.\n* `pre_authorized_actions`: consequential actions that may proceed WITHOUT a per-event human approval, and only when\n  the detection confidence is at least `min_confidence`, the target comes from the alert's own evidence, its agent\n  groups are authorized, it is not a protected target, and fewer than `max_dispatches_per_hour` automatic dispatches\n  happened in the last hour. Each must also be in the policy's `allowed_actions`. Everything else waits for a person.\n* `protected_targets`: IP addresses or networks (CIDR), NovrAgent ids and account names that no response action\n  (automatic or approved) may ever target.",
+      "properties": {
+        "case_creation": {
+          "default": false,
+          "title": "Case Creation",
+          "type": "boolean"
+        },
+        "case_min_severity": {
+          "default": "high",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Case Min Severity",
+          "type": "string"
+        },
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "max_dispatches_per_hour": {
+          "default": 20,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Max Dispatches Per Hour",
+          "type": "integer"
+        },
+        "min_confidence": {
+          "default": 80,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Min Confidence",
+          "type": "integer"
+        },
+        "pre_authorized_actions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ActionType"
+          },
+          "title": "Pre Authorized Actions",
+          "type": "array"
+        },
+        "protected_targets": {
+          "default": [],
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:/\\\\-]{1,64}$",
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Protected Targets",
+          "type": "array"
+        }
+      },
+      "title": "SoarAutomationPolicy",
+      "type": "object"
+    },
     "SoarOperations": {
       "additionalProperties": false,
       "description": "The operations centre view. `ai_analysis` entries are analysis only; execution entries come from the engine.",
@@ -1454,6 +1710,23 @@
           "minimum": 0,
           "title": "Approved Playbooks",
           "type": "integer"
+        },
+        "automatic_cases_24h": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Automatic Cases 24H",
+          "type": "integer"
+        },
+        "automatic_runs_24h": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Automatic Runs 24H",
+          "type": "integer"
+        },
+        "automation_enabled": {
+          "default": false,
+          "title": "Automation Enabled",
+          "type": "boolean"
         },
         "awaiting_approval": {
           "minimum": 0,
@@ -1505,6 +1778,13 @@
         "pending_playbook_reviews": {
           "minimum": 0,
           "title": "Pending Playbook Reviews",
+          "type": "integer"
+        },
+        "policy_authorized_24h": {
+          "default": 0,
+          "description": "Consequential steps dispatched under pre-authorization",
+          "minimum": 0,
+          "title": "Policy Authorized 24H",
           "type": "integer"
         },
         "refused_24h": {
@@ -1576,6 +1856,18 @@
           "title": "Approval Ttl Minutes",
           "type": "integer"
         },
+        "automation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SoarAutomationPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Omitted: the automation policy is unchanged"
+        },
         "live_enabled": {
           "default": false,
           "title": "Live Enabled",
@@ -1627,6 +1919,24 @@
           "minimum": 5,
           "title": "Approval Ttl Minutes",
           "type": "integer"
+        },
+        "automation": {
+          "$ref": "#/$defs/SoarAutomationPolicy",
+          "description": "Policy-driven orchestration (off by default)"
+        },
+        "automation_since": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When automation was last switched on: only alerts received after this are ever acted on",
+          "title": "Automation Since"
         },
         "emergency_at": {
           "anyOf": [
@@ -1771,6 +2081,23 @@
           "default": null,
           "title": "Approval Id"
         },
+        "authorization": {
+          "anyOf": [
+            {
+              "enum": [
+                "human",
+                "policy"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Who authorized a consequential step: a person, or the pre-authorization policy",
+          "title": "Authorization"
+        },
         "id": {
           "format": "uuid",
           "title": "Id",
@@ -1790,6 +2117,20 @@
             }
           ],
           "default": null
+        },
+        "request": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The exact request body signed and sent to NovrSOAR (no secret is part of it)",
+          "title": "Request"
         },
         "request_id": {
           "anyOf": [

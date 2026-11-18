@@ -63,11 +63,11 @@ export default function AlertsPage() {
                                     {data.items.map((a) => (
                                         <tr key={a.id} data-alert-id={a.id} className="hover:bg-card-muted/60 transition-colors">
                                             <td className="px-4 py-3"><SeverityBadge severity={a.severity} /><span className="block text-[11px] text-foreground-muted">Level {a.rule_level}</span></td>
-                                            <td className="px-4 py-3 min-w-[14rem]">
-                                                <Link href={`/app/alerts/${a.id}`} className="font-semibold text-purple dark:text-[var(--vz-prog-4)] hover:underline">{a.rule_description || `Rule ${a.rule_id}`}</Link>
+                                            <td className="px-4 py-3 min-w-[14rem] max-w-[36rem] wrap-any">
+                                                <Link href={`/app/alerts/${a.id}`} className="font-semibold text-purple dark:text-[var(--vz-prog-4)] hover:underline wrap-any">{a.rule_description || `Rule ${a.rule_id}`}</Link>
                                                 <span className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[11px] text-foreground-muted">Rule {a.rule_id}{a.source === 'local_fixture' && <FixtureTag />}</span>
                                             </td>
-                                            <td className="px-4 py-3 text-xs hidden md:table-cell">{a.agent_name || '—'}<span className="block text-[11px] text-foreground-muted font-mono">#{a.agent_id}</span>
+                                            <td className="px-4 py-3 text-xs hidden md:table-cell max-w-[14rem] wrap-any">{a.agent_name || '—'}<span className="block text-[11px] text-foreground-muted font-mono">#{a.agent_id}</span>
                                                 {a.asset_id && <Link href={`/app/assets/${a.asset_id}`} className="block text-[11px] underline text-foreground-muted">Asset</Link>}</td>
                                             <td className="px-4 py-3"><StatusPill tone={STATUS_TONE[a.status] ?? 'neutral'} label={ALERT_STATUS_LABEL[a.status] ?? a.status} />
                                                 {a.case_id && <Link href={`/app/cases/${a.case_id}`} className="block text-[11px] underline text-foreground-muted">In a case</Link>}</td>

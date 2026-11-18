@@ -11,6 +11,7 @@ import { Field, Loaded, TextInput } from '@/foundation/ui/pilot';
 import { useAction } from '@/foundation/ui/module';
 import { useResource } from '@/foundation/ui/useResource';
 import { soarApi, type Policy } from '../api';
+import { AutomationPanel, automationOf } from './AutomationPanel';
 
 const CONSEQUENTIAL = ['block_ip', 'isolate_agent', 'disable_account'] as const;
 type Draft = { actions: Set<string>; groups: string; live: boolean; ttl: number; perHour: number; attempts: number };
@@ -25,9 +26,15 @@ export default function SoarPolicyPage() {
 
     async function save(e: FormEvent) {
         e.preventDefault(); if (!d) return;
+        const actions = [...d.actions] as Policy['allowed_actions'];
+        const cur = policy.data ? automationOf(policy.data) : undefined;
+        // Removing an allowed action also removes its pre-authorization (the API refuses a pre-authorized action that is not allowed).
+        const automation = cur && cur.pre_authorized_actions.some((a) => !d.actions.has(a))
+            ? { ...cur, pre_authorized_actions: cur.pre_authorized_actions.filter((a) => d.actions.has(a)) } : undefined;
         const r = await act.run(() => soarApi.setPolicy(orgId, {
-            allowed_actions: [...d.actions] as Policy['allowed_actions'], allowed_agent_groups: d.groups.split(',').map((g) => g.trim()).filter(Boolean),
+            allowed_actions: actions, allowed_agent_groups: d.groups.split(',').map((g) => g.trim()).filter(Boolean),
             live_enabled: d.live, approval_ttl_minutes: d.ttl, max_runs_per_hour: d.perHour, max_dispatch_attempts: d.attempts,
+            ...(automation ? { automation } : {}),
         }), 'Response policy saved.');
         if (r) { policy.reload(); setD(null); }
     }
@@ -35,14 +42,14 @@ export default function SoarPolicyPage() {
     return (
         <>
             <PageHeader title="Response policy" icon={Scale}
-                description="What this organization authorizes NovrSOAR to execute. NovrSOAR applies its own authorization as well; both must agree, and a person approves every step." />
+                description="What this organization authorizes NovrSOAR to execute. NovrSOAR applies its own authorization as well; both must agree. A consequential step needs a person's approval unless the automation policy below pre-authorizes it." />
             {act.notice}
             <Loaded title="Policy" data={policy.data} error={policy.error} reload={policy.reload} testid="soar-policy">
                 {(p) => d === null ? (
                     <div className="text-sm space-y-2">
                         <p>Allowed actions: {p.allowed_actions.length ? p.allowed_actions.map((a) => <Tag key={a}>{a}</Tag>) : <em className="text-foreground-muted">none</em>}</p>
                         <p>Authorized NovrAgent groups: {p.allowed_agent_groups.length ? p.allowed_agent_groups.map((g) => <Tag key={g}>{g}</Tag>) : <em className="text-foreground-muted">none</em>}</p>
-                        <p>Live execution: <StatusPill tone={p.live_enabled ? 'warning' : 'neutral'} label={p.live_enabled ? 'enabled (still needs approval)' : 'disabled (dry runs only)'} /></p>
+                        <p>Live execution: <StatusPill tone={p.live_enabled ? 'warning' : 'neutral'} label={p.live_enabled ? 'enabled (each step needs an approval or a pre-authorization)' : 'disabled (dry runs only)'} /></p>
                         <p>Approvals expire after {p.approval_ttl_minutes} min · at most {p.max_runs_per_hour} runs per hour · {p.max_dispatch_attempts} dispatch attempts per step</p>
                         <p>Emergency stop: <StatusPill tone={p.emergency_stop ? 'critical' : 'good'} label={p.emergency_stop ? `ON: ${p.emergency_reason}` : 'not active'} /></p>
                         {can('soar:manage') && <button className={btn('secondary')} onClick={() => edit(p)}>Edit policy</button>}
@@ -63,6 +70,10 @@ export default function SoarPolicyPage() {
                         <div className="flex gap-2"><button className={btn('primary')} type="submit" disabled={act.busy}>Save</button><button className={btn('ghost')} type="button" onClick={() => setD(null)}>Cancel</button></div>
                     </form>
                 )}
+            </Loaded>
+            <Loaded title="Automation" hint="Policy-driven orchestration: automatic cases, automatic playbooks and pre-authorized actions"
+                data={policy.data} error={policy.error} reload={policy.reload} testid="soar-automation-card">
+                {(p) => <AutomationPanel p={p} onSaved={policy.reload} />}
             </Loaded>
         </>
     );

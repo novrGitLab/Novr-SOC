@@ -243,6 +243,95 @@ export interface paths {
         patch: operations["update_org_api_v1_admin_organizations__org_id__patch"];
         trace?: never;
     };
+    "/api/v1/admin/organizations/{org_id}/agent-group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's provisioned agent group */
+        get: operations["get_agent_group_api_v1_admin_organizations__org_id__agent_group_get"];
+        put?: never;
+        /** Provision the organization's agent group: an unguessable name, mapped to it (idempotent; audited) */
+        post: operations["provision_agent_group_api_v1_admin_organizations__org_id__agent_group_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organizations/{org_id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Invitations of an organization */
+        get: operations["list_invitations_api_v1_admin_organizations__org_id__invitations_get"];
+        put?: never;
+        /** Invite an organization administrator or member (the link is shown once; audited) */
+        post: operations["create_invitation_api_v1_admin_organizations__org_id__invitations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organizations/{org_id}/invitations/{invitation_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke an invitation (audited) */
+        post: operations["revoke_invitation_api_v1_admin_organizations__org_id__invitations__invitation_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organizations/{org_id}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upload an organization's logo (PNG, JPEG, WebP; audited) */
+        put: operations["put_logo_api_v1_admin_organizations__org_id__logo_put"];
+        post?: never;
+        /** Remove an organization's logo (audited) */
+        delete: operations["delete_logo_api_v1_admin_organizations__org_id__logo_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organizations/{org_id}/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An organization's portal address and branding */
+        get: operations["get_portal_api_v1_admin_organizations__org_id__portal_get"];
+        /** Set an organization's portal and branding (audited) */
+        put: operations["put_portal_api_v1_admin_organizations__org_id__portal_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/organizations/{org_id}/status": {
         parameters: {
             query?: never;
@@ -1606,6 +1695,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/install/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The installer registers this endpoint with an enrollment ticket; NovrSOC registers the agent on the manager */
+        post: operations["enroll_api_v1_install_enroll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/install/{script}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download the organization's NovrAgent installer (link from the portal's onboarding page) */
+        get: operations["download_api_v1_install__script__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept an invitation: create the account (public) */
+        post: operations["accept_api_v1_invitations_accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What an invitation is for, before accepting it (public) */
+        post: operations["preview_api_v1_invitations_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/log-sources": {
         parameters: {
             query?: never;
@@ -1670,6 +1827,23 @@ export interface paths {
         put?: never;
         /** Retire a source (kept for history; its events are then quarantined) */
         post: operations["retire_source_api_v1_log_sources__source_id__retire_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/log-sources/{source_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** NovrSOC: verify a sender an organization registered, and enable it (audited) */
+        post: operations["verify_source_api_v1_log_sources__source_id__verify_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1778,6 +1952,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nhai/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue the same request again for a failed or timed-out job (evidence assembled afresh) */
+        post: operations["retry_job_api_v1_nhai_jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nhai/jobs/{job_id}/review": {
         parameters: {
             query?: never;
@@ -1789,6 +1980,125 @@ export interface paths {
         put?: never;
         /** Accept or reject a draft (human review) */
         post: operations["review_job_api_v1_nhai_jobs__job_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nhai/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** NHAI across the command scope (platform staff), per organization */
+        get: operations["overview_api_v1_nhai_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nhai/posture-analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue a combined analysis: SIEM, VMS, assets, cases, Threat Insights, SOAR, remediation and posture */
+        post: operations["request_posture_analysis_api_v1_nhai_posture_analyses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nhai/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** NHAI readiness from records: backend, worker heartbeat, queue, outcomes */
+        get: operations["get_readiness_api_v1_nhai_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/onboarding/installer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** An enrollment ticket and NovrAgent installer command (audited) */
+        post: operations["installer_api_v1_onboarding_installer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/onboarding/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Onboarding progress of the active organization */
+        get: operations["status_api_v1_onboarding_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/onboarding/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Enrollment tickets of the active organization */
+        get: operations["tickets_api_v1_onboarding_tickets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/onboarding/tickets/{ticket_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke an enrollment ticket (audited) */
+        post: operations["revoke_ticket_api_v1_onboarding_tickets__ticket_id__revoke_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1829,6 +2139,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which portal this address is, with its public branding (no sign-in needed) */
+        get: operations["portal_info_api_v1_portal_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organization's logo for this portal (PNG, JPEG or WebP; no sign-in needed) */
+        get: operations["portal_logo_api_v1_portal_logo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/posture/assessment": {
         parameters: {
             query?: never;
@@ -1855,6 +2199,40 @@ export interface paths {
         };
         /** Executive overview: posture, incidents, vulnerabilities, SLA, priorities */
         get: operations["overview_api_v1_posture_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/presence/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** I am here: the signed-in person has this organization open (every 60 s) */
+        post: operations["heartbeat_api_v1_presence_heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/presence/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The active organization's people by role, and who is online now */
+        get: operations["get_team_api_v1_presence_team_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2346,6 +2724,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/soar/automation/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What NovrSOAR automation decided for new alerts (cases opened or joined, runs started, skips, failures) */
+        get: operations["automation_events_api_v1_soar_automation_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/soar/emergency-stop": {
         parameters: {
             query?: never;
@@ -2701,6 +3096,23 @@ export interface paths {
         put?: never;
         /** Assign a case to an analyst (or unassign) */
         post: operations["assign_case_api_v1_soc_cases__case_id__assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/soc/cases/{case_id}/correlation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The case's assets (from the canonical inventory) with their alerts and open vulnerability findings */
+        get: operations["get_case_correlation_api_v1_soc_cases__case_id__correlation_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3445,6 +3857,118 @@ export interface components {
             /** Items */
             items: components["schemas"]["AdminUser"][];
         };
+        /**
+         * AgentEnrollmentRequest
+         * @description Sent by the installer running on the endpoint (public; the ticket is the only key).
+         */
+        AgentEnrollmentRequest: {
+            /** Hostname */
+            hostname: string;
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+            /** Ticket */
+            ticket: string;
+        };
+        /** AgentEnrollmentResult */
+        AgentEnrollmentResult: {
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Key
+             * @description The agent's key, imported by the installer; returned once over TLS and never stored by NovrSOC
+             */
+            key: string;
+            /** Name */
+            name: string;
+        };
+        /** AgentEnrollmentStatus */
+        AgentEnrollmentStatus: {
+            /** Agent Version */
+            agent_version?: string | null;
+            /** Available */
+            available: boolean;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Enrolled Agents
+             * @default 0
+             */
+            enrolled_agents: number;
+            /** Manager Version */
+            manager_version?: string | null;
+            /**
+             * Open Tickets
+             * @default 0
+             */
+            open_tickets: number;
+        };
+        /** AgentEnrollmentTicket */
+        AgentEnrollmentTicket: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created Label */
+            created_label: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Max Uses */
+            max_uses: number;
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "used_up" | "expired" | "revoked";
+            /** Uses */
+            uses: number;
+        };
+        /** AgentEnrollmentTicketList */
+        AgentEnrollmentTicketList: {
+            /** Items */
+            items: components["schemas"]["AgentEnrollmentTicket"][];
+        };
+        /** AgentGroupView */
+        AgentGroupView: {
+            /** Created At */
+            created_at?: string | null;
+            /**
+             * Group Name
+             * @description Shown only to the organization and NovrSOC administrators
+             */
+            group_name?: string | null;
+            /**
+             * Manager Detail
+             * @default
+             */
+            manager_detail: string;
+            /**
+             * On Manager
+             * @description Whether the group exists on the NovrSIEM manager (null: not checked)
+             */
+            on_manager?: boolean | null;
+            /** Provisioned */
+            provisioned: boolean;
+        };
         /** AiActivityList */
         AiActivityList: {
             /** Items */
@@ -3755,6 +4279,12 @@ export interface components {
         /** ApprovalView */
         ApprovalView: {
             action: components["schemas"]["ActionType"];
+            /**
+             * Authorization
+             * @default human
+             * @enum {string}
+             */
+            authorization: "human" | "policy";
             /**
              * Created At
              * Format: date-time
@@ -4243,6 +4773,25 @@ export interface components {
              */
             asset_id: string;
         };
+        /** AssetSyncStatus */
+        AssetSyncStatus: {
+            /**
+             * Interval Minutes
+             * @description 0: scheduled sync is off (on demand only)
+             */
+            interval_minutes: number;
+            /**
+             * Last Detail
+             * @default
+             */
+            last_detail: string;
+            /** Last Outcome */
+            last_outcome?: string | null;
+            /** Last Run At */
+            last_run_at?: string | null;
+            /** Next Due At */
+            next_due_at?: string | null;
+        };
         /** AssetTrendPoint */
         AssetTrendPoint: {
             /** Alerts */
@@ -4335,6 +4884,65 @@ export interface components {
             items: components["schemas"]["AuditEvent"][];
             /** Total */
             total?: number | null;
+        };
+        /**
+         * AutomationDecision
+         * @enum {string}
+         */
+        AutomationDecision: "case_created" | "case_joined" | "run_started" | "skipped_emergency_stop" | "skipped_limit" | "skipped_severity" | "failed";
+        /** AutomationEventList */
+        AutomationEventList: {
+            /** Case Creation */
+            case_creation: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Items */
+            items: components["schemas"]["AutomationEventView"][];
+            /** Since */
+            since?: string | null;
+        };
+        /**
+         * AutomationEventView
+         * @description One decision NovrSOAR automation took for one new alert (and playbook, when one matched).
+         */
+        AutomationEventView: {
+            /**
+             * Alert Id
+             * Format: uuid
+             */
+            alert_id: string;
+            /** Case Id */
+            case_id?: string | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Confidence Factors
+             * @default []
+             */
+            confidence_factors: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            decision: components["schemas"]["AutomationDecision"];
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Playbook Name
+             * @default
+             */
+            playbook_name: string;
+            /** Run Id */
+            run_id?: string | null;
         };
         /** BackupRunList */
         BackupRunList: {
@@ -4550,6 +5158,36 @@ export interface components {
             value: string;
         };
         /**
+         * CaseAssetCorrelation
+         * @description One canonical asset of a case: the case's alerts on it and the asset's open vulnerability findings.
+         */
+        CaseAssetCorrelation: {
+            /** Alert Ids */
+            alert_ids: string[];
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            /** Criticality */
+            criticality: string;
+            /** Display Name */
+            display_name: string;
+            /** Exposure */
+            exposure: string;
+            /**
+             * Open Findings
+             * @default []
+             */
+            open_findings: components["schemas"]["AssetFindingRef"][];
+            /**
+             * Open Findings Total
+             * @description All open findings of the asset; `open_findings` lists the riskiest
+             * @default 0
+             */
+            open_findings_total: number;
+        };
+        /**
          * CaseAssistanceRequest
          * @description Investigation assistance for one case: its linked alerts (authoritative severities), notes, timeline and the
          *     Threat Insights matches of those alerts. A draft for the analyst; it never changes the case.
@@ -4560,6 +5198,29 @@ export interface components {
              * Format: uuid
              */
             case_id: string;
+        };
+        /**
+         * CaseCorrelation
+         * @description SIEM and VMS evidence of one case joined through the canonical asset inventory (never by hostname guessing).
+         */
+        CaseCorrelation: {
+            /**
+             * Alerts Without Asset
+             * @description Linked alerts not yet attributed to an inventory asset
+             */
+            alerts_without_asset: number;
+            /** Assets */
+            assets: components["schemas"]["CaseAssetCorrelation"][];
+            /**
+             * Case Id
+             * Format: uuid
+             */
+            case_id: string;
+            /**
+             * Findings Visible
+             * @description False when the caller may not read VMS findings (vms:read): assets and alerts are still listed, findings are not
+             */
+            findings_visible: boolean;
         };
         /** CaseDetail */
         CaseDetail: {
@@ -6837,6 +7498,150 @@ export interface components {
              */
             verdict: "unreviewed" | "true_positive" | "false_positive" | "benign";
         };
+        /** InstallerCommand */
+        InstallerCommand: {
+            /** Agent Version */
+            agent_version: string;
+            /**
+             * Command
+             * @description Downloads the organization's NovrAgent installer and runs it; carries no password
+             */
+            command: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Max Endpoints */
+            max_endpoints: number;
+            /**
+             * Notes
+             * @default []
+             */
+            notes: string[];
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+            /** Run As */
+            run_as: string;
+            /**
+             * Ticket Id
+             * Format: uuid
+             */
+            ticket_id: string;
+        };
+        /** InstallerRequest */
+        InstallerRequest: {
+            /**
+             * Endpoints
+             * @description How many endpoints this command may enroll
+             * @default 10
+             */
+            endpoints: number;
+            /**
+             * Os
+             * @enum {string}
+             */
+            os: "windows" | "linux" | "macos";
+        };
+        /** InvitationAccept */
+        InvitationAccept: {
+            /** Display Name */
+            display_name: string;
+            /** Password */
+            password: string;
+            /** Token */
+            token: string;
+        };
+        /** InvitationAccepted */
+        InvitationAccepted: {
+            /** Email */
+            email: string;
+            /** Sign In Url */
+            sign_in_url: string;
+        };
+        /** InvitationCreate */
+        InvitationCreate: {
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @default soc_manager
+             * @enum {string}
+             */
+            role: "soc_manager" | "analyst" | "executive" | "portal_user";
+        };
+        /** InvitationCreated */
+        InvitationCreated: {
+            invitation: components["schemas"]["InvitationView"];
+            /**
+             * Link
+             * @description Shown ONCE: only its SHA-256 is stored. The token is in the URL fragment, never sent to a server log
+             */
+            link: string;
+        };
+        /** InvitationList */
+        InvitationList: {
+            /** Items */
+            items: components["schemas"]["InvitationView"][];
+        };
+        /** InvitationPreview */
+        InvitationPreview: {
+            /** Email */
+            email?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Organization */
+            organization?: string | null;
+            /** Role */
+            role?: ("soc_manager" | "analyst" | "executive" | "portal_user") | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "accepted" | "revoked" | "expired" | "organization_inactive";
+        };
+        /** InvitationToken */
+        InvitationToken: {
+            /** Token */
+            token: string;
+        };
+        /** InvitationView */
+        InvitationView: {
+            /** Accepted At */
+            accepted_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invited Label */
+            invited_label: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "soc_manager" | "analyst" | "executive" | "portal_user";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "accepted" | "revoked" | "expired";
+        };
         /** LogSourceCreate */
         LogSourceCreate: {
             /**
@@ -7032,7 +7837,7 @@ export interface components {
              * @description receiving: an event in the last hour; quiet: in the last 24 hours; silent: none for 24 hours or more; never_received; disabled; retired (reassigned or removed, kept for history)
              * @enum {string}
              */
-            status: "receiving" | "quiet" | "silent" | "never_received" | "disabled" | "retired";
+            status: "receiving" | "quiet" | "silent" | "never_received" | "disabled" | "retired" | "pending_verification";
             /**
              * Updated At
              * Format: date-time
@@ -7040,6 +7845,14 @@ export interface components {
             updated_at: string;
             /** Vendor */
             vendor: string;
+            /**
+             * Verified
+             * @description False until a NovrSOC administrator verifies a sender the organization registered itself; until then it stays disabled and its events are quarantined
+             * @default true
+             */
+            verified: boolean;
+            /** Verified At */
+            verified_at?: string | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -7056,6 +7869,16 @@ export interface components {
              */
             csrf_token: string;
             session: components["schemas"]["SessionInfo"];
+        };
+        /** LogoUpload */
+        LogoUpload: {
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
+            /** Data Base64 */
+            data_base64: string;
         };
         /**
          * MatchConfidence
@@ -7292,6 +8115,91 @@ export interface components {
             /** Items */
             items: components["schemas"]["NhaiJob"][];
         };
+        /** NhaiOrgActivity */
+        NhaiOrgActivity: {
+            /** Awaiting Review */
+            awaiting_review: number;
+            /** Failed 24H */
+            failed_24h: number;
+            /** Last Success At */
+            last_success_at?: string | null;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /** Org Name */
+            org_name: string;
+            /** Queued */
+            queued: number;
+            /** Running */
+            running: number;
+            /** Succeeded 24H */
+            succeeded_24h: number;
+        };
+        /**
+         * NhaiOverview
+         * @description NHAI across the caller's command scope (platform staff), read under each organization's own RLS.
+         */
+        NhaiOverview: {
+            /** Organizations */
+            organizations: components["schemas"]["NhaiOrgActivity"][];
+            readiness: components["schemas"]["NhaiReadiness"];
+        };
+        /**
+         * NhaiReadiness
+         * @description What the API can verify about NHAI, from records only (the API never contacts the model). `state`:
+         *     ready (backend configured, worker heard from recently, no stuck queue), degraded (worker silent or queue waiting
+         *     too long, or recent failures only), unavailable (no backend configured).
+         */
+        NhaiReadiness: {
+            /** Awaiting Review */
+            awaiting_review: number;
+            /** Backend Configured */
+            backend_configured: boolean;
+            /** Failed 24H */
+            failed_24h: number;
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Oldest Queued Seconds */
+            oldest_queued_seconds?: number | null;
+            /**
+             * Pilot
+             * @description True for a small model run as a limited, labelled pilot (drafts are less reliable)
+             */
+            pilot: boolean;
+            /**
+             * Pilot Note
+             * @default
+             */
+            pilot_note: string;
+            /** Queued */
+            queued: number;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+            /** Running */
+            running: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ready" | "degraded" | "unavailable";
+            /** Succeeded 24H */
+            succeeded_24h: number;
+            /** Worker Last Seen At */
+            worker_last_seen_at?: string | null;
+            /**
+             * Worker State
+             * @default unknown
+             * @enum {string}
+             */
+            worker_state: "ok" | "degraded" | "failing" | "unknown";
+        };
         /** NhaiResult */
         NhaiResult: {
             /** Citations */
@@ -7379,7 +8287,7 @@ export interface components {
          * NhaiTask
          * @enum {string}
          */
-        NhaiTask: "alert_explanation" | "behavioural_insight_summary" | "investigation_assistance" | "case_note_draft" | "finding_explanation" | "asset_summary" | "chat_answer";
+        NhaiTask: "alert_explanation" | "behavioural_insight_summary" | "investigation_assistance" | "case_note_draft" | "finding_explanation" | "asset_summary" | "chat_answer" | "posture_analysis";
         /** NotificationList */
         NotificationList: {
             /** Items */
@@ -7452,6 +8360,62 @@ export interface components {
          * @enum {string}
          */
         ObservationKind: "host" | "service" | "technology" | "finding";
+        /** OnboardingAgents */
+        OnboardingAgents: {
+            /**
+             * Active
+             * @default 0
+             */
+            active: number;
+            /**
+             * Disconnected
+             * @default 0
+             */
+            disconnected: number;
+            /**
+             * Never Connected
+             * @default 0
+             */
+            never_connected: number;
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * State
+             * @description The agent data source state: connected, local_fixture, unconfigured, unavailable, error
+             */
+            state: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /** OnboardingSources */
+        OnboardingSources: {
+            /**
+             * Never Received
+             * @default 0
+             */
+            never_received: number;
+            /**
+             * Pending Verification
+             * @default 0
+             */
+            pending_verification: number;
+            /**
+             * Receiving
+             * @default 0
+             */
+            receiving: number;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
         /** OnboardingStatus */
         OnboardingStatus: {
             /**
@@ -7483,6 +8447,40 @@ export interface components {
              * @default 0
              */
             total: number;
+        };
+        /** OnboardingStep */
+        OnboardingStep: {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Done */
+            done: boolean;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** OnboardingTelemetry */
+        OnboardingTelemetry: {
+            /**
+             * Alerts 24H
+             * @default 0
+             */
+            alerts_24h: number;
+            /**
+             * Assets
+             * @default 0
+             */
+            assets: number;
+            /** Last Alert At */
+            last_alert_at?: string | null;
+            /**
+             * Vms Enrolled
+             * @default 0
+             */
+            vms_enrolled: number;
         };
         /** OrgAnalyticsRow */
         OrgAnalyticsRow: {
@@ -7750,6 +8748,62 @@ export interface components {
             /** Items */
             items: components["schemas"]["OrgSummary"][];
         };
+        /** OrgPortalUpdate */
+        OrgPortalUpdate: {
+            /**
+             * Display Name
+             * @default
+             */
+            display_name: string;
+            /**
+             * Portal Enabled
+             * @default false
+             */
+            portal_enabled: boolean;
+            /** Portal Subdomain */
+            portal_subdomain?: string | null;
+            /** Primary Color */
+            primary_color?: string | null;
+            /** Secondary Color */
+            secondary_color?: string | null;
+        };
+        /** OrgPortalView */
+        OrgPortalView: {
+            /** Contrast Primary On White */
+            contrast_primary_on_white?: number | null;
+            /** Display Name */
+            display_name: string;
+            /** Has Logo */
+            has_logo: boolean;
+            /** Logo Sha256 */
+            logo_sha256?: string | null;
+            /** Portal Enabled */
+            portal_enabled: boolean;
+            /** Portal Subdomain */
+            portal_subdomain?: string | null;
+            /** Primary Color */
+            primary_color?: string | null;
+            /** Secondary Color */
+            secondary_color?: string | null;
+            /** Text On Primary */
+            text_on_primary?: string | null;
+            /**
+             * Theme Applied
+             * @description True when the primary color passes the contrast check and themes the portal
+             * @default false
+             */
+            theme_applied: boolean;
+            /**
+             * Url
+             * @description The portal address, when enabled and the installation has a base domain
+             */
+            url?: string | null;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+        };
         /**
          * OrgPosture
          * @description One organization's security posture, computed from its own records at request time.
@@ -7999,6 +9053,7 @@ export interface components {
             description: string;
             /**
              * @default {
+             *       "automatic": false,
              *       "max_runs_per_day": 20,
              *       "min_case_severity": "low",
              *       "modes": [
@@ -8025,9 +9080,17 @@ export interface components {
         /**
          * PlaybookExecutionPolicy
          * @description Consolidation: how an APPROVED playbook version may run. Live mode still needs the organization's response
-         *     policy (live_enabled) and a human approval for every consequential step; this policy can only narrow that.
+         *     policy (live_enabled); this policy can only narrow that. `automatic`: the version may also be started by NovrSOAR
+         *     automation when a new alert matches its triggers (the organization's automation must be on as well). A
+         *     consequential step of an automatic run proceeds without a person only when the organization's policy
+         *     pre-authorizes the action and every guard passes; otherwise it waits for a human approval.
          */
         PlaybookExecutionPolicy: {
+            /**
+             * Automatic
+             * @default false
+             */
+            automatic: boolean;
             /**
              * Max Runs Per Day
              * @default 20
@@ -8173,6 +9236,7 @@ export interface components {
             enabled: boolean;
             /**
              * @default {
+             *       "automatic": false,
              *       "max_runs_per_day": 20,
              *       "min_case_severity": "low",
              *       "modes": [
@@ -8223,6 +9287,82 @@ export interface components {
              * @description 0 = Monday
              */
             weekday: number;
+        };
+        /** PortalBranding */
+        PortalBranding: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Logo Url
+             * @description Relative URL of the logo, versioned by its digest
+             */
+            logo_url?: string | null;
+            /** Primary Color */
+            primary_color?: string | null;
+            /** Secondary Color */
+            secondary_color?: string | null;
+            /**
+             * Text On Primary
+             * @default #ffffff
+             */
+            text_on_primary: string;
+            /** @description Applied throughout the portal; null when the colors are not approved */
+            theme?: components["schemas"]["PortalTheme"] | null;
+        };
+        /** PortalInfo */
+        PortalInfo: {
+            branding?: components["schemas"]["PortalBranding"] | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "platform" | "tenant";
+            organization?: components["schemas"]["PortalOrg"] | null;
+        };
+        /** PortalOrg */
+        PortalOrg: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PortalTheme
+         * @description An APPROVED theme: derived from the organization's primary color only when it reaches WCAG AA against white.
+         */
+        PortalTheme: {
+            /** On Primary */
+            on_primary: string;
+            /** Primary */
+            primary: string;
+            /** Primary Fill */
+            primary_fill: string;
+            /** Primary Hover */
+            primary_hover: string;
+            /** Tint Dark */
+            tint_dark: string;
+            /** Tint Light */
+            tint_light: string;
+        };
+        /**
+         * PostureAnalysisRequest
+         * @description Combined analysis: the organization's SIEM alerts, VMS findings, assets, cases, Threat Insights matches, SOAR
+         *     activity, remediation and posture over a window, as cited aggregates. `platform`: NovrSOC platform staff with the
+         *     platform organization active get per-organization aggregates of their command scope (no record crosses tenants;
+         *     the job is stored in the platform organization).
+         */
+        PostureAnalysisRequest: {
+            /**
+             * Scope
+             * @default organization
+             * @enum {string}
+             */
+            scope: "organization" | "platform";
+            /**
+             * Window Days
+             * @default 7
+             */
+            window_days: number;
         };
         /** PostureAssessment */
         PostureAssessment: {
@@ -9006,6 +10146,11 @@ export interface components {
              */
             case_id: string;
             /**
+             * Confidence
+             * @description Automatic runs: the detection confidence
+             */
+            confidence?: number | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -9016,6 +10161,12 @@ export interface components {
              */
             id: string;
             mode: components["schemas"]["ExecutionMode"];
+            /**
+             * Origin
+             * @default manual
+             * @enum {string}
+             */
+            origin: "manual" | "automatic";
             /**
              * Playbook Id
              * Format: uuid
@@ -9032,6 +10183,8 @@ export interface components {
              * @default []
              */
             steps: components["schemas"]["StepView"][];
+            /** Trigger Alert Id */
+            trigger_alert_id?: string | null;
             /**
              * Updated At
              * Format: date-time
@@ -9567,12 +10720,78 @@ export interface components {
             subject: string;
         };
         /**
+         * SoarAutomationPolicy
+         * @description Policy-driven orchestration of one organization. Off by default.
+         *
+         *     * `case_creation`: new alerts at or above `case_min_severity` open (or join) an automation case without a person.
+         *     * `enabled`: approved playbook versions marked `automatic` start on matching new alerts.
+         *     * `pre_authorized_actions`: consequential actions that may proceed WITHOUT a per-event human approval, and only when
+         *       the detection confidence is at least `min_confidence`, the target comes from the alert's own evidence, its agent
+         *       groups are authorized, it is not a protected target, and fewer than `max_dispatches_per_hour` automatic dispatches
+         *       happened in the last hour. Each must also be in the policy's `allowed_actions`. Everything else waits for a person.
+         *     * `protected_targets`: IP addresses or networks (CIDR), NovrAgent ids and account names that no response action
+         *       (automatic or approved) may ever target.
+         */
+        SoarAutomationPolicy: {
+            /**
+             * Case Creation
+             * @default false
+             */
+            case_creation: boolean;
+            /**
+             * Case Min Severity
+             * @default high
+             * @enum {string}
+             */
+            case_min_severity: "low" | "medium" | "high" | "critical";
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Max Dispatches Per Hour
+             * @default 20
+             */
+            max_dispatches_per_hour: number;
+            /**
+             * Min Confidence
+             * @default 80
+             */
+            min_confidence: number;
+            /**
+             * Pre Authorized Actions
+             * @default []
+             */
+            pre_authorized_actions: components["schemas"]["ActionType"][];
+            /**
+             * Protected Targets
+             * @default []
+             */
+            protected_targets: string[];
+        };
+        /**
          * SoarOperations
          * @description The operations centre view. `ai_analysis` entries are analysis only; execution entries come from the engine.
          */
         SoarOperations: {
             /** Approved Playbooks */
             approved_playbooks: number;
+            /**
+             * Automatic Cases 24H
+             * @default 0
+             */
+            automatic_cases_24h: number;
+            /**
+             * Automatic Runs 24H
+             * @default 0
+             */
+            automatic_runs_24h: number;
+            /**
+             * Automation Enabled
+             * @default false
+             */
+            automation_enabled: boolean;
             /** Awaiting Approval */
             awaiting_approval: number;
             /** Completed 24H */
@@ -9601,6 +10820,12 @@ export interface components {
             max_runs_per_hour: number;
             /** Pending Playbook Reviews */
             pending_playbook_reviews: number;
+            /**
+             * Policy Authorized 24H
+             * @description Consequential steps dispatched under pre-authorization
+             * @default 0
+             */
+            policy_authorized_24h: number;
             /** Refused 24H */
             refused_24h: number;
             /** Running */
@@ -9621,6 +10846,8 @@ export interface components {
              * @default 60
              */
             approval_ttl_minutes: number;
+            /** @description Omitted: the automation policy is unchanged */
+            automation?: components["schemas"]["SoarAutomationPolicy"] | null;
             /**
              * Live Enabled
              * @default false
@@ -9648,6 +10875,13 @@ export interface components {
             allowed_agent_groups: string[];
             /** Approval Ttl Minutes */
             approval_ttl_minutes: number;
+            /** @description Policy-driven orchestration (off by default) */
+            automation?: components["schemas"]["SoarAutomationPolicy"];
+            /**
+             * Automation Since
+             * @description When automation was last switched on: only alerts received after this are ever acted on
+             */
+            automation_since?: string | null;
             /** Emergency At */
             emergency_at?: string | null;
             /**
@@ -9715,6 +10949,11 @@ export interface components {
             /** Approval Id */
             approval_id?: string | null;
             /**
+             * Authorization
+             * @description Who authorized a consequential step: a person, or the pre-authorization policy
+             */
+            authorization?: ("human" | "policy") | null;
+            /**
              * Id
              * Format: uuid
              */
@@ -9722,6 +10961,13 @@ export interface components {
             /** Message */
             message: string;
             receipt?: components["schemas"]["ExecutionReceipt"] | null;
+            /**
+             * Request
+             * @description The exact request body signed and sent to NovrSOAR (no secret is part of it)
+             */
+            request?: {
+                [key: string]: unknown;
+            } | null;
             /** Request Id */
             request_id?: string | null;
             /**
@@ -9900,6 +11146,15 @@ export interface components {
             /** Updated */
             updated: number;
         };
+        /** SyslogTarget */
+        SyslogTarget: {
+            /** Address */
+            address?: string | null;
+            /** Port */
+            port: number;
+            /** Protocols */
+            protocols: string[];
+        };
         /** TeamCreate */
         TeamCreate: {
             /**
@@ -9946,6 +11201,52 @@ export interface components {
              */
             user_id: string;
         };
+        /**
+         * TeamPresence
+         * @description The active organization's people: active members by role and, when presence is tracked, how many sent a
+         *     heartbeat from an open NovrSOC tab within `online_window_minutes`. `presence_tracked` is false until anybody has
+         *     ever sent a heartbeat for this organization: then `online` is unknown, never zero by assumption.
+         */
+        TeamPresence: {
+            /**
+             * Assigned Staff
+             * @description Active NovrSOC staff assigned to work this organization
+             */
+            assigned_staff: number;
+            /** By Role */
+            by_role: components["schemas"]["TeamRoleCount"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Members
+             * @description Active people whose home is this organization
+             */
+            members: number;
+            /** Online */
+            online?: number | null;
+            /**
+             * Online Window Minutes
+             * @default 2
+             */
+            online_window_minutes: number;
+            /** Presence Tracked */
+            presence_tracked: boolean;
+        };
+        /** TeamRoleCount */
+        TeamRoleCount: {
+            /** Members */
+            members: number;
+            /**
+             * Online
+             * @description Unknown (null) while presence is not tracked
+             */
+            online?: number | null;
+            /** Role */
+            role: string;
+        };
         /** TeamView */
         TeamView: {
             /**
@@ -9964,6 +11265,32 @@ export interface components {
             members: components["schemas"]["TeamMemberView"][];
             /** Name */
             name: string;
+        };
+        /** TenantOnboarding */
+        TenantOnboarding: {
+            agent_group: components["schemas"]["AgentGroupView"];
+            agents: components["schemas"]["OnboardingAgents"];
+            asset_sync?: components["schemas"]["AssetSyncStatus"] | null;
+            /** Completed */
+            completed: number;
+            enrollment?: components["schemas"]["AgentEnrollmentStatus"] | null;
+            /** Installer Available */
+            installer_available: boolean;
+            /**
+             * Installer Reason
+             * @default
+             */
+            installer_reason: string;
+            organization: components["schemas"]["PortalOrg"];
+            /** Portal Url */
+            portal_url?: string | null;
+            sources: components["schemas"]["OnboardingSources"];
+            /** Steps */
+            steps: components["schemas"]["OnboardingStep"][];
+            syslog: components["schemas"]["SyslogTarget"];
+            telemetry: components["schemas"]["OnboardingTelemetry"];
+            /** Total */
+            total: number;
         };
         /**
          * ThreatActorCreate
@@ -12095,6 +13422,622 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrgDetail"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_agent_group_api_v1_admin_organizations__org_id__agent_group_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentGroupView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    provision_agent_group_api_v1_admin_organizations__org_id__agent_group_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentGroupView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_invitations_api_v1_admin_organizations__org_id__invitations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationList"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_invitation_api_v1_admin_organizations__org_id__invitations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationCreated"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revoke_invitation_api_v1_admin_organizations__org_id__invitations__invitation_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_logo_api_v1_admin_organizations__org_id__logo_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogoUpload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgPortalView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_logo_api_v1_admin_organizations__org_id__logo_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgPortalView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_portal_api_v1_admin_organizations__org_id__portal_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgPortalView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_portal_api_v1_admin_organizations__org_id__portal_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgPortalUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgPortalView"];
                 };
             };
             /** @description Bad request */
@@ -18881,6 +20824,282 @@ export interface operations {
             };
         };
     };
+    enroll_api_v1_install_enroll_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentEnrollmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentEnrollmentResult"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    download_api_v1_install__script__get: {
+        parameters: {
+            query: {
+                t: string;
+            };
+            header?: never;
+            path: {
+                script: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": unknown;
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    accept_api_v1_invitations_accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationAccept"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationAccepted"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    preview_api_v1_invitations_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationToken"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationPreview"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_sources_api_v1_log_sources_get: {
         parameters: {
             query?: {
@@ -19240,6 +21459,73 @@ export interface operations {
                 "application/json": components["schemas"]["LogSourceRetire"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogSourceView"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    verify_source_api_v1_log_sources__source_id__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -19708,6 +21994,73 @@ export interface operations {
             };
         };
     };
+    retry_job_api_v1_nhai_jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NhaiJob"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     review_job_api_v1_nhai_jobs__job_id__review_post: {
         parameters: {
             query?: never;
@@ -19730,6 +22083,471 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NhaiJob"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    overview_api_v1_nhai_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NhaiOverview"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    request_posture_analysis_api_v1_nhai_posture_analyses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostureAnalysisRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NhaiJob"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_readiness_api_v1_nhai_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NhaiReadiness"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    installer_api_v1_onboarding_installer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallerRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstallerCommand"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    status_api_v1_onboarding_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantOnboarding"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    tickets_api_v1_onboarding_tickets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentEnrollmentTicketList"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revoke_ticket_api_v1_onboarding_tickets__ticket_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentEnrollmentTicket"];
                 };
             };
             /** @description Bad request */
@@ -19909,6 +22727,138 @@ export interface operations {
             };
         };
     };
+    portal_info_api_v1_portal_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalInfo"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    portal_logo_api_v1_portal_logo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     assessment_api_v1_posture_assessment_get: {
         parameters: {
             query?: never;
@@ -19990,6 +22940,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExecutiveOverview"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    heartbeat_api_v1_presence_heartbeat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_team_api_v1_presence_team_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamPresence"];
                 };
             };
             /** @description Bad request */
@@ -22387,6 +25465,73 @@ export interface operations {
             };
         };
     };
+    automation_events_api_v1_soar_automation_events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationEventList"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     emergency_stop_api_v1_soar_emergency_stop_post: {
         parameters: {
             query?: never;
@@ -24043,6 +27188,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaseDetail"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (permission, organization or CSRF) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found (also returned for another organization's record) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_case_correlation_api_v1_soc_cases__case_id__correlation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseCorrelation"];
                 };
             };
             /** @description Bad request */

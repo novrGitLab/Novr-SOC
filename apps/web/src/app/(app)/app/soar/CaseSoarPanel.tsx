@@ -34,7 +34,7 @@ export function CaseSoarPanel({ caseId }: { caseId: string }) {
                     {d.items.length === 0 ? <p className="text-xs text-foreground-muted">No playbook matches this case&apos;s alerts.</p> : d.items.map((r) => (
                         <div key={r.playbook.id} className="border border-border rounded-xl p-3" data-recommended={r.playbook.name}>
                             <p className="font-semibold">{r.playbook.title} <span className="text-[11px] text-foreground-muted">({r.matched_on.join('; ')})</span></p>
-                            <p className="flex flex-wrap gap-1 mt-1">{r.playbook.steps.map((s) => <Tag key={s.step_key}>{s.action}{r.proposed_targets[s.step_key] ? ` → ${r.proposed_targets[s.step_key]}` : ''}</Tag>)}</p>
+                            <p className="flex flex-wrap gap-1 mt-1 min-w-0">{r.playbook.steps.map((s) => <span key={s.step_key} className="wrap-any max-w-full"><Tag>{s.action}{r.proposed_targets[s.step_key] ? ` → ${r.proposed_targets[s.step_key]}` : ''}</Tag></span>)}</p>
                             {can('response:contain') && (
                                 <div className="flex flex-wrap items-end gap-2 mt-2">
                                     <Field label="Justification (10+ characters, shown to the approver)"><TextInput value={why} onChange={(e) => setWhy(e.target.value)} data-testid="run-justification" /></Field>

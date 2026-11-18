@@ -56,6 +56,12 @@ const P = {
     enrollExclusion: '/api/v1/vms/enrollments/{asset_id}/exclusion', caseAssist: '/api/v1/nhai/case-assistance',
     cmdScope: '/api/v1/command/scope', cmdOverview: '/api/v1/command/overview', cmdView: '/api/v1/command/views/{view}',
     cmdExport: '/api/v1/command/views/{view}/export',
+    orgPortal: '/api/v1/admin/organizations/{org_id}/portal', orgLogo: '/api/v1/admin/organizations/{org_id}/logo',
+    orgInvites: '/api/v1/admin/organizations/{org_id}/invitations',
+    orgInviteRevoke: '/api/v1/admin/organizations/{org_id}/invitations/{invitation_id}/revoke',
+    orgAgentGroup: '/api/v1/admin/organizations/{org_id}/agent-group', sourceVerify: '/api/v1/log-sources/{source_id}/verify',
+    onboardingStatus: '/api/v1/onboarding/status', onboardingInstaller: '/api/v1/onboarding/installer',
+    onboardingTickets: '/api/v1/onboarding/tickets', onboardingTicketRevoke: '/api/v1/onboarding/tickets/{ticket_id}/revoke',
 } as const satisfies Record<string, ApiPath>;
 
 export const exportDownloadPath = (id: string) => `/api/v1/admin/exports/${encodeURIComponent(id)}/download`;
@@ -241,6 +247,25 @@ export const orgApi = {
     sites: (org: string) => get<Schemas['SiteList']>(P.sites, org),
     endpoints: (org: string) => get<Schemas['EndpointInventory']>(P.endpoints, org),
     soarPolicy: (org: string) => get<Schemas['SoarPolicyView']>(P.soarPolicy, org),
+    // portals, branding, invitations and the provisioned agent group (platform administrators)
+    portal: (o: O, id: string) => get<Schemas['OrgPortalView']>(fillPath(P.orgPortal, { org_id: id }), o),
+    setPortal: (o: O, id: string, body: Schemas['OrgPortalUpdate']) => put<Schemas['OrgPortalView']>(fillPath(P.orgPortal, { org_id: id }), o, body),
+    setLogo: (o: O, id: string, body: Schemas['LogoUpload']) => put<Schemas['OrgPortalView']>(fillPath(P.orgLogo, { org_id: id }), o, body),
+    removeLogo: (o: O, id: string) => del<Schemas['OrgPortalView']>(fillPath(P.orgLogo, { org_id: id }), o),
+    invitations: (o: O, id: string) => get<Schemas['InvitationList']>(fillPath(P.orgInvites, { org_id: id }), o),
+    invite: (o: O, id: string, body: Schemas['InvitationCreate']) => post<Schemas['InvitationCreated']>(fillPath(P.orgInvites, { org_id: id }), o, body),
+    revokeInvite: (o: O, id: string, inv: string) =>
+        post<Schemas['InvitationView']>(fillPath(P.orgInviteRevoke, { org_id: id, invitation_id: inv }), o),
+    agentGroup: (o: O, id: string) => get<Schemas['AgentGroupView']>(fillPath(P.orgAgentGroup, { org_id: id }), o),
+    provisionAgentGroup: (o: O, id: string) => post<Schemas['AgentGroupView']>(fillPath(P.orgAgentGroup, { org_id: id }), o),
+};
+
+export const onboardingApi = {
+    status: (o: O) => get<Schemas['TenantOnboarding']>(P.onboardingStatus, o),
+    installer: (o: O, os: Schemas['InstallerRequest']['os'], endpoints: number) =>
+        post<Schemas['InstallerCommand']>(P.onboardingInstaller, o, { os, endpoints } satisfies Schemas['InstallerRequest']),
+    tickets: (o: O) => get<Schemas['AgentEnrollmentTicketList']>(P.onboardingTickets, o),
+    revokeTicket: (o: O, id: string) => post<Schemas['AgentEnrollmentTicket']>(fillPath(P.onboardingTicketRevoke, { ticket_id: id }), o),
 };
 
 /** Syslog and agentless sources: registration is the only way a Wazuh-manager event (agent 000) reaches an organization. */
@@ -252,4 +277,5 @@ export const sourcesApi = {
     retire: (o: O, id: string, reason: string) => post<Schemas['LogSourceView']>(fillPath(P.sourceRetire, { source_id: id }), o, { reason }),
     reassign: (o: O, id: string, body: Schemas['LogSourceReassign']) => post<Schemas['LogSourceView']>(fillPath(P.sourceReassign, { source_id: id }), o, body),
     alerts: (o: O, id: string) => get<Schemas['AlertList']>(P.alerts + queryString({ log_source_id: id, limit: 25 }), o),
+    verify: (o: O, id: string) => post<Schemas['LogSourceView']>(fillPath(P.sourceVerify, { source_id: id }), o),
 };

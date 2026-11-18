@@ -20,6 +20,7 @@ import { useResource } from '@/foundation/ui/useResource';
 import { GroupMappingsPanel } from '../../_org/GroupMappingsPanel';
 import { IdentitiesPanel } from '../../_org/IdentitiesPanel';
 import { LogSourcesPanel } from '../../_org/LogSourcesPanel';
+import { AgentGroupPanel, InvitationsPanel, PortalBrandingPanel } from '../../_org/PortalPanels';
 import { HEALTH, ONBOARDING_STEPS, ORG_STATUS, ORG_TABS, type OrgTab } from '../../_org/meta';
 
 type Org = Schemas['OrgDetail'];
@@ -58,9 +59,10 @@ export default function OrganizationPage() {
                         : <Card><Unavailable reason={`${o.name} is ${o.status}: its data cannot be opened. Reactivate it in Settings to manage it.`} /></Card>);
                     switch (tab) {
                         case 'overview': return <Overview o={o} go={setTab} />;
-                        case 'users': return scoped(<UsersTab o={o} />);
+                        case 'users': return scoped(<><UsersTab o={o} />{o.kind === 'client' && <InvitationsPanel orgId={o.id} />}</>);
                         case 'assets': return scoped(<AssetsTab o={o} openAs={openAs} />);
                         case 'integrations': return scoped(<>
+                            {o.kind === 'client' && <AgentGroupPanel orgId={o.id} />}
                             <GroupMappingsPanel orgId={o.id} orgName={o.name} canManage={can('endpoints:manage')} />
                             <LogSourcesPanel orgId={o.id} orgName={o.name} canManage={can('endpoints:manage')} />
                             <IdentitiesPanel orgId={o.id} orgName={o.name} canManage={can('service_identities:manage')} />
@@ -68,7 +70,7 @@ export default function OrganizationPage() {
                         case 'policies': return scoped(<PoliciesTab o={o} openAs={openAs} />);
                         case 'billing': return <BillingTab o={o} />;
                         case 'audit': return scoped(<AuditTab o={o} />);
-                        case 'settings': return <SettingsTab o={o} onChange={org.setData} />;
+                        case 'settings': return <>{o.kind === 'client' && <PortalBrandingPanel orgId={o.id} orgName={o.name} />}<SettingsTab o={o} onChange={org.setData} /></>;
                     }
                 }}
             </Loaded>

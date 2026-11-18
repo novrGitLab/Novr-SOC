@@ -228,3 +228,44 @@ def test_enrollment_decision_is_pure_and_conservative():
     assert vpolicy.production_scope_problem("domain", "intranet") is not None
     assert vpolicy.production_scope_problem("cidr", "192.168.10.0/24") is None
     assert vpolicy.production_scope_problem("ip", "224.0.0.1") is not None
+
+
+def test_platform_caps_hold_across_organizations_and_greenbone_runs_one_at_a_time(settings, owner, world):
+    """NOVRSOC_VMS_MAX_RUNNING_SCANS and _GREENBONE hold across EVERY organization (a count only, migration 0023), on top
+    of each organization's own cap: result ingestion and the single Greenbone stack are protected."""
+    with owner.connect() as c:
+        base = c.execute(text("SELECT novrsoc.vms_running_scans()")).scalar()
+        base_gb = c.execute(text("SELECT novrsoc.vms_running_scans('vuln_openvas')")).scalar()
+    app = create_app(settings.model_copy(update={"vms_scanning": "authorized_scopes", "vms_max_running_scans": base + 2,
+                                                 "vms_max_running_greenbone": base_gb + 1}))
+    tenants = []
+    for _ in range(2):
+        tag = uuid.uuid4().hex[:6]
+        with owner.begin() as c:
+            org = devseed.create_org(c, f"vc-{tag}", f"VMS caps {tag}")
+            devseed.create_user(c, f"vcm-{tag}@test.novrsoc.invalid", PASSWORD, "soc_manager", org)
+            devseed.create_user(c, f"vca-{tag}@test.novrsoc.invalid", PASSWORD, "analyst", org)
+            _, token = devseed.create_service_identity(c, org, "vms_worker", f"vc-{tag}", scopes=["vms:worker"])
+        m, a = Client(app, f"vcm-{tag}"), Client(app, f"vca-{tag}")
+        sid = m.post("/api/v1/vms/scopes", {"entry": {"kind": "cidr", "value": "10.41.0.0/24"}, "allowed_activities": ["ports", "vuln_openvas"],
+                                            "authorization_reference": "MSA-2026-020"}).json()["id"]
+        assert m.put("/api/v1/vms/policy", _policy(max_concurrent_scans=3, protected_networks=[])).status_code == 200
+        tenants.append({"a": a, "sid": sid, "claim": _w(app, token)})
+    one, two = tenants
+    assert _scan(one["a"], one["sid"], ["10.41.0.10"], activity="vuln_openvas").status_code == 201
+    assert _scan(two["a"], two["sid"], ["10.41.0.20"], activity="vuln_openvas").status_code == 201
+    assert _scan(two["a"], two["sid"], ["10.41.0.21"], activity="ports").status_code == 201
+    first = one["claim"]("/claim").json()
+    assert first["reason"] == "job" and first["job"]["activity"] == "vuln_openvas"
+    # Greenbone is busy (platform cap 1): the other organization gets its ports job, never a second Greenbone task
+    nxt = two["claim"]("/claim").json()
+    assert nxt["reason"] == "job" and nxt["job"]["activity"] == "ports"
+    # the platform total is reached: nobody gets more, although each organization is under its own cap of 3
+    assert two["claim"]("/claim").json()["reason"] == "concurrency_limit"
+    assert one["claim"]("/claim").json()["reason"] == "concurrency_limit"
+    for t, j in ((one, first), (two, nxt)):
+        jid = j["job"]["job_id"]
+        t["claim"](f"/jobs/{jid}/finish", {"outcome": "completed", "detail": "test"})
+    again = two["claim"]("/claim").json()
+    assert again["reason"] == "job" and again["job"]["activity"] == "vuln_openvas"     # the Greenbone slot is free again
+    two["claim"](f"/jobs/{again['job']['job_id']}/finish", {"outcome": "completed", "detail": "test"})

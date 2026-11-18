@@ -10,6 +10,8 @@ answers. Every request, result, failure, recommendation and review is written to
 """
 from __future__ import annotations
 
+import json
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -26,11 +28,12 @@ from app.core.errors import ApiError, not_found
 from app.db.session import request_connection
 from app.modules import ModuleInfo
 from app.nhai.evidence import alert_bundle, asset_bundle, case_bundle, finding_bundle
+from app.nhai.posture import organization_bundle, platform_bundle
 from app.routers._responses import ERRORS
 from novrsoc_contracts.v1.common import ActorRef, ResourceRef
 from novrsoc_contracts.v1.nhai import (AlertExplanationRequest, AssetSummaryRequest, CaseAssistanceRequest, ContextBundle,
-                                       FindingExplanationRequest, HumanReview,
-                                       NhaiJob, NhaiJobList, NhaiResult, NhaiReviewRequest)
+                                       FindingExplanationRequest, HumanReview, NhaiJob, NhaiJobList, NhaiOrgActivity, NhaiOverview,
+                                       NhaiReadiness, NhaiResult, NhaiReviewRequest, PostureAnalysisRequest)
 
 MODULE = ModuleInfo(name="nhai", workstream="F", prefix="/api/v1/nhai",
                     summary="Novr Human-Assisted Intelligence: asynchronous, evidence-grounded drafts for human review")
@@ -61,7 +64,8 @@ def _get(conn: Connection, job_id: uuid.UUID):
     return r
 
 
-MODULE_OF = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat", "case": "soc"}
+MODULE_OF = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat", "case": "soc",
+             "organization": "nhai", "platform": "nhai"}
 
 
 def queue_job(conn: Connection, p: Principal, settings: Settings, request: Request, bundle: ContextBundle):
@@ -102,7 +106,8 @@ def _answer(row, created: bool):
 def request_alert_explanation(body: AlertExplanationRequest, request: Request, p: Principal = Depends(require("nhai:analyze")),
                               conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)):
     _require_backend(settings)
-    bundle = alert_bundle(conn, p.org_id, p.user_id, body.alert_id, max_chars=settings.nhai_max_prompt_chars)
+    bundle = alert_bundle(conn, p.org_id, p.user_id, body.alert_id, max_chars=settings.nhai_max_prompt_chars,
+                          include_findings=p.has("vms:read"))
     return _answer(*queue_job(conn, p, settings, request, bundle))
 
 
@@ -135,7 +140,8 @@ def request_case_assistance(body: CaseAssistanceRequest, request: Request, p: Pr
     _require_backend(settings)
     if not p.has("cases:read"):
         raise ApiError(403, "forbidden", "Insufficient permissions", {"required": "cases:read"})
-    bundle = case_bundle(conn, p.org_id, p.user_id, body.case_id, max_chars=settings.nhai_max_prompt_chars)
+    bundle = case_bundle(conn, p.org_id, p.user_id, body.case_id, max_chars=settings.nhai_max_prompt_chars,
+                         include_findings=p.has("vms:read"))
     return _answer(*queue_job(conn, p, settings, request, bundle))
 
 
@@ -180,3 +186,135 @@ def review_job(job_id: uuid.UUID, body: NhaiReviewRequest, request: Request, p: 
                  resource_type="nhai_job", resource_id=str(job_id), request_id=request.state.request_id, ip=client_ip(request),
                  details={"decision": body.decision})
     return _job(r)
+
+
+# ---------------------------------------------------------------- combined analysis, readiness, retry
+WORKER_FRESH = timedelta(minutes=5)
+QUEUE_STUCK_SECONDS = 600
+_SIZE = re.compile(r":(\d+(?:\.\d+)?)b\b")
+
+
+def _pilot(model: str | None) -> tuple[bool, str]:
+    """A model under 7B parameters runs NHAI as a limited, labelled pilot (its drafts are less reliable)."""
+    m = _SIZE.search(model or "")
+    if m and float(m.group(1)) < 7:
+        return True, (f"{model} is a small model: NHAI runs as a limited pilot. Drafts are less reliable; every statement "
+                      "must still cite evidence, deterministic checks still apply, and an analyst reviews each draft.")
+    return False, ""
+
+
+def _queue_stats(conn: Connection):
+    return conn.execute(text("""SELECT count(*) FILTER (WHERE status = 'queued') AS queued, count(*) FILTER (WHERE status = 'running') AS running,
+               extract(epoch FROM now() - min(queued_at) FILTER (WHERE status = 'queued'))::int AS oldest,
+               count(*) FILTER (WHERE status = 'succeeded' AND finished_at > now() - interval '24 hours') AS ok24,
+               count(*) FILTER (WHERE status IN ('failed', 'timed_out') AND finished_at > now() - interval '24 hours') AS bad24,
+               count(*) FILTER (WHERE status = 'succeeded' AND review_decision IS NULL) AS review,
+               max(finished_at) FILTER (WHERE status = 'succeeded') AS last_ok
+        FROM novrsoc.nhai_jobs""")).one()
+
+
+def readiness(conn: Connection, settings: Settings) -> NhaiReadiness:
+    q = _queue_stats(conn)
+    hb = conn.execute(text("SELECT * FROM novrsoc.nhai_worker_status()")).first()
+    reasons, worker_state, seen, model = [], "unknown", None, None
+    if hb is not None:
+        seen = hb.last_seen_at
+        fresh = datetime.now(timezone.utc) - hb.last_seen_at < WORKER_FRESH
+        worker_state = hb.state if fresh else "failing"
+        m = re.search(r"model=([a-z0-9._:-]{1,80})", hb.detail or "")
+        model = m.group(1) if m else None
+        if not fresh:
+            reasons.append(f"The NHAI worker has not reported since {hb.last_seen_at:%Y-%m-%d %H:%M} UTC.")
+        elif hb.state != "ok":
+            reasons.append(f"The NHAI worker reports {hb.state}: {hb.detail}")
+    else:
+        reasons.append("The NHAI worker has never reported a heartbeat.")
+    configured = settings.nhai_backend != "unconfigured"
+    model = model or (settings.nhai_model if configured else None)
+    if not configured:
+        reasons.insert(0, "NHAI inference is not configured for this installation.")
+    if q.oldest is not None and q.oldest > QUEUE_STUCK_SECONDS:
+        reasons.append(f"The oldest queued job has waited {q.oldest // 60} minutes.")
+    if q.bad24 and not q.ok24:
+        reasons.append(f"{q.bad24} job(s) failed in the last 24 hours and none succeeded.")
+    state = "unavailable" if not configured else ("ready" if not reasons else "degraded")
+    pilot, note = _pilot(model)
+    return NhaiReadiness(state=state, reasons=reasons, backend_configured=configured, model=model, pilot=pilot, pilot_note=note,
+                         worker_state=worker_state, worker_last_seen_at=seen, queued=q.queued, running=q.running,
+                         oldest_queued_seconds=q.oldest, succeeded_24h=q.ok24, failed_24h=q.bad24, awaiting_review=q.review,
+                         last_success_at=q.last_ok)
+
+
+@router.get("/readiness", response_model=NhaiReadiness, summary="NHAI readiness from records: backend, worker heartbeat, queue, outcomes")
+def get_readiness(p: Principal = Depends(require("nhai:analyze")), conn: Connection = Depends(request_connection),
+                  settings: Settings = Depends(get_settings)) -> NhaiReadiness:
+    return readiness(conn, settings)
+
+
+@router.get("/overview", response_model=NhaiOverview, summary="NHAI across the command scope (platform staff), per organization")
+def overview(p: Principal = Depends(require("nhai:analyze")), conn: Connection = Depends(request_connection),
+             settings: Settings = Depends(get_settings)) -> NhaiOverview:
+    from app.modules.command import command_scope
+    scope = command_scope(conn, p)
+    rows = []
+    try:
+        for o in scope.orgs:
+            conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(o.id)})
+            q = _queue_stats(conn)
+            rows.append(NhaiOrgActivity(org_id=o.id, org_name=o.name, queued=q.queued, running=q.running, succeeded_24h=q.ok24,
+                                        failed_24h=q.bad24, awaiting_review=q.review, last_success_at=q.last_ok))
+    finally:
+        conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(p.org_id)})
+    return NhaiOverview(readiness=readiness(conn, settings), organizations=rows)
+
+
+@router.post("/posture-analyses", response_model=NhaiJob, status_code=202,
+             summary="Queue a combined analysis: SIEM, VMS, assets, cases, Threat Insights, SOAR, remediation and posture")
+def request_posture_analysis(body: PostureAnalysisRequest, request: Request, p: Principal = Depends(require("nhai:analyze")),
+                             conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)):
+    _require_backend(settings)
+    if body.scope == "platform":
+        from app.modules.command import command_scope
+        scope = command_scope(conn, p)            # 403 for anybody outside NovrSOC platform staff
+        kind = conn.execute(text("SELECT kind FROM novrsoc.organizations WHERE id = :o"), {"o": p.org_id}).scalar()
+        if kind != "platform":
+            raise ApiError(409, "platform_organization_required",
+                           "A platform-wide analysis is stored in the platform organization: switch to it first")
+        bundle = platform_bundle(conn, p, scope.orgs, body.window_days, max_chars=settings.nhai_max_prompt_chars)
+    else:
+        bundle = organization_bundle(conn, p, body.window_days, max_chars=settings.nhai_max_prompt_chars)
+    return _answer(*queue_job(conn, p, settings, request, bundle))
+
+
+@router.post("/jobs/{job_id}/retry", response_model=NhaiJob, status_code=202,
+             summary="Queue the same request again for a failed or timed-out job (evidence assembled afresh)")
+def retry_job(job_id: uuid.UUID, request: Request, p: Principal = Depends(require("nhai:analyze")),
+              conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)):
+    _require_backend(settings)
+    r = conn.execute(text("SELECT task, subject_type, subject_id, status, bundle FROM novrsoc.nhai_jobs WHERE id = :id"), {"id": job_id}).first()
+    if r is None:
+        raise not_found("NHAI job not found")
+    if r.status not in ("failed", "timed_out"):
+        raise ApiError(409, "conflict", "Only a failed or timed-out job can be retried")
+    mc = settings.nhai_max_prompt_chars
+    if r.task == "posture_analysis":
+        window = next((json.loads(e["excerpt"]).get("window_days", 7) for e in (r.bundle or {}).get("evidence", [])
+                       if e["ref"]["type"] == "analysis_scope"), 7)
+        if r.subject_type == "platform":
+            from app.modules.command import command_scope
+            bundle = platform_bundle(conn, p, command_scope(conn, p).orgs, window, max_chars=mc)
+        else:
+            bundle = organization_bundle(conn, p, window, max_chars=mc)
+    elif r.task == "alert_explanation":
+        bundle = alert_bundle(conn, p.org_id, p.user_id, uuid.UUID(r.subject_id), max_chars=mc, include_findings=p.has("vms:read"))
+    elif r.task == "finding_explanation" and p.has("vms:read"):
+        bundle = finding_bundle(conn, p.org_id, p.user_id, uuid.UUID(r.subject_id), max_chars=mc)
+    elif r.task == "asset_summary" and p.has("assets:read"):
+        bundle = asset_bundle(conn, p.org_id, p.user_id, uuid.UUID(r.subject_id), max_chars=mc)
+    elif r.task == "investigation_assistance" and r.subject_type == "case" and p.has("cases:read"):
+        bundle = case_bundle(conn, p.org_id, p.user_id, uuid.UUID(r.subject_id), max_chars=mc, include_findings=p.has("vms:read"))
+    else:
+        raise ApiError(409, "not_retryable", "This job cannot be retried here (ask again from its page, or you lack the permission)")
+    audit.record("NHAI_JOB_RETRIED", "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email, resource_type="nhai_job",
+                 resource_id=str(job_id), request_id=request.state.request_id, ip=client_ip(request), details={"task": r.task})
+    return _answer(*queue_job(conn, p, settings, request, bundle))

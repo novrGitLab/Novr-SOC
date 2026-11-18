@@ -9,6 +9,7 @@ import { Card, SectionTitle, StatusPill } from '@/components/features/vms/ui';
 import { ApiError, STATE_TEXT, uiState } from '@/foundation/api/errors';
 import { socApi, type CaseStatus } from '../../alerts/api';
 import { CaseSoarPanel } from '../../soar/CaseSoarPanel';
+import { CaseCorrelationPanel } from './CaseCorrelationPanel';
 import { useSession } from '@/foundation/session/SessionProvider';
 import { ApiErrorState, LoadingState } from '@/foundation/ui/states';
 import { ALERT_STATUS_LABEL, CASE_STATUS_LABEL, FixtureTag, STATUS_TONE, fmtDateTime, inputCls } from '@/foundation/ui/sources';
@@ -57,16 +58,16 @@ export default function CaseDetailPage() {
                 : !c ? <LoadingState label="Loading case" />
                 : (
                     <>
-                        <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
+                        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="case-layout">
                             <Card>
                                 <SectionTitle title="Linked alerts" />
                                 <ul className="mt-3 divide-y divide-border" data-testid="case-alerts">
                                     {c.alerts.map((a) => (
-                                        <li key={a.id} className="py-2 flex flex-wrap items-center gap-2 text-sm">
+                                        <li key={a.id} className="py-2 flex flex-wrap items-start gap-2 text-sm min-w-0">
                                             <SeverityBadge severity={a.severity} />
-                                            <Link href={`/app/alerts/${a.id}`} className="flex-1 min-w-[10rem] text-foreground hover:underline">{a.rule_description || `Rule ${a.rule_id}`}</Link>
+                                            <Link href={`/app/alerts/${a.id}`} className="flex-1 basis-[12rem] wrap-any text-foreground hover:underline">{a.rule_description || `Rule ${a.rule_id}`}</Link>
                                             {a.source === 'local_fixture' && <FixtureTag />}
-                                            <span className="text-[11px] text-foreground-muted">{a.agent_name} · {ALERT_STATUS_LABEL[a.status]}</span>
+                                            <span className="text-[11px] text-foreground-muted wrap-any">{a.agent_name} · {ALERT_STATUS_LABEL[a.status]}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -75,7 +76,7 @@ export default function CaseDetailPage() {
                                 <SectionTitle title="Status" />
                                 <div className="mt-3 space-y-3 text-sm">
                                     <p className="flex items-center gap-2" data-testid="case-status"><SeverityBadge severity={c.severity} /><StatusPill tone={STATUS_TONE[c.status] ?? 'neutral'} label={CASE_STATUS_LABEL[c.status] ?? c.status} /></p>
-                                    <dl className="grid grid-cols-[8rem_1fr] gap-y-1.5 text-xs" data-testid="case-sla">
+                                    <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-y-1.5 text-xs [&>dd]:wrap-any" data-testid="case-sla">
                                         <dt className="text-foreground-muted">SLA</dt><dd><StateTag state={c.sla_state} label={c.sla_state === 'no_policy' ? 'no SLA policy' : c.sla_state.replace(/_/g, ' ')} /></dd>
                                         <dt className="text-foreground-muted">Respond by</dt><dd>{fmtDateTime(c.sla_response_due_at)}{c.first_response_at && <span className="text-foreground-muted"> · responded {fmtDateTime(c.first_response_at)}</span>}</dd>
                                         <dt className="text-foreground-muted">Resolve by</dt><dd>{fmtDateTime(c.sla_resolution_due_at)}{c.resolved_at && <span className="text-foreground-muted"> · resolved {fmtDateTime(c.resolved_at)}</span>}</dd>
@@ -102,8 +103,9 @@ export default function CaseDetailPage() {
                                 </div>
                             </Card>
                         </div>
+                        <CaseCorrelationPanel caseId={c.id} />
                         <CaseSoarPanel caseId={c.id} />
-                        <div className="grid gap-5 lg:grid-cols-2">
+                        <div className="grid gap-5 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
                             <Card>
                                 <SectionTitle title="Timeline" hint="Append-only" />
                                 <div className="mt-3" data-testid="case-timeline">

@@ -658,6 +658,226 @@
       "title": "NhaiJobList",
       "type": "object"
     },
+    "NhaiOrgActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "awaiting_review": {
+          "minimum": 0,
+          "title": "Awaiting Review",
+          "type": "integer"
+        },
+        "failed_24h": {
+          "minimum": 0,
+          "title": "Failed 24H",
+          "type": "integer"
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Success At"
+        },
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "org_name": {
+          "title": "Org Name",
+          "type": "string"
+        },
+        "queued": {
+          "minimum": 0,
+          "title": "Queued",
+          "type": "integer"
+        },
+        "running": {
+          "minimum": 0,
+          "title": "Running",
+          "type": "integer"
+        },
+        "succeeded_24h": {
+          "minimum": 0,
+          "title": "Succeeded 24H",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "org_id",
+        "org_name",
+        "queued",
+        "running",
+        "succeeded_24h",
+        "failed_24h",
+        "awaiting_review"
+      ],
+      "title": "NhaiOrgActivity",
+      "type": "object"
+    },
+    "NhaiOverview": {
+      "additionalProperties": false,
+      "description": "NHAI across the caller's command scope (platform staff), read under each organization's own RLS.",
+      "properties": {
+        "organizations": {
+          "items": {
+            "$ref": "#/$defs/NhaiOrgActivity"
+          },
+          "title": "Organizations",
+          "type": "array"
+        },
+        "readiness": {
+          "$ref": "#/$defs/NhaiReadiness"
+        }
+      },
+      "required": [
+        "readiness",
+        "organizations"
+      ],
+      "title": "NhaiOverview",
+      "type": "object"
+    },
+    "NhaiReadiness": {
+      "additionalProperties": false,
+      "description": "What the API can verify about NHAI, from records only (the API never contacts the model). `state`:\nready (backend configured, worker heard from recently, no stuck queue), degraded (worker silent or queue waiting\ntoo long, or recent failures only), unavailable (no backend configured).",
+      "properties": {
+        "awaiting_review": {
+          "minimum": 0,
+          "title": "Awaiting Review",
+          "type": "integer"
+        },
+        "backend_configured": {
+          "title": "Backend Configured",
+          "type": "boolean"
+        },
+        "failed_24h": {
+          "minimum": 0,
+          "title": "Failed 24H",
+          "type": "integer"
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Success At"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "oldest_queued_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Oldest Queued Seconds"
+        },
+        "pilot": {
+          "description": "True for a small model run as a limited, labelled pilot (drafts are less reliable)",
+          "title": "Pilot",
+          "type": "boolean"
+        },
+        "pilot_note": {
+          "default": "",
+          "title": "Pilot Note",
+          "type": "string"
+        },
+        "queued": {
+          "minimum": 0,
+          "title": "Queued",
+          "type": "integer"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "running": {
+          "minimum": 0,
+          "title": "Running",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "ready",
+            "degraded",
+            "unavailable"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "succeeded_24h": {
+          "minimum": 0,
+          "title": "Succeeded 24H",
+          "type": "integer"
+        },
+        "worker_last_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Worker Last Seen At"
+        },
+        "worker_state": {
+          "default": "unknown",
+          "enum": [
+            "ok",
+            "degraded",
+            "failing",
+            "unknown"
+          ],
+          "title": "Worker State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "backend_configured",
+        "pilot",
+        "queued",
+        "running",
+        "succeeded_24h",
+        "failed_24h",
+        "awaiting_review"
+      ],
+      "title": "NhaiReadiness",
+      "type": "object"
+    },
     "NhaiResult": {
       "additionalProperties": false,
       "properties": {
@@ -840,10 +1060,35 @@
         "case_note_draft",
         "finding_explanation",
         "asset_summary",
-        "chat_answer"
+        "chat_answer",
+        "posture_analysis"
       ],
       "title": "NhaiTask",
       "type": "string"
+    },
+    "PostureAnalysisRequest": {
+      "additionalProperties": false,
+      "description": "Combined analysis: the organization's SIEM alerts, VMS findings, assets, cases, Threat Insights matches, SOAR\nactivity, remediation and posture over a window, as cited aggregates. `platform`: NovrSOC platform staff with the\nplatform organization active get per-organization aggregates of their command scope (no record crosses tenants;\nthe job is stored in the platform organization).",
+      "properties": {
+        "scope": {
+          "default": "organization",
+          "enum": [
+            "organization",
+            "platform"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "window_days": {
+          "default": 7,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Window Days",
+          "type": "integer"
+        }
+      },
+      "title": "PostureAnalysisRequest",
+      "type": "object"
     },
     "Recommendation": {
       "additionalProperties": false,

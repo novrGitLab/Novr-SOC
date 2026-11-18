@@ -572,7 +572,8 @@
             "silent",
             "never_received",
             "disabled",
-            "retired"
+            "retired",
+            "pending_verification"
           ],
           "title": "Status",
           "type": "string"
@@ -585,6 +586,25 @@
         "vendor": {
           "title": "Vendor",
           "type": "string"
+        },
+        "verified": {
+          "default": true,
+          "description": "False until a NovrSOC administrator verifies a sender the organization registered itself; until then it stays disabled and its events are quarantined",
+          "title": "Verified",
+          "type": "boolean"
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verified At"
         }
       },
       "required": [
