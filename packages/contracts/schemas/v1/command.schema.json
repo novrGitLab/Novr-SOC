@@ -1,0 +1,413 @@
+{
+  "$defs": {
+    "CommandList": {
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CommandRecord"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "per_organization": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Records returned per organization slug (before the overall limit)",
+          "title": "Per Organization",
+          "type": "object"
+        },
+        "truncated": {
+          "description": "True when an organization had more matching records than were read",
+          "title": "Truncated",
+          "type": "boolean"
+        },
+        "view": {
+          "enum": [
+            "assets",
+            "alerts",
+            "vulnerabilities",
+            "scans",
+            "cases",
+            "intel",
+            "nhai",
+            "soar_runs",
+            "soar_approvals",
+            "reports"
+          ],
+          "title": "View",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view",
+        "generated_at",
+        "items",
+        "per_organization",
+        "truncated"
+      ],
+      "title": "CommandList",
+      "type": "object"
+    },
+    "CommandOrg": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "platform",
+            "client"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended",
+            "archived"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name",
+        "kind",
+        "status"
+      ],
+      "title": "CommandOrg",
+      "type": "object"
+    },
+    "CommandOverview": {
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "organizations": {
+          "items": {
+            "$ref": "#/$defs/OrgPosture"
+          },
+          "title": "Organizations",
+          "type": "array"
+        },
+        "scope": {
+          "enum": [
+            "platform",
+            "assigned"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "totals": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Totals",
+          "type": "object"
+        }
+      },
+      "required": [
+        "generated_at",
+        "scope",
+        "organizations",
+        "totals"
+      ],
+      "title": "CommandOverview",
+      "type": "object"
+    },
+    "CommandRecord": {
+      "additionalProperties": false,
+      "description": "One tenant-owned record, labelled with its owner. `fields` holds the view's columns (documented per view).",
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "fields": {
+          "additionalProperties": true,
+          "default": {},
+          "title": "Fields",
+          "type": "object"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "org": {
+          "$ref": "#/$defs/CommandOrg"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "org",
+        "id",
+        "title"
+      ],
+      "title": "CommandRecord",
+      "type": "object"
+    },
+    "CommandScope": {
+      "additionalProperties": false,
+      "properties": {
+        "can_export": {
+          "title": "Can Export",
+          "type": "boolean"
+        },
+        "organizations": {
+          "items": {
+            "$ref": "#/$defs/CommandOrg"
+          },
+          "title": "Organizations",
+          "type": "array"
+        },
+        "scope": {
+          "description": "platform: every organization; assigned: home + operations assignments",
+          "enum": [
+            "platform",
+            "assigned"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "views": {
+          "description": "The views this person's permissions allow",
+          "items": {
+            "enum": [
+              "assets",
+              "alerts",
+              "vulnerabilities",
+              "scans",
+              "cases",
+              "intel",
+              "nhai",
+              "soar_runs",
+              "soar_approvals",
+              "reports"
+            ],
+            "type": "string"
+          },
+          "title": "Views",
+          "type": "array"
+        }
+      },
+      "required": [
+        "scope",
+        "organizations",
+        "views",
+        "can_export"
+      ],
+      "title": "CommandScope",
+      "type": "object"
+    },
+    "OrgPosture": {
+      "additionalProperties": false,
+      "description": "One organization's security posture, computed from its own records at request time.",
+      "properties": {
+        "alerts_24h": {
+          "default": 0,
+          "title": "Alerts 24H",
+          "type": "integer"
+        },
+        "assets": {
+          "default": 0,
+          "title": "Assets",
+          "type": "integer"
+        },
+        "critical_alerts_24h": {
+          "default": 0,
+          "title": "Critical Alerts 24H",
+          "type": "integer"
+        },
+        "critical_cases": {
+          "default": 0,
+          "title": "Critical Cases",
+          "type": "integer"
+        },
+        "critical_findings": {
+          "default": 0,
+          "title": "Critical Findings",
+          "type": "integer"
+        },
+        "high_alerts_24h": {
+          "default": 0,
+          "title": "High Alerts 24H",
+          "type": "integer"
+        },
+        "intel_matches_7d": {
+          "default": 0,
+          "title": "Intel Matches 7D",
+          "type": "integer"
+        },
+        "last_alert_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Alert At"
+        },
+        "nhai_awaiting_review": {
+          "default": 0,
+          "title": "Nhai Awaiting Review",
+          "type": "integer"
+        },
+        "nhai_failed_24h": {
+          "default": 0,
+          "title": "Nhai Failed 24H",
+          "type": "integer"
+        },
+        "nhai_queued": {
+          "default": 0,
+          "title": "Nhai Queued",
+          "type": "integer"
+        },
+        "open_alerts": {
+          "default": 0,
+          "title": "Open Alerts",
+          "type": "integer"
+        },
+        "open_cases": {
+          "default": 0,
+          "title": "Open Cases",
+          "type": "integer"
+        },
+        "open_findings": {
+          "default": 0,
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "org": {
+          "$ref": "#/$defs/CommandOrg"
+        },
+        "overdue_remediation": {
+          "default": 0,
+          "title": "Overdue Remediation",
+          "type": "integer"
+        },
+        "posture": {
+          "enum": [
+            "critical",
+            "elevated",
+            "normal",
+            "no_data"
+          ],
+          "title": "Posture",
+          "type": "string"
+        },
+        "posture_reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Posture Reasons",
+          "type": "array"
+        },
+        "reports_7d": {
+          "default": 0,
+          "title": "Reports 7D",
+          "type": "integer"
+        },
+        "scan_policy_enabled": {
+          "default": false,
+          "title": "Scan Policy Enabled",
+          "type": "boolean"
+        },
+        "scans_failed_7d": {
+          "default": 0,
+          "title": "Scans Failed 7D",
+          "type": "integer"
+        },
+        "scans_running": {
+          "default": 0,
+          "title": "Scans Running",
+          "type": "integer"
+        },
+        "soar_pending_approvals": {
+          "default": 0,
+          "title": "Soar Pending Approvals",
+          "type": "integer"
+        },
+        "soar_runs_7d": {
+          "default": 0,
+          "title": "Soar Runs 7D",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "org",
+        "posture"
+      ],
+      "title": "OrgPosture",
+      "type": "object"
+    }
+  },
+  "$id": "https://contracts.novrsoc.invalid/v1/command.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovrSOC contracts v1: command",
+  "version": "1.0.0"
+}

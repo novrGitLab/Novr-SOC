@@ -2,6 +2,7 @@
 
 // Asset discovery and attack surface: the shared inventory's exposure (internet-facing first), and the services and
 // technologies discovered on the organization's assets. Both read the ONE asset inventory.
+import { sourceName } from '@/foundation/ui/names';
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { Network } from 'lucide-react';
@@ -46,7 +47,7 @@ export default function SurfacePage() {
                     { key: 'p', header: 'Port', render: (s) => `${s.port}/${s.protocol || '-'}` },
                     { key: 'n', header: 'Service', render: (s) => s.name || '—' },
                     { key: 'pr', header: 'Product', render: (s) => `${s.product} ${s.version}`.trim() || '—' },
-                    { key: 'src', header: 'Source', render: (s) => <span className="text-xs">{s.source} · {fmt(s.last_seen_at)}</span> },
+                    { key: 'src', header: 'Source', render: (s) => <span className="text-xs">{sourceName(s.source)} · {fmt(s.last_seen_at)}</span> },
                 ]} />}
             </Loaded>
         </>

@@ -74,3 +74,79 @@ first-admin.txt
 /scripts/dev/seed_demo.py
 /scripts/git/
 /scripts/provenance/
+
+
+# Private engineering materials
+/docs/*
+!/docs/public/
+!/docs/public/**
+/reference/
+/provenance/
+/.run/
+/info.md
+/COMPLETION_REPORT.md
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.secrets
+secrets/
+credentials/
+dev-credentials.json
+
+# Demo data
+/scripts/dev/seed_demo.py
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Node.js and Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# Runtime data
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+logs/
+backups/
+uploads/
+runtime/
+
+# Test output
+playwright-report/
+test-results/
+screenshots/
+
+# Local editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp

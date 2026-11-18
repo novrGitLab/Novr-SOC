@@ -101,11 +101,11 @@ def _integrations(r) -> OrgIntegrations:
         notes.append(f"Organization is {r.status}")
     elif not configured:
         health = "not_configured"
-        notes.append("No Wazuh group mapped and no syslog or agentless source registered")
+        notes.append("No NovrAgent group mapped and no syslog or agentless source registered")
     else:
         health = "ok"
         if r.wazuh_groups and not r.wazuh_agents:
-            health = "attention"; notes.append("Wazuh groups are mapped but no agent has been reconciled into the inventory yet")
+            health = "attention"; notes.append("NovrAgent groups are mapped but no agent has been reconciled into the inventory yet")
         if r.log_sources_never:
             health = "attention"; notes.append(f"{r.log_sources_never} enabled source(s) have not sent any event yet")
         if r.log_sources_disabled:
@@ -188,7 +188,7 @@ def change_org_status(org_id: uuid.UUID, body: OrgStatusChange, request: Request
     if r.status == body.status:
         raise ApiError(409, "conflict", f"The organization is already {body.status}")
     if body.status == "archived" and (r.wazuh_groups or r.log_sources):
-        raise ApiError(409, "conflict", "Remove its Wazuh group mappings and retire or reassign its log sources before archiving: "
+        raise ApiError(409, "conflict", "Remove its NovrAgent group mappings and retire or reassign its log sources before archiving: "
                                         "an archived organization must not receive security events",
                        {"wazuh_groups": r.wazuh_groups, "log_sources": r.log_sources})
     conn.execute(text("""UPDATE novrsoc.organizations SET status = :s, status_reason = :r, updated_at = now(),
@@ -286,7 +286,7 @@ def issue_identity(body: ServiceIdentityCreate, request: Request, p: Principal =
         raise ApiError(422, "validation_error", f"A {body.kind} identity holds: {', '.join(sorted(KIND_SCOPES[body.kind]))}")
     kind = conn.execute(text("SELECT kind FROM novrsoc.organizations WHERE id = :o"), {"o": p.org_id}).scalar()
     if body.kind in PLATFORM_ONLY_KINDS and kind != "platform":
-        raise ApiError(422, "validation_error", "A forwarder identity belongs to the platform organization")
+        raise ApiError(422, "validation_error", "A NovrFORWARDER identity belongs to the platform organization")
     ident = uuid.uuid4()
     token, secret_hash = new_machine_credential(ident)
     try:
@@ -660,6 +660,8 @@ def analytics(p: Principal = Depends(require("platform:monitor")), conn: Connect
     return PlatformAnalytics(generated_at=_NOW(), organizations=rows, totals=totals)
 
 
+_COMPONENT_LABEL = {"jobs_worker": "Background jobs", "nhai_worker": "NHAI", "vms_worker": "NovrVMS", "forwarder": "NovrFORWARDER",
+                    "response_bridge": "NovrSOAR", "ti_feeder": "Threat intelligence feeder"}
 _CONNECTOR = {"connected": "ok", "local_fixture": "degraded", "unconfigured": "unconfigured", "unavailable": "failing", "error": "failing"}
 
 
@@ -679,21 +681,21 @@ def health(p: Principal = Depends(require("platform:monitor")), conn: Connection
     c.append(ComponentHealth(key="migrations", label="Schema migrations", state="ok" if rev == head else "failing", checked_at=now,
                              detail=f"at {rev}, build expects {head}"))
     for st in _registry.wazuh_states(settings):
-        c.append(ComponentHealth(key=st.connector, label=st.connector.replace("_", " ").title(), state=_CONNECTOR[st.state],
+        c.append(ComponentHealth(key=st.connector, label={"wazuh_manager": "NovrSIEM", "wazuh_indexer": "NovrSIEM event store"}.get(st.connector, st.connector.replace("_", " ").title()), state=_CONNECTOR[st.state],
                                  detail=st.detail or st.state, checked_at=st.checked_at))
     nhai_mod, ollama = _nhai(conn, settings)
     c.append(ComponentHealth(key="nhai", label="NHAI inference", state=_CONNECTOR[ollama.state], detail=nhai_mod.note, checked_at=ollama.checked_at))
-    c.append(ComponentHealth(key="soar_bridge", label="SOAR execution bridge (Server 1)", checked_at=now,
+    c.append(ComponentHealth(key="soar_bridge", label="NovrSOAR", checked_at=now,
                              state="unconfigured" if not settings.soar_bridge_url else "unknown",
                              detail="Not configured: consequential steps fail closed." if not settings.soar_bridge_url else
                              "Configured; its state is established by each dispatch receipt (see SOAR failures below)."))
     workers = h["vms_workers"]
     stale = [w for w in workers if _dt.fromisoformat(w["received_at"]) < now - _td(seconds=180)]
-    c.append(ComponentHealth(key="vms_workers", label="VMS workers (Server 2, vms profile)",
+    c.append(ComponentHealth(key="vms_workers", label="NovrVMS",
                              state="unconfigured" if not workers else "degraded" if stale else "ok",
-                             detail=f"{len(workers)} worker(s), {len(stale)} stale" if workers else "No VMS worker has reported."))
+                             detail=f"{len(workers)} NovrVMS instance(s), {len(stale)} stale" if workers else "NovrVMS has not reported."))
     last = h["ingest"]["last_batch_at"]
-    c.append(ComponentHealth(key="forwarder", label="Alert forwarder (Server 1)",
+    c.append(ComponentHealth(key="forwarder", label="NovrFORWARDER",
                              state="unconfigured" if last is None else "ok" if _dt.fromisoformat(last) > now - _td(hours=1) else "degraded",
                              detail="No alert batch received yet." if last is None else f"Last batch {last}; {h['ingest']['batches_24h']} in 24 h; "
                                                                                        f"{h['ingest']['quarantined_24h']} quarantined"))
@@ -710,10 +712,10 @@ def health(p: Principal = Depends(require("platform:monitor")), conn: Connection
                              f"Last success {b['last_succeeded_at']}; last drill {b['last_drill_status'] or 'none'}"))
     for hb in conn.execute(text("SELECT * FROM novrsoc.platform_heartbeats ORDER BY component")):
         fresh = hb.last_seen_at > now - _td(minutes=10)
-        c.append(ComponentHealth(key=hb.component, label=hb.component.replace("_", " ").title(), checked_at=hb.last_seen_at,
+        c.append(ComponentHealth(key=hb.component, label=_COMPONENT_LABEL.get(hb.component, hb.component.replace("_", " ").title()), checked_at=hb.last_seen_at,
                                  state=hb.state if fresh else "failing", detail=hb.detail if fresh else f"No heartbeat since {hb.last_seen_at}"))
     if not any(x.key == "jobs_worker" for x in c):
-        c.append(ComponentHealth(key="jobs_worker", label="Background jobs worker", state="unknown", detail="The jobs worker has not reported."))
+        c.append(ComponentHealth(key="jobs_worker", label="Background jobs", state="unknown", detail="The background jobs service has not reported."))
     return PlatformHealth(generated_at=now, components=c, workers=workers, failures_24h=h["failures_24h"],
                           queues={"nhai": q, "soar": h["soar"], "vms": h["vms_jobs"], "ingest": h["ingest"]})
 

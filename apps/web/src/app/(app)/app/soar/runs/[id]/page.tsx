@@ -42,7 +42,7 @@ export default function RunPage() {
                                 <p className="text-xs text-foreground-muted mt-1">{s.message}</p>
                                 {s.receipt && (
                                     <p className="text-[11px] mt-1 font-mono break-all" data-testid="receipt">
-                                        receipt: {s.receipt.status} · adapter {s.receipt.adapter} · {s.receipt.command ?? '—'} · {fmt(s.receipt.executed_at)} · request {s.receipt.request_id}{s.receipt.replayed ? ' · replayed' : ''}
+                                        receipt: {s.receipt.status} · {s.receipt.adapter === 'simulated' ? 'simulated' : 'NovrSOAR'} · {s.receipt.command ?? '—'} · {fmt(s.receipt.executed_at)} · request {s.receipt.request_id}{s.receipt.replayed ? ' · replayed' : ''}
                                     </p>)}
                                 {s.state === 'awaiting_approval' && <Link className="text-xs underline" href="/app/soar">Waiting for approval</Link>}
                                 {s.state === 'dispatched' && can('response:approve') && <button className={btn('secondary')} onClick={() => void redispatch(s.id)}>Re-send (same request id)</button>}

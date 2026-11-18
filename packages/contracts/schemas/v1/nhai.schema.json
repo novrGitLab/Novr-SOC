@@ -106,6 +106,22 @@
       "title": "BehaviouralInsightSummaryRequest",
       "type": "object"
     },
+    "CaseAssistanceRequest": {
+      "additionalProperties": false,
+      "description": "Investigation assistance for one case: its linked alerts (authoritative severities), notes, timeline and the\nThreat Insights matches of those alerts. A draft for the analyst; it never changes the case.",
+      "properties": {
+        "case_id": {
+          "format": "uuid",
+          "title": "Case Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_id"
+      ],
+      "title": "CaseAssistanceRequest",
+      "type": "object"
+    },
     "CaseNoteAcceptance": {
       "additionalProperties": false,
       "description": "An analyst turns a draft into a real case note (possibly edited). Only this writes to the case.",

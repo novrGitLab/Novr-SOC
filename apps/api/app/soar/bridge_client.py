@@ -61,9 +61,9 @@ class BridgeClient:
         try:
             r = self.client.post("/v1/execute", content=body, headers=headers)
         except httpx.HTTPError:
-            raise BridgeUnavailable("the execution bridge could not be reached") from None
+            raise BridgeUnavailable("NovrSOAR could not be reached") from None
         if r.status_code not in (200, 409):
-            raise BridgeUnavailable(f"the execution bridge answered {r.status_code}")
+            raise BridgeUnavailable(f"NovrSOAR answered {r.status_code}")
         try:
             rts = int(r.headers.get("X-NovrSOC-Timestamp", ""))
         except ValueError:
@@ -79,7 +79,7 @@ class BridgeClient:
 
 def from_settings(settings: Settings) -> BridgeClient:
     if not settings.soar_bridge_url or not settings.soar_bridge_key_file:
-        raise BridgeUnconfigured("No Server 1 execution bridge is configured; nothing can be executed")
+        raise BridgeUnconfigured("NovrSOAR execution is not configured; nothing can be executed")
     try:
         key = Path(settings.soar_bridge_key_file).read_bytes().strip()
     except OSError:

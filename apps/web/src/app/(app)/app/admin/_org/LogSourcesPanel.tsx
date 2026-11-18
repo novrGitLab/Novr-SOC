@@ -63,7 +63,7 @@ export function LogSourcesPanel({ orgId, orgName, canManage }: { orgId: string; 
 
     return (
         <Loaded title="Syslog and agentless sources" testid="log-sources"
-            hint={`Devices whose logs reach the Wazuh manager directly (firewalls, routers, switches, Linux servers...). Their events go to ${orgName} only while registered and enabled here.`}
+            hint={`Devices whose logs reach NovrSIEM directly (firewalls, routers, switches, Linux servers...). Their events go to ${orgName} only while registered and enabled here.`}
             action={canManage ? <button className={btn('primary')} data-testid="add-source" onClick={() => { setForm(EMPTY); setEditing('new'); }}><Plus className="w-3.5 h-3.5" aria-hidden />Register source</button> : undefined}
             data={list.data} error={list.error} reload={list.reload}>
             {(d) => (
@@ -71,7 +71,7 @@ export function LogSourcesPanel({ orgId, orgName, canManage }: { orgId: string; 
                     {act.notice}
                     <label className="flex items-center gap-2 text-xs mb-2"><input type="checkbox" checked={showRetired} onChange={(e) => setShowRetired(e.target.checked)} />Show retired and reassigned sources</label>
                     <DataTable rows={d.items} rowKey={(s) => s.id} testid="log-sources-table"
-                        empty="No source registered: events the Wazuh manager receives from this organization's devices are quarantined." columns={[
+                        empty="No source registered: events NovrSIEM receives from this organization's devices are quarantined." columns={[
                             { key: 'n', header: 'Source', render: (s) => <span>{s.name}<span className="block text-[11px] text-foreground-muted">{deviceLabel(s.device_type)}{s.vendor ? ` · ${s.vendor}` : ''} · {s.kind}</span></span> },
                             { key: 'm', header: 'Matches', render: (s) => <span className="font-mono text-xs">{s.kind === 'syslog' ? s.source_ip : s.host}<span className="block font-sans text-[11px] text-foreground-muted">{s.protocol}{s.port ? `/${s.port}` : ''}</span></span> },
                             { key: 'l', header: 'Site / network', className: 'hidden lg:table-cell', render: (s) => <span className="text-xs">{s.site_name ?? '—'}<span className="block font-mono text-[11px] text-foreground-muted">{s.network ?? ''}</span></span> },

@@ -245,6 +245,44 @@ There is no manual step beyond the usual backup: `docker compose up -d --wait` a
 Rollback: `alembic downgrade 0016_nhai_worker_role`. This removes the log sources and their alert links, and the
 quarantine entries with the new reasons. It also turns any archived organization back into a suspended one.
 
+**Upgrading to migration 0018 (VMS scan policy and enrollment, collection groups)**
+
+This release changes how two kinds of alerts are attributed. Audit first, then upgrade:
+
+1. Before the upgrade, on the running release, take the usual backup. Then run the read-only audit **with the new
+   image** (it reads only; it opens a `READ ONLY` transaction):
+
+   ```bash
+   docker compose run --rm migrate python -m app.cli attribution-audit --days 7 > /root/attribution-audit.json
+   ```
+
+   It lists every group mapping, flags collection groups (`default`) that are mapped, the agents whose recent alerts
+   carry **only** collection groups (with the organization that receives them today), agent ids seen under two
+   organizations, registered sources, and quarantine by reason.
+2. For every `agent_only_in_collection_groups` entry, move the agent into its organization's own group on the Wazuh
+   manager **before** upgrading. Otherwise its alerts are quarantined (`collection_group_only`) after the upgrade,
+   instead of being attributed by the `default` mapping.
+3. `docker compose up -d --wait` applies 0018. There is no other manual step.
+4. Remove each mapping of `default` from **Wazuh group mappings** once the audit shows no agent depends on it. A
+   remaining mapping is shown as "collection group: ignored for attribution".
+
+What changes:
+
+- **Endpoint alerts.** A collection group (`NOVRSOC_WAZUH_COLLECTION_GROUPS`, default `default`) never establishes
+  ownership. An agent in `cybernovr` and `default` belongs to the organization that maps `cybernovr`. Before, it was
+  quarantined as ambiguous if `default` was mapped to another organization. An agent only in `default` is
+  quarantined. A collection group can no longer be mapped, nor named as a SOAR response target.
+- **Manager telemetry.** The Wazuh manager's own events (agent `000`, not a registered syslog or agentless source) are
+  stored under the platform organization (`NOVRSOC_MANAGER_EVENTS=platform`). Before, they were quarantined. Set
+  `quarantine` to keep the old behaviour. Unregistered or disabled syslog senders are still quarantined.
+- **VMS scan policy.** Every organization gets a scan policy, disabled by default. Nothing is scanned until
+  `NOVRSOC_VMS_SCANNING=authorized_scopes` **and** an organization enables its policy (gate G-B2).
+- **NHAI worker grant.** `novrsoc_nhai` gains `SELECT (id, org_id)` on `cases`, for investigation assistance.
+
+Rollback: `alembic downgrade 0017_org_management_log_sources`. This removes scan policies, enrollments, the scan-job
+progress columns and `collection_group_only` quarantine entries, and revokes the cases grant. Then restore
+`NOVRSOC_MANAGER_EVENTS=quarantine` behaviour by redeploying the previous image.
+
 **Migrations**
 
 - They are additive and reversible.
@@ -266,6 +304,18 @@ hardened unit and a configuration template:
 Each unit runs as its own system user with `NoNewPrivileges` and `ProtectSystem=strict`. NovrSOC never changes the
 Wazuh configuration.
 
+**Historical alert backfill** (`python -m novrsoc_forwarder.backfill`) is a one-off operator tool, separate from the live
+forwarder: its own install directory, user, credential and state.
+
+1. **Plan:** a read-only classification report of a past window, showing who would own each alert and what would be
+   quarantined.
+2. **Pilot:** a limited plan, for example 100 alerts.
+3. **Full import:** an import of exactly an approved plan (`--approve <plan sha256>`), which stops if ownership changes
+   in the meantime.
+
+Rollback uses the import's ledger: `operator backfill-rollback`. It needs Server 2 to run a release with
+`/api/v1/soc/ingest/classify`. Procedure: `services/edge/forwarder/README.md`, "Historical backfill".
+
 Gates are signed in this order. Each one is rolled back by disabling its unit, revoking its machine identity, or
 setting its API variable back to `unconfigured`.
 
@@ -277,10 +327,11 @@ setting its API variable back to `unconfigured`.
 | G-A2 | alert forwarder | G-C1, G-A1; one `forwarder` machine identity |
 | G-F1 | Threat Insights indicator import | G-A2 |
 | G-T1 | TAXII service on Server 1, one vetted source | G-F1; one `ti_feeder` identity per subscribing organization |
-| G-S1 | response bridge with the **simulated** adapter | bridge key and TLS on WireGuard; tenant map mirrors each SOAR policy; a cross-tenant request is refused |
+| G-S1 | response bridge with the **simulated** adapter | bridge key and TLS on WireGuard; each tenant entry generated read-only from that organization's SOAR policy (`python -m app.cli soar-bridge-tenant --org <slug>`: its own mapped groups only, never a collection group); a cross-tenant request is refused |
 | G-S2 | live Wazuh active response | a separate approval after G-S1; one designated non-production agent; the owner present |
-| G-F2 | NHAI worker | the `novrsoc_nhai` role (created NOLOGIN; grants from migration 0016) given a password and a `hostssl` rule for the Server 1 WireGuard address only; a TLS listener for it on the WireGuard address; an evaluation set reviewed by analysts |
+| G-F2 | NHAI worker | the `novrsoc_nhai` role (created NOLOGIN; grants from migrations 0016 and 0018) given a password and a `hostssl` rule for the Server 1 WireGuard address only; a TLS listener for it on the WireGuard address; `python -m app.nhai.diagnose --db` reports `"ready": true` on Server 1; an evaluation set reviewed by analysts |
 | G-B | VMS worker on Server 2 (`vms` profile), heartbeat only | one `vms_worker` identity per organization (§3); production scanning stays `disabled` |
+| G-B2 | production scanning (`NOVRSOC_VMS_SCANNING=authorized_scopes`, engine `nmap_service`) | **a topology decision**: a scanner host with a route to the client network (the Server 2 container has none, by design), declared in `VMS_ALLOWED_NETWORKS`, image `vms-scanner.Dockerfile`; the organization's approved scope and **enabled scan policy** (authorization reference, windows, protected networks); one supervised first scan of a single host |
 | G-N | CNII monitoring of a designated asset | a recorded authorization with reference, scope and validity, approved by a second person |
 
 Live scanning, live response and AI-initiated actions stay disabled until their gate is signed. See

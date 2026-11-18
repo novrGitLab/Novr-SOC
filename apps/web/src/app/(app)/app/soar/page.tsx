@@ -44,7 +44,7 @@ export default function SoarOperationsPage() {
     return (
         <>
             <PageHeader title="SOAR operations centre" icon={Workflow}
-                description="Security orchestration, automation and response: signals, policies, playbooks, human approvals and authorized response activity. Every consequential action needs the organization's policy, a target from the case's own evidence and a second person's approval; execution happens only through the Server 1 bridge. AI never authorizes an action." />
+                description="Security orchestration, automation and response: signals, policies, playbooks, human approvals and authorized response activity. Every consequential action needs the organization's policy, a target from the case's own evidence and a second person's approval; execution happens only through NovrSOAR. AI never authorizes an action." />
             {ops.error ? <ApiErrorState error={ops.error} onRetry={ops.reload} /> : !o ? <LoadingState label="Loading SOAR operations" /> : (
                 <>
                     {o.emergency_stop && (
@@ -58,7 +58,7 @@ export default function SoarOperationsPage() {
                         <KpiCard label="Running" value={o.running} href="/app/soar/runs" />
                         <KpiCard label="Completed (24 h)" value={o.completed_24h} href="/app/soar/runs" />
                         <KpiCard label="Failed (24 h)" value={o.failed_24h} tone={o.failed_24h ? 'critical' : 'neutral'} href="/app/soar/runs" />
-                        <KpiCard label="Dispatched, no receipt" value={o.dispatched_without_receipt} hint="Queued at the Server 1 bridge; re-send from the run" />
+                        <KpiCard label="Dispatched, no receipt" value={o.dispatched_without_receipt} hint="Queued at NovrSOAR; re-send from the run" />
                         <KpiCard label="Refused by policy (24 h)" value={o.refused_24h} />
                         <KpiCard label="Need a person" value={o.human_intervention} tone={o.human_intervention ? 'warning' : 'neutral'} />
                         <KpiCard label="Runs this hour" text={`${o.runs_last_hour} / ${o.max_runs_per_hour}`} hint="Organization limit per hour" />

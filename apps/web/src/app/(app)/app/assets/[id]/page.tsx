@@ -3,6 +3,7 @@
 // One canonical asset across the platform: identity and identifiers, ownership and classification, the Wazuh agent (with
 // its source state), services and technologies, VMS findings next to Wazuh vulnerability detection (never merged),
 // alerts, cases, SOAR runs, Threat Insights matches, CNII designation, history, trends and an NHAI summary.
+import { identifierKindName, sourceName } from '@/foundation/ui/names';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useState, type FormEvent } from 'react';
@@ -81,18 +82,18 @@ export default function AssetDetailPage() {
                         <Card>
                             <SectionTitle title="Source identifiers" hint="Every identifier binds to exactly one asset" />
                             <ul className="mt-3 space-y-1 text-xs" data-testid="asset-identifiers">
-                                {d.identifiers.map((i) => <li key={`${i.kind}-${i.value}-${i.site_key}`}><span className="font-mono">{i.kind}={i.value}</span> <span className="text-foreground-muted">({i.sources.join(', ')})</span></li>)}
+                                {d.identifiers.map((i) => <li key={`${i.kind}-${i.value}-${i.site_key}`}><span className="font-mono">{identifierKindName(i.kind)}={i.value}</span> <span className="text-foreground-muted">({i.sources.join(', ')})</span></li>)}
                             </ul>
                         </Card>
                         <Card>
-                            <SectionTitle title="Wazuh agent" />
-                            <div className="mt-3 space-y-2 text-xs" data-testid="asset-wazuh">
-                                {!d.wazuh ? <p className="text-foreground-muted">No Wazuh agent is linked to this asset: no host telemetry or configuration assessment.</p> : (
+                            <SectionTitle title="NovrAgent" />
+                            <div className="mt-3 space-y-2 text-xs" data-testid="asset-agent">
+                                {!d.wazuh ? <p className="text-foreground-muted">No NovrAgent is linked to this asset: no host telemetry or configuration assessment.</p> : (
                                     <>
                                         {d.wazuh.source.state !== 'connected' && <SourceBanner source={d.wazuh.source} what="Agent data" />}
                                         <p>Agent <span className="font-mono">#{d.wazuh.agent_id}</span> {d.wazuh.name} · {d.wazuh.status ?? 'status unknown'} · {d.wazuh.agent_version ?? ''}</p>
                                         <p>Groups: {d.wazuh.groups.map((g) => <Tag key={g}>{g}</Tag>)}</p>
-                                        {d.wazuh.vulnerabilities && <p>Wazuh vulnerability detection: {d.wazuh.vulnerabilities.total ?? 'unavailable'} ({d.wazuh.vulnerabilities.critical ?? 0} critical, {d.wazuh.vulnerabilities.high ?? 0} high)</p>}
+                                        {d.wazuh.vulnerabilities && <p>NovrAgent vulnerability detection: {d.wazuh.vulnerabilities.total ?? 'unavailable'} ({d.wazuh.vulnerabilities.critical ?? 0} critical, {d.wazuh.vulnerabilities.high ?? 0} high)</p>}
                                         {d.wazuh.sca?.policies.map((p) => <p key={p.policy_id}>SCA {p.name}: {p.score_percent}% ({p.failed} failed)</p>)}
                                         <Link className="underline" href={`/app/endpoints/${d.wazuh.agent_id}`}>Endpoint details</Link>
                                     </>
@@ -142,7 +143,7 @@ export default function AssetDetailPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <Card><SectionTitle title="Discovery and change history" />
                             <div className="mt-3"><Timeline items={d.events.map((e) => ({ id: String(e.id), at: e.occurred_at, title: e.kind.replace(/_/g, ' '),
-                                meta: `${e.source} · ${e.actor_label} · ${fmt(e.occurred_at)}`, body: JSON.stringify(e.details).slice(0, 300),
+                                meta: `${sourceName(e.source)} · ${e.actor_label} · ${fmt(e.occurred_at)}`, body: JSON.stringify(e.details).slice(0, 300),
                                 tone: e.kind === 'identifier_conflict' ? 'warning' : 'neutral' }))} /></div></Card>
                         {can('assets:manage') && a.status === 'active' && (
                             <Card><SectionTitle title="Deduplicate or retire" hint="Merging moves identifiers, services, findings and alerts here; audited" />

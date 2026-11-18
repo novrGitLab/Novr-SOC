@@ -3,6 +3,7 @@
 // Collectors and asset discovery settings. Each collector states what actually runs in this installation: a Wazuh sync
 // reads the configured connector (read-only); network discovery and cloud inventory are configuration only (network
 // discovery cannot even be enabled without a recorded authorization). Reconciliation runs are listed with their outcome.
+import { sourceName } from '@/foundation/ui/names';
 import { useCallback, useState, type FormEvent } from 'react';
 import { Radio, Trash2 } from 'lucide-react';
 import { PageHeader, Tag, btn } from '@/components/features/vms/kit';
@@ -37,7 +38,7 @@ export default function CollectorsPage() {
                 description="Where the inventory comes from. Nothing here scans a network or calls a cloud API in this release: active discovery needs a separate authorization, and every collector says what it actually does." />
             {act.notice}
             <Loaded title="Collectors" data={collectors.data} error={collectors.error} reload={collectors.reload} testid="collectors">
-                {(d) => <DataTable rows={d.items} rowKey={(c) => c.id} empty="No collectors configured. The Wazuh sync can still run from the inventory." columns={[
+                {(d) => <DataTable rows={d.items} rowKey={(c) => c.id} empty="No collectors configured. The NovrAgent sync can still run from the inventory." columns={[
                     { key: 'n', header: 'Collector', render: (c) => <span><strong>{c.name}</strong><span className="block text-[11px] text-foreground-muted">{c.kind.replace('_', ' ')} · every {c.interval_minutes} min</span></span> },
                     { key: 'e', header: 'What runs', render: (c) => <span className="text-xs">{c.execution}</span> },
                     { key: 's', header: 'Settings', render: (c) => <span className="text-xs font-mono">{Object.keys(c.settings).length ? JSON.stringify(c.settings) : '—'}</span> },
@@ -58,7 +59,7 @@ export default function CollectorsPage() {
                     <form onSubmit={create} className="mt-3 grid sm:grid-cols-5 gap-2 items-end">
                         <Field label="Name"><TextInput required minLength={2} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
                         <Field label="Kind"><select className={selectCls} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as Kind })}>
-                            <option value="wazuh_sync">Wazuh agent sync</option><option value="network_discovery">Network discovery (not authorized)</option>
+                            <option value="wazuh_sync">NovrAgent sync</option><option value="network_discovery">Network discovery (not authorized)</option>
                             <option value="cloud_inventory">Cloud inventory (no adapter)</option><option value="manual_import">Manual import</option></select></Field>
                         <Field label="Interval (min)"><TextInput type="number" min={15} max={10080} value={f.interval} onChange={(e) => setF({ ...f, interval: Number(e.target.value) })} /></Field>
                         <Field label="Ranges (discovery, optional)"><TextInput value={f.ranges} onChange={(e) => setF({ ...f, ranges: e.target.value })} placeholder="10.0.0.0/24" /></Field>
@@ -69,7 +70,7 @@ export default function CollectorsPage() {
             )}
             <Loaded title="Reconciliation runs" data={runs.data} error={runs.error} reload={runs.reload}>
                 {(d) => <DataTable rows={d.items} rowKey={(r) => r.id} empty="No run yet." columns={[
-                    { key: 's', header: 'Source', render: (r) => <span className="text-xs"><Tag>{r.source}</Tag> {r.source_state.replace('_', ' ')}</span> },
+                    { key: 's', header: 'Source', render: (r) => <span className="text-xs"><Tag>{sourceName(r.source)}</Tag> {r.source_state.replace('_', ' ')}</span> },
                     { key: 'o', header: 'Outcome', render: (r) => <StateTag state={r.outcome === 'completed' ? 'completed' : 'unconfigured'} label={r.outcome.replace('_', ' ')} /> },
                     { key: 'c', header: 'Counts', render: (r) => <span className="text-xs">{r.observed} observed · {r.created} new · {r.updated} updated · {r.conflicts} conflicts</span> },
                     { key: 'd', header: 'Detail', render: (r) => <span className="text-xs">{r.detail}</span> },

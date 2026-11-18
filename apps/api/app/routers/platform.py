@@ -20,25 +20,26 @@ from novrsoc_contracts.v1.platform import ModuleState, PlatformStatus
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"], responses=ERRORS)
 
 MODULES = [
+    ("command", "Command Center", "live", "Every organization's alerts, assets, vulnerabilities, cases, intelligence, NHAI and SOAR activity in one place, read under each organization's own access rules (platform staff only).", "platform:monitor"),
     ("posture", "Executive overview and security posture", "live", "Explainable measurements; missing data is shown as unavailable, never scored.", "org:read"),
     ("reports", "Reports", "live", "Executive, SECOPS, VMS, Threat Intelligence, Brand, Email, CNII, compliance, SLA and audit reports (JSON, CSV, printable preview).", "reports:read"),
-    ("alerts", "Alerts", "live", "Alerts arrive from the Wazuh forwarder (or local fixtures in development).", "alerts:read"),
+    ("alerts", "Alerts", "live", "Alerts arrive from the NovrFORWARDER (or local fixtures in development).", "alerts:read"),
     ("cases", "Cases and incidents", "live", "Timelines, assignment, SLA, remediation and closure notes.", "cases:read"),
     ("playbooks", "Playbooks", "live", "Draft, validate, approve (by another person), retire. Nothing is pre-defined; nothing runs automatically.", "cases:read"),
-    ("soar", "SOAR operations", "live", "Human approval for every consequential step; execution only through the Server 1 bridge; emergency stop.", "cases:read"),
+    ("soar", "SOAR operations", "live", "Human approval for every consequential step; execution only through NovrSOAR; emergency stop.", "cases:read"),
     ("handover", "Shift handover", "live", "Frozen queue snapshot, acknowledged by the incoming analyst.", "cases:read"),
     ("sla", "SLA management", "live", "Policies per severity, live state, escalation and history.", "cases:read"),
-    ("vms", "Vulnerability management", "live", "Scopes, scans, schedules, findings, retests and remediation. Scanning runs only where the installation enables it (local test targets in the pilot).", "vms:read"),
+    ("vms", "Vulnerability management", "live", "Scopes, scan policy, asset enrollment, scans, schedules, findings, retests and remediation. Scanning runs only where the installation enables it and the organization's scan policy allows it.", "vms:read"),
     ("insights", "Threat Insights", "live", "Indicators, matching, correlation, STIX 2.1 store, threat actors, CVE intelligence and evidence snapshots.", "intel:read"),
-    ("assets", "Asset inventory", "live", "One canonical identity per asset, reconciled from Wazuh, VMS, email domains and manual entries.", "assets:read"),
-    ("log_sources", "Syslog and agentless sources", "live", "Devices that reach NovrSOC through the Wazuh manager, each registered to exactly one organization; unattributed events are quarantined.", "endpoints:read"),
-    ("collectors", "Collectors and discovery", "live", "Wazuh sync runs on demand; network discovery and cloud inventory are configuration only (not authorized).", "assets:read"),
+    ("assets", "Asset inventory", "live", "One canonical identity per asset, reconciled from NovrSIEM, VMS, email domains and manual entries.", "assets:read"),
+    ("log_sources", "Syslog and agentless sources", "live", "Devices that reach NovrSOC through NovrSIEM, each registered to exactly one organization; unattributed events are quarantined.", "endpoints:read"),
+    ("collectors", "Collectors and discovery", "live", "NovrAgent sync runs on demand; network discovery and cloud inventory are configuration only (not authorized).", "assets:read"),
     ("email_security", "Email security", "live", "Domains and DMARC aggregate reports. Domain verification needs a DNS adapter (not configured).", "protection:read"),
     ("brand_protection", "Brand protection", "live", "Watch subjects and lookalike monitoring through the configured resolver.", "protection:read"),
     ("chat", "NovrChat", "live", "Read-only, cited answers from the organization's records; prose drafts through NHAI when configured.", "chat:use"),
     ("continuity", "Data loss recovery", "live", "Recovery plans and requests. Only NovrSOC's own database backups are a connected system.", "recovery:read"),
     ("sites", "Sites", "live", "", "sites:read"),
-    ("endpoints", "Wazuh endpoints", "live", "Data depends on the Wazuh connector state (unconfigured, local fixture or live).", "endpoints:read"),
+    ("endpoints", "NovrAgent endpoints", "live", "Data depends on the NovrSIEM connector state (unconfigured, local fixture or live).", "endpoints:read"),
 ]
 
 
@@ -76,8 +77,8 @@ def _nhai(conn: Connection, settings: Settings) -> tuple[ModuleState, ConnectorS
         return (ModuleState(key="nhai", label=NHAI, state="live",
                             note="Asynchronous drafts for human review. CPU inference: expect minutes per result."),
                 ConnectorState(connector="ollama", state="connected", checked_at=last.finished_at,
-                               detail="The last NHAI inference (in the NHAI worker) succeeded."))
+                               detail="The last NHAI analysis succeeded."))
     detail = (f"The last NHAI job ended {last.status} ({last.error_code})." if last is not None
-              else "Configured for the NHAI worker; no inference has completed in the last 24 hours, so availability is not established.")
+              else "NHAI is configured; no analysis has completed in the last 24 hours, so availability is not established.")
     return (ModuleState(key="nhai", label=NHAI, state="not_available", note=detail[:200]),
             ConnectorState(connector="ollama", state="unavailable", detail=detail[:300]))

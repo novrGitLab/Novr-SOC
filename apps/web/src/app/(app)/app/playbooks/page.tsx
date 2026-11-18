@@ -140,7 +140,7 @@ export default function PlaybooksPage() {
                                 <Plus className="w-3.5 h-3.5" aria-hidden /> Add step</button>
                         </fieldset>
                         <div className="grid sm:grid-cols-3 gap-2">
-                            <Field label="Recommend for Wazuh rule ids (comma separated)"><TextInput value={f.rules} onChange={(e) => setF({ ...f, rules: e.target.value })} /></Field>
+                            <Field label="Recommend for NovrSIEM rule ids (comma separated)"><TextInput value={f.rules} onChange={(e) => setF({ ...f, rules: e.target.value })} /></Field>
                             <Field label="Or MITRE techniques (e.g. T1110)"><TextInput value={f.mitre} onChange={(e) => setF({ ...f, mitre: e.target.value })} /></Field>
                             <Field label="Minimum rule level"><TextInput type="number" min={0} max={16} value={f.minLevel} onChange={(e) => setF({ ...f, minLevel: Number(e.target.value) })} /></Field>
                         </div>

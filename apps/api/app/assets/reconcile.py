@@ -272,6 +272,6 @@ def link_unlinked(conn: Connection, limit: int = 500) -> int:
         if not ids:
             continue
         aid = upsert(conn, Observation(source="vms", kind="host", display_name=r.host, identifiers=ids,
-                                       attributes={"primary_ip": normalize("ip", r.host), "fqdn": normalize("fqdn", r.host)}), "jobs worker").asset_id
+                                       attributes={"primary_ip": normalize("ip", r.host), "fqdn": normalize("fqdn", r.host)}), "NovrSOC").asset_id
         n += conn.execute(text("UPDATE novrsoc.vms_findings SET asset_id = :a WHERE host = :h AND asset_id IS NULL"), {"a": aid, "h": r.host}).rowcount
     return n

@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
     Activity, ArrowRightLeft, BarChart3, Bell, Boxes, Briefcase, Bug, Building2, ChevronDown, ClipboardCheck, ClipboardList, CreditCard, Database,
-    Download, FileBarChart, Fingerprint, Gauge, HeartPulse, KeyRound, LayoutDashboard, LifeBuoy, LogOut, Mail, MapPin, Menu, MessageSquare, Monitor,
+    Download, FileBarChart, Fingerprint, Gauge, Globe2, HeartPulse, KeyRound, LayoutDashboard, LifeBuoy, LogOut, Mail, MapPin, Menu, MessageSquare, Monitor,
     Moon, Landmark, Network, Radar, ScanSearch, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Sun, Target, Timer, UserCog, Workflow,
     Wrench, X, Zap, type LucideIcon,
 } from 'lucide-react';
@@ -26,7 +26,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
     handover: ArrowRightLeft, sla: Timer, vms: ShieldAlert, surface: Network, findings: Bug, scans: ScanSearch, risk: Target, remediation: Wrench,
     vmsreport: ClipboardCheck, insights: Radar, actors: Fingerprint, cves: Database, nhai: Sparkles, cnii: Landmark, email: Mail, brand: ShieldCheck,
     assets: Boxes, chat: MessageSquare, recovery: LifeBuoy, admin: Building2, users: UserCog, billing: CreditCard, analytics: BarChart3,
-    exports: Download, wazuh: Activity, health: HeartPulse, audit: ScrollText, sites: MapPin, endpoints: Monitor, collectors: ClipboardList,
+    exports: Download, wazuh: Activity, health: HeartPulse, audit: ScrollText, sites: MapPin, endpoints: Monitor, collectors: ClipboardList, command: Globe2, policy: ShieldCheck,
 };
 
 function NotificationsBell() {

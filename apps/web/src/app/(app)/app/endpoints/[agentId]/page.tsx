@@ -64,7 +64,7 @@ export default function EndpointDetailPage() {
                         </section>
 
                         <Card>
-                            <SectionTitle title="Configuration assessment (SCA)" hint="Wazuh security configuration assessment policies for this agent" action={<SourcePill state={data.sca.source.state} />} />
+                            <SectionTitle title="Configuration assessment (SCA)" hint="NovrAgent security configuration assessment policies for this agent" action={<SourcePill state={data.sca.source.state} />} />
                             {data.sca.policies.length === 0 ? <p className="mt-3 text-xs text-foreground-muted">No SCA results are available for this endpoint.</p> : (
                                 <div className="overflow-x-auto mt-3">
                                     <table className="w-full text-sm" data-testid="endpoint-sca">

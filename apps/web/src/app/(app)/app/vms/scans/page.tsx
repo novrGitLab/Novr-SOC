@@ -1,8 +1,10 @@
 'use client';
 
-// Scan configuration, scheduling and operations: approved scopes (authorization references, validity), scan jobs and
-// their history, recurring schedules (disabled by default), and the local VMS worker. In this release a scope may only
-// name a local test target, and nothing is scanned unless the installation enables scanning.
+// Scan configuration, scheduling and operations: approved scopes (authorization references, validity), scan jobs with
+// their origin and per-target progress, recurring schedules (disabled by default), and the VMS workers. What a scope may
+// name depends on the installation (local test targets in development; bounded private or explicitly approved ranges in
+// production, held to the organization's scan policy); nothing is scanned unless the installation enables scanning.
+import { activityName } from '@/foundation/ui/names';
 import { useCallback, useState, type FormEvent } from 'react';
 import { ScanSearch } from 'lucide-react';
 import { PageHeader, Tag, btn } from '@/components/features/vms/kit';
@@ -22,7 +24,7 @@ export default function ScansPage() {
     const scopes = useResource(useCallback(() => vmsxApi.scopes(orgId), [orgId]));
     const scans = useResource(useCallback(() => vmsxApi.scans(orgId), [orgId]));
     const schedules = useResource(useCallback(() => vmsxApi.schedules(orgId), [orgId]));
-    const [scope, setScope] = useState({ kind: 'domain' as 'ip' | 'domain', value: '', ref: '', days: 30 });
+    const [scope, setScope] = useState({ kind: 'domain' as 'ip' | 'cidr' | 'domain', value: '', ref: '', days: 30 });
     const [scan, setScan] = useState({ scopeId: '', targets: '', activity: 'vuln_openvas' as Activity });
     const [sch, setSch] = useState({ scopeId: '', name: '', targets: '', activity: 'vuln_openvas' as Activity, cadence: 'weekly' as 'daily' | 'weekly' | 'monthly' });
     const act = useAction();
@@ -36,7 +38,7 @@ export default function ScansPage() {
     async function requestScan(e: FormEvent) {
         e.preventDefault();
         if (await act.run(() => vmsxApi.createScan(orgId, { idempotency_key: newIdempotencyKey('scan'), scope_id: scan.scopeId, activity: scan.activity,
-            targets: scan.targets.split(',').map((t) => t.trim()).filter(Boolean), profile: 'standard' }), 'Scan queued. The local worker claims it on its next cycle.')) scans.reload();
+            targets: scan.targets.split(',').map((t) => t.trim()).filter(Boolean), profile: 'standard' }), 'Scan queued. NovrVMS claims it on its next cycle.')) scans.reload();
     }
     async function addSchedule(e: FormEvent) {
         e.preventDefault();
@@ -48,7 +50,7 @@ export default function ScansPage() {
     return (
         <>
             <PageHeader title="Scans and schedules" icon={ScanSearch}
-                description="Scans run only inside an approved, unexpired scope, by the VMS worker on Server 2, which reaches only the API. Scope is re-checked when a scan is requested, when it is claimed and for every result." />
+                description="Scans run only inside an approved, unexpired scope and, in production, under the organization's scan policy (protected networks, windows, rate and concurrency limits). Scope is re-checked when a scan is requested, when it is claimed and for every result." />
             {status.data && <p className="text-xs flex items-center gap-2" data-testid="vms-scanning"><StatusPill tone={status.data.scanning === 'enabled' ? 'warning' : 'neutral'} label={`Scanning ${status.data.scanning}`} /> {status.data.reason}</p>}
             {act.notice}
             <div className="grid gap-5 lg:grid-cols-2">
@@ -57,13 +59,13 @@ export default function ScansPage() {
                         <>
                             <DataTable testid="vms-scopes" rows={d.items} rowKey={(s) => s.id} empty="No scope approved." columns={[
                                 { key: 'v', header: 'Scope', render: (s) => <span><Tag>{s.entry.kind}</Tag> <span className="font-mono">{s.entry.value}</span></span> },
-                                { key: 'a', header: 'Activities', render: (s) => <span className="text-xs">{s.allowed_activities.join(', ')}</span> },
+                                { key: 'a', header: 'Activities', render: (s) => <span className="text-xs">{s.allowed_activities.map(activityName).join(', ')}</span> },
                                 { key: 'r', header: 'Authorization', render: (s) => <span className="text-xs">{s.authorization_reference} · until {fmt(s.valid_until)}</span> },
                             ]} />
                             {can('vms:scope') && (
                                 <form onSubmit={addScope} className="mt-3 flex flex-wrap items-end gap-2">
-                                    <Field label="Kind"><select className={selectCls} value={scope.kind} onChange={(e) => setScope({ ...scope, kind: e.target.value as 'ip' | 'domain' })}><option value="domain">domain</option><option value="ip">ip</option></select></Field>
-                                    <Field label="Local test target"><TextInput required value={scope.value} placeholder="lab.alpha.test or 127.0.0.1" onChange={(e) => setScope({ ...scope, value: e.target.value })} /></Field>
+                                    <Field label="Kind"><select className={selectCls} value={scope.kind} onChange={(e) => setScope({ ...scope, kind: e.target.value as 'ip' | 'cidr' | 'domain' })}><option value="domain">domain</option><option value="ip">ip</option><option value="cidr">range (CIDR)</option></select></Field>
+                                    <Field label="Address, range or name"><TextInput required value={scope.value} placeholder="10.20.0.0/24 · app.example.com · lab.alpha.test" onChange={(e) => setScope({ ...scope, value: e.target.value })} /></Field>
                                     <Field label="Authorization reference"><TextInput required minLength={3} value={scope.ref} onChange={(e) => setScope({ ...scope, ref: e.target.value })} /></Field>
                                     <Field label="Valid (days)"><TextInput type="number" min={1} max={365} value={scope.days} onChange={(e) => setScope({ ...scope, days: Number(e.target.value) })} /></Field>
                                     <button className={btn('primary')} type="submit" disabled={act.busy}>Approve scope</button>
@@ -77,8 +79,9 @@ export default function ScansPage() {
                         <>
                             <DataTable testid="vms-scans" rows={d.items} rowKey={(s) => s.id} empty="No scan requested." columns={[
                                 { key: 't', header: 'Targets', render: (s) => <span className="font-mono text-xs">{s.targets.join(', ')}</span> },
-                                { key: 'a', header: 'Activity', render: (s) => <Tag>{s.activity}</Tag> },
-                                { key: 's', header: 'State', render: (s) => <span className="text-xs"><StateTag state={s.state} />{s.error ? ` (${s.error})` : ''}</span> },
+                                { key: 'a', header: 'Activity', render: (s) => <Tag>{activityName(s.activity)}</Tag> },
+                                { key: 's', header: 'State', render: (s) => <span className="text-xs"><StateTag state={s.state} />{s.error ? ` (${s.error})` : ''}
+                                    <span className="block text-foreground-muted">{s.origin}{typeof s.progress?.targets_reported === 'number' ? ` · ${String(s.progress.targets_reported)}/${String(s.progress.targets_total ?? s.targets.length)} target(s) reported` : ''}</span></span> },
                                 { key: 'w', header: 'Requested / finished', render: (s) => <span className="text-xs">{fmt(s.created_at)}<span className="block text-foreground-muted">{fmt(s.finished_at)}</span></span> },
                             ]} />
                             {can('vms:scan') && (scopes.data?.items.length ?? 0) > 0 && (
@@ -86,7 +89,7 @@ export default function ScansPage() {
                                     <Field label="Scope"><select className={selectCls} required value={scan.scopeId} onChange={(e) => setScan({ ...scan, scopeId: e.target.value })}><option value="">Choose…</option>{scopeOpts}</select></Field>
                                     <Field label="Targets (comma separated)"><TextInput required value={scan.targets} onChange={(e) => setScan({ ...scan, targets: e.target.value })} /></Field>
                                     <Field label="Activity"><select className={selectCls} value={scan.activity} onChange={(e) => setScan({ ...scan, activity: e.target.value as Activity })}>
-                                        <option value="vuln_openvas">vulnerability (Greenbone)</option><option value="ports">ports</option></select></Field>
+                                        <option value="vuln_openvas">{activityName('vuln_openvas')}</option><option value="ports">{activityName('ports')}</option></select></Field>
                                     <button className={btn('primary')} type="submit" disabled={act.busy}>Request scan</button>
                                 </form>
                             )}
@@ -119,7 +122,7 @@ export default function ScansPage() {
                 )}
             </Loaded>
             {status.data && status.data.workers.length > 0 && (
-                <Loaded title="Workers" data={status.data} error={null}>
+                <Loaded title="NovrVMS" data={status.data} error={null}>
                     {(s) => <ul className="text-xs">{s.workers.map((w) => <li key={w.identity_name}>{w.identity_name} · v{w.component_version} · {w.state} · {w.stale ? 'stale' : 'reporting'} · {fmt(w.last_heartbeat_at)}</li>)}</ul>}
                 </Loaded>
             )}

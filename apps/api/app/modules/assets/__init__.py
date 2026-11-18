@@ -43,11 +43,11 @@ MODULE = ModuleInfo(name="assets", workstream="C", prefix="/api/v1/assets",
 router = APIRouter(prefix="/api/v1/assets", tags=["assets"], responses=ERRORS)
 
 OPEN_FINDING = "('verified', 'risk_accepted')"
-DETECTION_NOTE = ("Wazuh vulnerability detection reads installed packages through the agent; VMS findings come from "
+DETECTION_NOTE = ("NovrSIEM vulnerability detection reads installed packages through the agent; VMS findings come from "
                   "authorized network scans. They are listed separately and never merged: the same CVE seen by both is two "
                   "observations with different evidence.")
 EXECUTION = {
-    "wazuh_sync": "Reads agents from the configured Wazuh connector (read-only) and reconciles them. Runs on demand.",
+    "wazuh_sync": "Reads agents from the configured NovrSIEM connector (read-only) and reconciles them. Runs on demand.",
     "network_discovery": "Configuration only. Active network discovery is not authorized in this release; nothing scans.",
     "cloud_inventory": "Configuration only. No cloud inventory adapter is configured; nothing is called.",
     "manual_import": "Imports the rows an analyst uploads through the inventory import.",
@@ -197,9 +197,9 @@ def sync_wazuh(conn: Connection, settings: Settings, org_id: uuid.UUID, label: s
     counts = {"observed": 0, "created": 0, "updated": 0, "conflicts": 0}
     outcome, detail = "completed", ""
     if source is None:
-        outcome, detail = "source_unconfigured", "No Wazuh connection is configured; nothing was read."
+        outcome, detail = "source_unconfigured", "No NovrSIEM connection is configured; nothing was read."
     elif manager_state.state not in ("connected", "local_fixture"):
-        outcome, detail = "source_unavailable", f"Wazuh manager {manager_state.state}: {manager_state.detail}"[:300]
+        outcome, detail = "source_unavailable", f"NovrSIEM {manager_state.state}: {manager_state.detail}"[:300]
     else:
         try:
             scope = org_scope(conn, org_id)
@@ -353,7 +353,7 @@ def _wazuh_context(conn: Connection, settings: Settings, org_id: uuid.UUID, agen
         return WazuhAgentContext(source=failed_state(manager_state, e), agent_id=agent_id)
     if agent is None:
         return WazuhAgentContext(source=manager_state.model_copy(update={"detail": "The agent is not (or no longer) in this organization's "
-                                                                                   "Wazuh groups."}), agent_id=agent_id)
+                                                                                   "NovrAgent groups."}), agent_id=agent_id)
     try:
         counts = source.vulnerability_counts(scope, agent_id) if indexer_state.state in ("connected", "local_fixture") else None
         vulns = (VulnerabilitySummary(source=indexer_state, total=sum(counts.values()), **counts) if counts is not None

@@ -8,7 +8,7 @@
 export type NavIcon = 'overview' | 'posture' | 'reports' | 'alerts' | 'cases' | 'playbooks' | 'soar' | 'handover' | 'sla'
     | 'vms' | 'surface' | 'findings' | 'scans' | 'risk' | 'remediation' | 'vmsreport' | 'insights' | 'actors' | 'cves' | 'nhai'
     | 'cnii' | 'email' | 'brand' | 'assets' | 'chat' | 'recovery' | 'admin' | 'users' | 'billing' | 'analytics' | 'exports'
-    | 'wazuh' | 'health' | 'audit' | 'sites' | 'endpoints' | 'collectors';
+    | 'wazuh' | 'health' | 'audit' | 'sites' | 'endpoints' | 'collectors' | 'command' | 'policy';
 
 export interface NavItem {
     key: string;
@@ -32,6 +32,7 @@ export const FOUNDATION_NAV: NavSection[] = [
             live('overview', 'Executive overview', 'overview', '/app'),
             live('posture', 'Security posture', 'posture', '/app/posture'),
             live('reports', 'Reports', 'reports', '/app/reports', 'reports:read'),
+            live('command', 'Command Center', 'command', '/app/command', 'platform:monitor'),
         ],
     },
     {
@@ -52,6 +53,7 @@ export const FOUNDATION_NAV: NavSection[] = [
             live('vms-surface', 'Attack surface', 'surface', '/app/vms/surface', 'vms:read'),
             live('vms-findings', 'Findings', 'findings', '/app/vms/findings', 'vms:read'),
             live('vms-scans', 'Scans and schedules', 'scans', '/app/vms/scans', 'vms:read'),
+            live('vms-policy', 'Scan policy and enrollment', 'policy', '/app/vms/policy', 'vms:read'),
             live('vms-risk', 'Risk prioritization', 'risk', '/app/vms/risk', 'vms:read'),
             live('vms-remediation', 'Remediation', 'remediation', '/app/vms/remediation', 'vms:read'),
             live('vms-reports', 'Reporting and audit', 'vmsreport', '/app/vms/reports', 'vms:read'),
@@ -93,7 +95,7 @@ export const FOUNDATION_NAV: NavSection[] = [
             live('admin-billing', 'Billing', 'billing', '/app/admin/billing', 'billing:manage'),
             live('admin-analytics', 'Platform analytics', 'analytics', '/app/admin/analytics', 'platform:monitor'),
             live('admin-exports', 'Data exports', 'exports', '/app/admin/exports', 'exports:manage'),
-            live('admin-wazuh', 'Wazuh group mappings', 'wazuh', '/app/admin/wazuh-groups', 'endpoints:read'),
+            live('admin-agent-groups', 'NovrAgent group mappings', 'wazuh', '/app/admin/agent-groups', 'endpoints:read'),
             live('admin-health', 'Platform health', 'health', '/app/admin/health', 'platform:monitor'),
             live('audit', 'Audit log', 'audit', '/app/audit', 'audit:read'),
         ],

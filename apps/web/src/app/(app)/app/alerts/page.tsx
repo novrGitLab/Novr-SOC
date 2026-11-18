@@ -34,7 +34,7 @@ export default function AlertsPage() {
     return (
         <>
             <PageHeader title="Alerts" icon={Bell}
-                description="Alerts stored for this organization. The organization of each alert is decided from its Wazuh agent group; alerts whose group is unmapped are quarantined, never shown to a client." />
+                description="Alerts stored for this organization. The organization of each alert is decided from its NovrAgent group; alerts whose group is unmapped are quarantined, never shown to a client." />
             <div className="flex flex-wrap items-center gap-2">
                 <Segmented label="Status" options={STATUS_OPTS} value={status} onChange={(v) => { setStatus(v); setOffset(0); }} />
                 <Select label="Severity" options={SEV_OPTS} value={severity} onChange={(v) => { setSeverity(v); setOffset(0); }} />

@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import ipaddress
 import json
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -33,8 +34,22 @@ def _raw(alert: WazuhAlertIn) -> str:
     return body
 
 
+@dataclass(frozen=True)
+class Attribution:
+    """Installation-wide ownership rules (from Settings), never from the payload.
+    collection_groups: agent groups that only COLLECT agents (Wazuh `default`): membership never establishes an owner,
+      and a mapping of such a group is ignored. An agent with only collection groups is quarantined.
+    platform_org: owner of the Wazuh manager's own telemetry (agent 000, not a registered source); None quarantines it."""
+    collection_groups: frozenset[str] = field(default_factory=lambda: frozenset({"default"}))
+    platform_org: uuid.UUID | None = None
+
+
+DEFAULT_ATTRIBUTION = Attribution()
+
+
 def _manager_source(conn: Connection, alert: WazuhAlertIn):
-    """(source row, None) for a manager-received event from a live, enabled source; (None, quarantine reason) otherwise."""
+    """(source row, None) for a manager-received event from a live, enabled source; (None, quarantine reason) otherwise.
+    The manager's own events return (None, 'manager_local_event'); the caller decides whether the platform owns them."""
     kind, value = classify_location(str((alert.raw or {}).get("location") or ""))
     if kind == "manager_local":
         return None, "manager_local_event"
@@ -60,7 +75,50 @@ class IngestCounts:
     quarantined: int = 0
 
 
-def ingest_alerts(conn: Connection, alerts: list[WazuhAlertIn], *, source: str) -> IngestCounts:
+def resolve_owner(conn: Connection, a: WazuhAlertIn, attr: Attribution = DEFAULT_ATTRIBUTION):
+    """(org_id, log source row, None) for the ONE organization that owns the alert, or (None, None, quarantine reason).
+    The single ownership decision, shared by ingest and its dry run (classify_alerts).
+      * agent 000: a registered, enabled syslog/agentless source's organization; the manager's own telemetry belongs to
+        the platform organization (attr.platform_org) or is quarantined; anything else is quarantined;
+      * any other agent: the ONE organization mapping its groups, collection groups (attr.collection_groups) left out.
+        Only collection groups -> quarantined (collection_group_only), whichever organization maps such a group."""
+    if a.agent.id in MANAGER_AGENT_IDS:
+        src, reason = _manager_source(conn, a)
+        if src is not None:
+            return src.org_id, src, None
+        if reason == "manager_local_event" and attr.platform_org is not None:
+            return attr.platform_org, None, None
+        return None, None, reason
+    groups = [g for g in a.agent.groups if g not in attr.collection_groups]
+    if not groups:
+        return None, None, "collection_group_only" if a.agent.groups else "no_organization_for_groups"
+    org, matched = conn.execute(text("SELECT org_id, matched_orgs FROM novrsoc.org_for_agent_groups(:g)"), {"g": groups}).one()
+    if org is None:
+        return None, None, "ambiguous_organization" if matched > 1 else "no_organization_for_groups"
+    return org, None, None
+
+
+def classify_alerts(conn: Connection, alerts: list[WazuhAlertIn], *, source: str,
+                    attr: Attribution = DEFAULT_ATTRIBUTION) -> list[dict]:
+    """What ingest WOULD do with each alert, without storing anything: the owner (or quarantine reason) and whether the
+    alert is already stored for that owner. Reads only; app.org_id is set per alert (transaction-local)."""
+    out = []
+    for a in alerts:
+        org, src, reason = resolve_owner(conn, a, attr)
+        if org is None:
+            out.append({"id": a.id, "verdict": "quarantine", "reason": reason})
+            continue
+        conn.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(org)})
+        r = conn.execute(text("""SELECT o.slug::text AS slug, EXISTS (SELECT 1 FROM novrsoc.alerts x WHERE x.org_id = :o AND x.source = :s
+                                 AND x.external_id = :x) AS stored FROM novrsoc.organizations o WHERE o.id = :o"""),
+                         {"o": org, "s": source, "x": a.id}).one()
+        out.append({"id": a.id, "verdict": "duplicate" if r.stored else "new", "org_id": org, "org_slug": r.slug,
+                    "log_source_id": src.id if src is not None else None})
+    return out
+
+
+def ingest_alerts(conn: Connection, alerts: list[WazuhAlertIn], *, source: str,
+                  attr: Attribution = DEFAULT_ATTRIBUTION) -> IngestCounts:
     """Store each alert under the ONE organization that owns it, or quarantine it.
     * an agent's alert: the organization that maps its agent groups (exactly one);
     * an event the Wazuh manager received itself (agent 000: remote syslog, agentless): the organization of the live,
@@ -69,14 +127,7 @@ def ingest_alerts(conn: Connection, alerts: list[WazuhAlertIn], *, source: str) 
     Runs inside the caller's transaction; app.org_id is set per alert (transaction-local)."""
     counts = IngestCounts()
     for a in alerts:
-        src = None
-        if a.agent.id in MANAGER_AGENT_IDS:
-            src, reason = _manager_source(conn, a)
-            org = src.org_id if src is not None else None
-        else:
-            org, matched = conn.execute(text("SELECT org_id, matched_orgs FROM novrsoc.org_for_agent_groups(:g)"),
-                                        {"g": list(a.agent.groups)}).one()
-            reason = None if org is not None else "ambiguous_organization" if matched > 1 else "no_organization_for_groups"
+        org, src, reason = resolve_owner(conn, a, attr)
         if org is None:
             conn.execute(text("SELECT novrsoc.quarantine_alert(:s, :x, :r, :g, CAST(:raw AS jsonb))"),
                          {"s": source, "x": a.id, "r": reason, "g": list(a.agent.groups), "raw": _raw(a)})

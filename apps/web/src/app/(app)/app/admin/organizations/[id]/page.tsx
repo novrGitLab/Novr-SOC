@@ -4,6 +4,7 @@
 // organization as X-Org-Id: the API re-validates the switch (audited) and the database's row-level security applies, so
 // nothing here can show another organization's records. A suspended or archived organization cannot be switched into;
 // its data tabs say so and Settings can reactivate it.
+import { sourceName } from '@/foundation/ui/names';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useState, type ReactNode } from 'react';
@@ -92,7 +93,7 @@ function Overview({ o, go }: { o: Org; go: (t: OrgTab) => void }) {
             <Grid cols={4}>
                 <Tile label="Status" value={<StatusPill tone={ORG_STATUS[o.status].tone} label={ORG_STATUS[o.status].label} />} sub={o.status_reason || undefined} />
                 <Tile label="Members" value={nf.format(o.users)} sub="home and assigned accounts" />
-                <Tile label="Assets" value={nf.format(o.assets)} sub={`${i.wazuh_agents} Wazuh agent(s) · ${o.sites} site(s)`} />
+                <Tile label="Assets" value={nf.format(o.assets)} sub={`${i.wazuh_agents} NovrAgent(s) · ${o.sites} site(s)`} />
                 <Tile label="Security events (7 days)" value={nf.format(o.alerts_7d)} sub={`${o.open_cases} open case(s) · last ${fmt(i.last_alert_at)}`} />
             </Grid>
             <Card>
@@ -100,7 +101,7 @@ function Overview({ o, go }: { o: Org; go: (t: OrgTab) => void }) {
                     <h2 className="text-sm font-black">Integration health</h2>
                     <StatusPill tone={HEALTH[i.health].tone} label={HEALTH[i.health].label} />
                 </div>
-                <p className="text-xs text-foreground-muted mt-1">{i.wazuh_groups} Wazuh group(s) · {i.log_sources} source(s), {i.log_sources_receiving} receiving, {i.log_sources_never} without any event,
+                <p className="text-xs text-foreground-muted mt-1">{i.wazuh_groups} NovrAgent group(s) · {i.log_sources} source(s), {i.log_sources_receiving} receiving, {i.log_sources_never} without any event,
                     {' '}{i.log_sources_disabled} disabled · {i.service_identities} machine identit{i.service_identities === 1 ? 'y' : 'ies'}</p>
                 {i.notes.length > 0 && <ul className="mt-2 text-xs list-disc pl-5 space-y-0.5">{i.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
                 <button className={`${btn('ghost')} mt-2`} onClick={() => go('integrations')}>Open integrations</button>
@@ -208,14 +209,14 @@ function AssetsTab({ o, openAs }: { o: Org; openAs: (href: string) => void }) {
             {act.notice}
             <Grid cols={3}>
                 <Tile label="Assets in the inventory" value={nf.format(o.assets)} sub={<button className="underline" onClick={() => openAs('/app/assets')}>Open the asset inventory as {o.name}</button>} />
-                <Tile label="Wazuh agents reconciled" value={nf.format(o.integrations.wazuh_agents)} sub={`${o.integrations.wazuh_groups} mapped group(s)`} />
+                <Tile label="NovrAgents reconciled" value={nf.format(o.integrations.wazuh_agents)} sub={`${o.integrations.wazuh_groups} mapped group(s)`} />
                 <Tile label="Sites" value={nf.format(o.sites)} sub={<button className="underline" onClick={() => openAs('/app/sites')}>Manage sites and networks</button>} />
             </Grid>
-            <Loaded title="Discovered endpoints" hint="Agents of the mapped Wazuh groups, from the Wazuh connector" data={eps.data} error={eps.error} reload={eps.reload} testid="org-endpoints">
+            <Loaded title="Discovered endpoints" hint="Agents of the mapped NovrAgent groups, from the NovrSIEM connector" data={eps.data} error={eps.error} reload={eps.reload} testid="org-endpoints">
                 {(d) => (<>
                     <p className="text-xs mb-2">Source: <StateTag state={d.source.state} /> {d.source.detail ? <span className="text-foreground-muted">{d.source.detail}</span> : null}
                         {' '}· {Object.entries(d.by_status).map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(' · ') || 'no agent'}</p>
-                    <DataTable rows={d.items.slice(0, 100)} rowKey={(e) => e.agent_id} empty={d.mapped_groups ? 'No agent in the mapped groups.' : 'No Wazuh group is mapped: map one in Integrations.'} columns={[
+                    <DataTable rows={d.items.slice(0, 100)} rowKey={(e) => e.agent_id} empty={d.mapped_groups ? 'No agent in the mapped groups.' : 'No NovrAgent group is mapped: map one in Integrations.'} columns={[
                         { key: 'a', header: 'Agent', render: (e) => <span>{e.name}<span className="block font-mono text-[11px] text-foreground-muted">{e.agent_id} · {e.ip ?? 'no address'}</span></span> },
                         { key: 's', header: 'Status', render: (e) => <StateTag state={e.status === 'active' ? 'active' : e.status} /> },
                         { key: 'g', header: 'Groups', className: 'hidden md:table-cell', render: (e) => <span className="font-mono text-xs">{e.groups.join(', ')}</span> },
@@ -224,11 +225,11 @@ function AssetsTab({ o, openAs }: { o: Org; openAs: (href: string) => void }) {
                 </>)}
             </Loaded>
             <Loaded title="Inventory synchronization" hint="Reconciliation runs into the organization's asset inventory"
-                action={<button className={btn('primary')} disabled={act.busy} onClick={() => void act.run(() => assetsApi.syncWazuh(o.id), (r) => `Sync ${r.outcome}: ${r.observed} observed, ${r.created} new.`).then(() => runs.reload())}>Sync Wazuh agents now</button>}
+                action={<button className={btn('primary')} disabled={act.busy} onClick={() => void act.run(() => assetsApi.syncWazuh(o.id), (r) => `Sync ${r.outcome}: ${r.observed} observed, ${r.created} new.`).then(() => runs.reload())}>Sync NovrAgents now</button>}
                 data={runs.data} error={runs.error} reload={runs.reload}>
                 {(d) => <DataTable rows={d.items.slice(0, 10)} rowKey={(r) => r.id} empty="No synchronization has run." columns={[
                     { key: 't', header: 'Started', render: (r) => <span className="text-xs">{fmt(r.started_at)}</span> },
-                    { key: 's', header: 'Source', render: (r) => <span className="text-xs">{r.source} · {r.source_state}</span> },
+                    { key: 's', header: 'Source', render: (r) => <span className="text-xs">{sourceName(r.source)} · {r.source_state}</span> },
                     { key: 'o', header: 'Outcome', render: (r) => <StateTag state={r.outcome === 'completed' ? 'completed' : r.outcome === 'failed' ? 'failed' : 'unconfigured'} label={r.outcome.replace(/_/g, ' ')} /> },
                     { key: 'n', header: 'Observed / new', render: (r) => <span className="tabular-nums text-xs">{r.observed} / {r.created}{r.conflicts ? ` · ${r.conflicts} conflict(s)` : ''}</span> },
                 ]} />}
@@ -260,7 +261,7 @@ function PoliciesTab({ o, openAs }: { o: Org; openAs: (href: string) => void }) 
                 {(p) => (
                     <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
                         <div><dt className="text-foreground-muted">Allowed actions</dt><dd>{p.allowed_actions.join(', ') || 'none (nothing can be approved)'}</dd></div>
-                        <div><dt className="text-foreground-muted">Authorized Wazuh groups</dt><dd className="font-mono">{p.allowed_agent_groups.join(', ') || 'none'}</dd></div>
+                        <div><dt className="text-foreground-muted">Authorized NovrAgent groups</dt><dd className="font-mono">{p.allowed_agent_groups.join(', ') || 'none'}</dd></div>
                         <div><dt className="text-foreground-muted">Live execution</dt><dd>{p.live_enabled ? 'allowed (after approval)' : 'off: dry runs only'}</dd></div>
                         <div><dt className="text-foreground-muted">Emergency stop</dt><dd>{p.emergency_stop ? `ON since ${fmt(p.emergency_at)}` : 'off'}</dd></div>
                         <div><dt className="text-foreground-muted">Approval validity</dt><dd>{p.approval_ttl_minutes} min</dd></div>
@@ -347,7 +348,7 @@ function SettingsTab({ o, onChange }: { o: Org; onChange: (o: Org) => void }) {
             <Card>
                 <h2 className="text-sm font-black">Status: {ORG_STATUS[o.status].label}</h2>
                 <p className="text-xs text-foreground-muted mt-1">Suspended: its members cannot sign in or switch to it and nobody can open its data; telemetry keeps arriving.
-                    Archived: kept for the record; it must first have no Wazuh group mapping and no live source, so no event can reach it. Every change needs a reason and is audited.</p>
+                    Archived: kept for the record; it must first have no NovrAgent group mapping and no live source, so no event can reach it. Every change needs a reason and is audited.</p>
                 {o.status_reason && <p className="text-xs mt-1">Last reason: {o.status_reason}{o.archived_at ? ` · archived ${fmt(o.archived_at)}` : ''}</p>}
                 {o.kind === 'platform' ? <p className="text-xs mt-2">The platform organization is always active.</p> : (
                     <div className="mt-3 flex gap-2">{actions.map(([s, label]) => <button key={s} className={btn(s === 'active' ? 'primary' : 'secondary')} onClick={() => setNext(s)}>{label}</button>)}</div>
@@ -355,7 +356,7 @@ function SettingsTab({ o, onChange }: { o: Org; onChange: (o: Org) => void }) {
             </Card>
             <ConfirmDialog open={next !== null} title={`${next === 'active' ? 'Reactivate' : next === 'suspended' ? 'Suspend' : 'Archive'} ${o.name}?`}
                 tone={next === 'active' ? 'primary' : 'danger'} confirmLabel="Confirm" reason={{ label: 'Reason (audited)', required: true }}
-                body={next === 'archived' ? 'Remove its Wazuh group mappings and retire or reassign its sources first.' : next === 'suspended' ? 'Its members lose access until it is reactivated.' : 'Its members regain access.'}
+                body={next === 'archived' ? 'Remove its NovrAgent group mappings and retire or reassign its sources first.' : next === 'suspended' ? 'Its members lose access until it is reactivated.' : 'Its members regain access.'}
                 onCancel={() => setNext(null)}
                 onConfirm={async (reason) => { const s = next; setNext(null); if (s) await act.run(async () => { const r = await orgApi.setStatus(orgId, o.id, { status: s, reason }); onChange(r); }, 'Status changed.'); }} />
         </>

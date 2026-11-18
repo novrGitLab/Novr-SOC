@@ -42,7 +42,7 @@ export default function InsightsPage() {
 
     return (
         <>
-            <PageHeader title="Threat Insights" icon={Radar} description="Indicators of this organization (from STIX 2.1 bundles or the Server 1 TAXII feeder), matched deterministically against its own alerts. Nothing is shared between organizations."
+            <PageHeader title="Threat Insights" icon={Radar} description="Indicators of this organization (from STIX 2.1 bundles or the TAXII feeder), matched deterministically against its own alerts. Nothing is shared between organizations."
                 actions={can('intel:manage') ? <button className={btn('primary')} onClick={() => void match()} data-testid="ti-match">Match last 31 days</button> : undefined} />
             <Notice msg={msg} />
             <Loaded title="Matches" data={matches.data} error={matches.error} reload={matches.reload}>
@@ -70,7 +70,7 @@ export default function InsightsPage() {
             </div>
             <div className="grid gap-5 lg:grid-cols-2">
                 <Loaded title="Feed runs" hint="STIX uploads and TAXII deliveries" data={feeds.data} error={feeds.error}>
-                    {(d) => <DataTable rows={d.items} rowKey={(f) => f.id} empty="No feed has delivered yet. The TAXII feeder on Server 1 is disabled until a source is configured." columns={[
+                    {(d) => <DataTable rows={d.items} rowKey={(f) => f.id} empty="No feed has delivered yet. The TAXII feeder is disabled until a source is configured." columns={[
                         { key: 's', header: 'Source', render: (f) => f.source },
                         { key: 'n', header: 'Objects', render: (f) => `${f.objects_stored}/${f.objects_received} stored, ${f.rejected} rejected` },
                         { key: 't', header: 'When', render: (f) => <span className="text-xs">{fmt(f.received_at)}</span> },

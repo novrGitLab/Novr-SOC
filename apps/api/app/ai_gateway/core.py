@@ -153,7 +153,7 @@ class Gateway:
 
     # ---- the call -------------------------------------------------------------------------------
     def generate(self, caller: Caller, lane: Lane, *, model: str, messages: list[ChatMessage], max_tokens: int,
-                 temperature: float = 0.2, request_id: str | None = None):
+                 temperature: float = 0.2, request_id: str | None = None, json_schema: dict | None = None):
         request_id = request_id or uuid.uuid4().hex
         prompt = "\n".join(m.content for m in messages)
         event = dict(request_id=request_id, occurred_at=datetime.now(timezone.utc), lane=lane, model=model,
@@ -168,9 +168,10 @@ class Gateway:
             raise
         policy, tokens, started = self.policies[lane], 0, self.clock()
         try:
+            extra = {"json_schema": json_schema} if json_schema is not None else {}   # schema-constrained decoding (Ollama `format`)
             fut = self._pool.submit(self.backend.generate, model=model, messages=messages,
                                     max_tokens=min(max_tokens, policy.max_output_tokens), temperature=temperature,
-                                    timeout_seconds=policy.timeout_seconds)
+                                    timeout_seconds=policy.timeout_seconds, **extra)
             try:
                 gen = fut.result(timeout=policy.timeout_seconds)
             except FutureTimeout:

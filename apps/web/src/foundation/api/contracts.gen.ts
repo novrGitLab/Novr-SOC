@@ -307,6 +307,56 @@ export interface components {
             /** Task */
             task: string;
         };
+        /** AlertClassification */
+        AlertClassification: {
+            /** Id */
+            id: string;
+            /**
+             * Log Source Id
+             * @default null
+             */
+            log_source_id: string | null;
+            /**
+             * Org Id
+             * @default null
+             */
+            org_id: string | null;
+            /**
+             * Org Slug
+             * @default null
+             */
+            org_slug: string | null;
+            /**
+             * Reason
+             * @description The quarantine reason (the same values ingest records)
+             * @default null
+             */
+            reason: string | null;
+            /**
+             * Verdict
+             * @description new: ingest would store it; duplicate: already stored for its organization; quarantine: no organization
+             * @enum {string}
+             */
+            verdict: "new" | "duplicate" | "quarantine";
+        };
+        /**
+         * AlertClassifyRequest
+         * @description Dry run of ingest (historical backfill planning): the same ownership decision as ingest, nothing is stored.
+         */
+        AlertClassifyRequest: {
+            /** Alerts */
+            alerts: components["schemas"]["WazuhAlertIn"][];
+        };
+        /** AlertClassifyResult */
+        AlertClassifyResult: {
+            /**
+             * Classified At
+             * Format: date-time
+             */
+            classified_at: string;
+            /** Items */
+            items: components["schemas"]["AlertClassification"][];
+        };
         /** AlertDetail */
         AlertDetail: {
             /** Agent Groups */
@@ -1715,6 +1765,18 @@ export interface components {
          * @enum {string}
          */
         Capability: "syslog_receive" | "windows_event_forward" | "file_tail" | "network_discovery" | "scan_relay" | "wazuh_agent_bridge";
+        /**
+         * CaseAssistanceRequest
+         * @description Investigation assistance for one case: its linked alerts (authoritative severities), notes, timeline and the
+         *     Threat Insights matches of those alerts. A draft for the analyst; it never changes the case.
+         */
+        CaseAssistanceRequest: {
+            /**
+             * Case Id
+             * Format: uuid
+             */
+            case_id: string;
+        };
         /** CaseDetail */
         CaseDetail: {
             /** Alert Count */
@@ -2908,6 +2970,125 @@ export interface components {
              * @default null
              */
             site_id: string | null;
+        };
+        /** CommandList */
+        CommandList: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Items */
+            items: components["schemas"]["CommandRecord"][];
+            /**
+             * Per Organization
+             * @description Records returned per organization slug (before the overall limit)
+             */
+            per_organization: {
+                [key: string]: number;
+            };
+            /**
+             * Truncated
+             * @description True when an organization had more matching records than were read
+             */
+            truncated: boolean;
+            /**
+             * View
+             * @enum {string}
+             */
+            view: "assets" | "alerts" | "vulnerabilities" | "scans" | "cases" | "intel" | "nhai" | "soar_runs" | "soar_approvals" | "reports";
+        };
+        /** CommandOrg */
+        CommandOrg: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "platform" | "client";
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended" | "archived";
+        };
+        /** CommandOverview */
+        CommandOverview: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Organizations */
+            organizations: components["schemas"]["OrgPosture"][];
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "platform" | "assigned";
+            /** Totals */
+            totals: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * CommandRecord
+         * @description One tenant-owned record, labelled with its owner. `fields` holds the view's columns (documented per view).
+         */
+        CommandRecord: {
+            /**
+             * At
+             * @default null
+             */
+            at: string | null;
+            /**
+             * Fields
+             * @default {}
+             */
+            fields: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: string;
+            org: components["schemas"]["CommandOrg"];
+            /**
+             * Severity
+             * @default null
+             */
+            severity: string | null;
+            /**
+             * Status
+             * @default null
+             */
+            status: string | null;
+            /** Title */
+            title: string;
+        };
+        /** CommandScope */
+        CommandScope: {
+            /** Can Export */
+            can_export: boolean;
+            /** Organizations */
+            organizations: components["schemas"]["CommandOrg"][];
+            /**
+             * Scope
+             * @description platform: every organization; assigned: home + operations assignments
+             * @enum {string}
+             */
+            scope: "platform" | "assigned";
+            /**
+             * Views
+             * @description The views this person's permissions allow
+             */
+            views: ("assets" | "alerts" | "vulnerabilities" | "scans" | "cases" | "intel" | "nhai" | "soar_runs" | "soar_approvals" | "reports")[];
         };
         /** CompliancePolicyRow */
         CompliancePolicyRow: {
@@ -4320,6 +4501,12 @@ export interface components {
              * @default false
              */
             broad: boolean;
+            /**
+             * Collection
+             * @description A collection group (NOVRSOC_WAZUH_COLLECTION_GROUPS): this mapping is IGNORED for attribution; it never makes the organization an agent's owner
+             * @default false
+             */
+            collection: boolean;
             /**
              * Created At
              * Format: date-time
@@ -6009,6 +6196,128 @@ export interface components {
             items: components["schemas"]["OrgSummary"][];
         };
         /**
+         * OrgPosture
+         * @description One organization's security posture, computed from its own records at request time.
+         */
+        OrgPosture: {
+            /**
+             * Alerts 24H
+             * @default 0
+             */
+            alerts_24h: number;
+            /**
+             * Assets
+             * @default 0
+             */
+            assets: number;
+            /**
+             * Critical Alerts 24H
+             * @default 0
+             */
+            critical_alerts_24h: number;
+            /**
+             * Critical Cases
+             * @default 0
+             */
+            critical_cases: number;
+            /**
+             * Critical Findings
+             * @default 0
+             */
+            critical_findings: number;
+            /**
+             * High Alerts 24H
+             * @default 0
+             */
+            high_alerts_24h: number;
+            /**
+             * Intel Matches 7D
+             * @default 0
+             */
+            intel_matches_7d: number;
+            /**
+             * Last Alert At
+             * @default null
+             */
+            last_alert_at: string | null;
+            /**
+             * Nhai Awaiting Review
+             * @default 0
+             */
+            nhai_awaiting_review: number;
+            /**
+             * Nhai Failed 24H
+             * @default 0
+             */
+            nhai_failed_24h: number;
+            /**
+             * Nhai Queued
+             * @default 0
+             */
+            nhai_queued: number;
+            /**
+             * Open Alerts
+             * @default 0
+             */
+            open_alerts: number;
+            /**
+             * Open Cases
+             * @default 0
+             */
+            open_cases: number;
+            /**
+             * Open Findings
+             * @default 0
+             */
+            open_findings: number;
+            org: components["schemas"]["CommandOrg"];
+            /**
+             * Overdue Remediation
+             * @default 0
+             */
+            overdue_remediation: number;
+            /**
+             * Posture
+             * @enum {string}
+             */
+            posture: "critical" | "elevated" | "normal" | "no_data";
+            /**
+             * Posture Reasons
+             * @default []
+             */
+            posture_reasons: string[];
+            /**
+             * Reports 7D
+             * @default 0
+             */
+            reports_7d: number;
+            /**
+             * Scan Policy Enabled
+             * @default false
+             */
+            scan_policy_enabled: boolean;
+            /**
+             * Scans Failed 7D
+             * @default 0
+             */
+            scans_failed_7d: number;
+            /**
+             * Scans Running
+             * @default 0
+             */
+            scans_running: number;
+            /**
+             * Soar Pending Approvals
+             * @default 0
+             */
+            soar_pending_approvals: number;
+            /**
+             * Soar Runs 7D
+             * @default 0
+             */
+            soar_runs_7d: number;
+        };
+        /**
          * OrgStatusChange
          * @description suspended: members cannot sign in or switch to it; telemetry keeps arriving. archived: kept for the record; it
          *     must hold no Wazuh group mapping and no live log source first, so no event can reach it.
@@ -6431,6 +6740,21 @@ export interface components {
             validation: components["schemas"]["PlaybookValidation"] | null;
             /** Version */
             version: number;
+        };
+        /**
+         * PolicyWindow
+         * @description A weekly window in the policy's timezone during which scans of the organization may run.
+         */
+        PolicyWindow: {
+            /** End Minute */
+            end_minute: number;
+            /** Start Minute */
+            start_minute: number;
+            /**
+             * Weekday
+             * @description 0 = Monday
+             */
+            weekday: number;
         };
         /** PostureAssessment */
         PostureAssessment: {
@@ -7625,7 +7949,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "job" | "no_job" | "scanning_disabled";
+            reason: "job" | "no_job" | "scanning_disabled" | "policy_disabled" | "outside_scan_window" | "concurrency_limit";
         };
         /**
          * ScanConnectivityAssignment
@@ -7681,8 +8005,20 @@ export interface components {
              * Format: uuid
              */
             job_id: string;
+            /**
+             * Max Rate Pps
+             * @description The organization's scan-policy packet-rate ceiling; the worker never exceeds it (nor its own)
+             * @default null
+             */
+            max_rate_pps: number | null;
             /** Max Runtime Seconds */
             max_runtime_seconds: number;
+            /**
+             * Protected Networks
+             * @description Never touched, whatever the targets say (scan policy)
+             * @default []
+             */
+            protected_networks: string[];
             /** Targets */
             targets: components["schemas"]["ScopeEntry"][];
         };
@@ -7733,7 +8069,7 @@ export interface components {
              * @default {}
              */
             per_target_outcome: {
-                [key: string]: "completed" | "unreachable" | "refused_out_of_scope" | "failed";
+                [key: string]: "completed" | "unreachable" | "refused_out_of_scope" | "failed" | "no_route";
             };
         };
         /** ScanWindow */
@@ -9218,6 +9554,103 @@ export interface components {
              */
             updated_at: string;
         };
+        /** VmsEnrollmentEvaluation */
+        VmsEnrollmentEvaluation: {
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /** Evaluated */
+            evaluated: number;
+            /**
+             * Scans Queued
+             * @default 0
+             */
+            scans_queued: number;
+        };
+        /** VmsEnrollmentExclusion */
+        VmsEnrollmentExclusion: {
+            /** Excluded */
+            excluded: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /** VmsEnrollmentList */
+        VmsEnrollmentList: {
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /**
+             * Evaluated At
+             * @default null
+             */
+            evaluated_at: string | null;
+            /** Items */
+            items: components["schemas"]["VmsEnrollmentView"][];
+        };
+        /** VmsEnrollmentView */
+        VmsEnrollmentView: {
+            /**
+             * Address
+             * @default null
+             */
+            address: string | null;
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            /** Asset Name */
+            asset_name: string;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /**
+             * Hostname
+             * @default null
+             */
+            hostname: string | null;
+            /**
+             * Last Job Id
+             * @default null
+             */
+            last_job_id: string | null;
+            /**
+             * Last Scanned At
+             * @default null
+             */
+            last_scanned_at: string | null;
+            /**
+             * Open Findings
+             * @default 0
+             */
+            open_findings: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Scope Id
+             * @default null
+             */
+            scope_id: string | null;
+            /**
+             * Scope Value
+             * @default null
+             */
+            scope_value: string | null;
+            /**
+             * Sources
+             * @default []
+             */
+            sources: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "enrolled" | "eligible" | "excluded_protected" | "outside_scope" | "public_address" | "shared_address" | "stale_address" | "no_address" | "unverified_source" | "manual_exclusion";
+        };
         /** VmsFindingDetail */
         VmsFindingDetail: {
             /**
@@ -9431,9 +9864,154 @@ export interface components {
             /** Items */
             items: components["schemas"]["VmsScanView"][];
         };
+        /** VmsScanPolicy */
+        VmsScanPolicy: {
+            /**
+             * Address Max Age Hours
+             * @default 72
+             */
+            address_max_age_hours: number;
+            /**
+             * Authorization Reference
+             * @default
+             */
+            authorization_reference: string;
+            /**
+             * Auto Enroll
+             * @default false
+             */
+            auto_enroll: boolean;
+            /**
+             * Configured
+             * @description False until the organization saves a policy (the defaults shown are not in force)
+             */
+            configured: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** @default ports */
+            enroll_activity: components["schemas"]["ScanActivity"];
+            /** In Window Now */
+            in_window_now: boolean;
+            /**
+             * Installation Mode
+             * @enum {string}
+             */
+            installation_mode: "disabled" | "local_test_targets" | "authorized_scopes";
+            /**
+             * Max Concurrent Scans
+             * @default 1
+             */
+            max_concurrent_scans: number;
+            /**
+             * Max Rate Pps
+             * @default 100
+             */
+            max_rate_pps: number;
+            /**
+             * Max Targets Per Scan
+             * @default 32
+             */
+            max_targets_per_scan: number;
+            /**
+             * Protected Networks
+             * @default []
+             */
+            protected_networks: string[];
+            /**
+             * Rescan Interval Days
+             * @default 7
+             */
+            rescan_interval_days: number;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Updated At
+             * @default null
+             */
+            updated_at: string | null;
+            /**
+             * Updated By Label
+             * @default null
+             */
+            updated_by_label: string | null;
+            /**
+             * Windows
+             * @default []
+             */
+            windows: components["schemas"]["PolicyWindow"][];
+        };
+        /**
+         * VmsScanPolicyUpdate
+         * @description The organization's standing scan authorization (vms:scope). Enabling requires an authorization reference and at
+         *     least one window. auto_enroll enrolls imported assets that fall inside an approved scope; it never widens a scope.
+         */
+        VmsScanPolicyUpdate: {
+            /**
+             * Address Max Age Hours
+             * @default 72
+             */
+            address_max_age_hours: number;
+            /**
+             * Authorization Reference
+             * @default
+             */
+            authorization_reference: string;
+            /**
+             * Auto Enroll
+             * @default false
+             */
+            auto_enroll: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** @default ports */
+            enroll_activity: components["schemas"]["ScanActivity"];
+            /**
+             * Max Concurrent Scans
+             * @default 1
+             */
+            max_concurrent_scans: number;
+            /**
+             * Max Rate Pps
+             * @default 100
+             */
+            max_rate_pps: number;
+            /**
+             * Max Targets Per Scan
+             * @default 32
+             */
+            max_targets_per_scan: number;
+            /**
+             * Protected Networks
+             * @default []
+             */
+            protected_networks: string[];
+            /**
+             * Rescan Interval Days
+             * @default 7
+             */
+            rescan_interval_days: number;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Windows
+             * @default []
+             */
+            windows: components["schemas"]["PolicyWindow"][];
+        };
         /** VmsScanView */
         VmsScanView: {
             activity: components["schemas"]["ScanActivity"];
+            /**
+             * Asset Ids
+             * @default []
+             */
+            asset_ids: string[];
             /**
              * Claimed At
              * @default null
@@ -9460,10 +10038,24 @@ export interface components {
              */
             id: string;
             /**
+             * Origin
+             * @default manual
+             * @enum {string}
+             */
+            origin: "manual" | "schedule" | "rescan" | "enrollment";
+            /**
              * Outcome
              * @default {}
              */
             outcome: {
+                [key: string]: unknown;
+            };
+            /**
+             * Progress
+             * @description targets_total, targets_reported, per-target outcomes, observations
+             * @default {}
+             */
+            progress: {
                 [key: string]: unknown;
             };
             /**

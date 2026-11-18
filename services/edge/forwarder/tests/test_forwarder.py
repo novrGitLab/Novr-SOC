@@ -59,13 +59,14 @@ class FakeIndexer:
         if self.partial:
             return 200, json.dumps({"_shards": {"failed": 1}, "hits": {"hits": []}}).encode()
         rng = body["query"]["bool"]["filter"][0]["range"]["timestamp"]
-        lo, hi = datetime.fromisoformat(rng["gte"]), datetime.fromisoformat(rng["lte"])
+        lo, hi = datetime.fromisoformat(rng["gte"]), datetime.fromisoformat(rng.get("lte") or rng["lt"])
+        exclusive = "lt" in rng   # the backfill reads [start, end); the live forwarder [since, until]
         after = body.get("search_after")
         out = []
         for d in self.docs:
             pos = [self.ms(d), d["id"]]
             t = datetime.fromtimestamp(pos[0] / 1000, tz=timezone.utc)
-            if not (lo <= t <= hi) or (after and pos <= after):
+            if not (lo <= t and (t < hi if exclusive else t <= hi)) or (after and pos <= after):
                 continue
             out.append({"_source": d, "sort": pos})
             if len(out) >= body["size"]:

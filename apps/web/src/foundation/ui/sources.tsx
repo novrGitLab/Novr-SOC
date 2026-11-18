@@ -17,7 +17,7 @@ export const SOURCE_STATE: Record<SourceState, { label: string; tone: Tone }> = 
 };
 
 export const CONNECTOR_LABEL: Record<ConnectorState['connector'], string> = {
-    wazuh_manager: 'Wazuh manager', wazuh_indexer: 'Wazuh indexer', ollama: 'Ollama (NHAI model runtime)',
+    wazuh_manager: 'NovrSIEM', wazuh_indexer: 'NovrSIEM event store', ollama: 'NHAI interface',
 };
 
 export function SourcePill({ state }: { state: SourceState }) {

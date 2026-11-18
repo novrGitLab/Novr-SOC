@@ -36,7 +36,7 @@ export default function CvesPage() {
     return (
         <>
             <PageHeader title="CVE intelligence" icon={Database}
-                description="Severity and exploitation context for the CVEs your findings name. NovrSOC does not fetch feeds here; it uses the files you import and the STIX vulnerabilities the Server 1 feeder delivers." />
+                description="Severity and exploitation context for the CVEs your findings name. NovrSOC does not fetch feeds here; it uses the files you import and the STIX vulnerabilities the TAXII feeder delivers." />
             {act.notice}
             <div className="flex flex-wrap items-center gap-3">
                 <SearchBox label="Search CVEs" placeholder="CVE-2024-…" value={q} onSubmit={setQ} />

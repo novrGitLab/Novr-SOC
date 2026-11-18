@@ -52,6 +52,10 @@ const P = {
     sources: '/api/v1/log-sources', source: '/api/v1/log-sources/{source_id}', sourceRetire: '/api/v1/log-sources/{source_id}/retire',
     sourceReassign: '/api/v1/log-sources/{source_id}/reassign', alerts: '/api/v1/soc/alerts', sites: '/api/v1/sites',
     soarPolicy: '/api/v1/soar/policy', endpoints: '/api/v1/endpoints',
+    vmsPolicy: '/api/v1/vms/policy', enrollments: '/api/v1/vms/enrollments', enrollEvaluate: '/api/v1/vms/enrollments/evaluate',
+    enrollExclusion: '/api/v1/vms/enrollments/{asset_id}/exclusion', caseAssist: '/api/v1/nhai/case-assistance',
+    cmdScope: '/api/v1/command/scope', cmdOverview: '/api/v1/command/overview', cmdView: '/api/v1/command/views/{view}',
+    cmdExport: '/api/v1/command/views/{view}/export',
 } as const satisfies Record<string, ApiPath>;
 
 export const exportDownloadPath = (id: string) => `/api/v1/admin/exports/${encodeURIComponent(id)}/download`;
@@ -127,6 +131,24 @@ export const vmsxApi = {
     createScope: (o: O, body: Schemas['VmsScopeCreate']) => post<Schemas['VmsScopeView']>(P.scopes, o, body),
     scans: (o: O) => get<Schemas['VmsScanList']>(P.scans, o),
     createScan: (o: O, body: Schemas['VmsScanCreate']) => post<Schemas['VmsScanView']>(P.scans, o, body),
+    policy: (o: O) => get<Schemas['VmsScanPolicy']>(P.vmsPolicy, o),
+    savePolicy: (o: O, body: Schemas['VmsScanPolicyUpdate']) => put<Schemas['VmsScanPolicy']>(P.vmsPolicy, o, body),
+    enrollments: (o: O, status?: string) => get<Schemas['VmsEnrollmentList']>(P.enrollments + queryString({ status }), o),
+    evaluate: (o: O) => post<Schemas['VmsEnrollmentEvaluation']>(P.enrollEvaluate, o),
+    exclude: (o: O, assetId: string, excluded: boolean, reason: string) =>
+        post<Schemas['VmsEnrollmentView']>(fillPath(P.enrollExclusion, { asset_id: assetId }), o, { excluded, reason }),
+};
+
+export type CommandView = Schemas['CommandList']['view'];
+export type CommandQuery = { org?: string; q?: string; severity?: string; status?: string; since_hours?: number; sort?: 'recent' | 'severity'; limit?: number };
+
+/** Command Center: platform-wide views. The scope comes from the signed-in person's role and home organization, so no
+ *  organization header is sent; the API reads each organization under its own access rules. */
+export const commandApi = {
+    scope: () => get<Schemas['CommandScope']>(P.cmdScope, null),
+    overview: (org?: string) => get<Schemas['CommandOverview']>(P.cmdOverview + queryString({ org }), null),
+    view: (view: CommandView, q: CommandQuery) => get<Schemas['CommandList']>(fillPath(P.cmdView, { view }) + queryString(q), null),
+    exportPath: (view: CommandView, q: CommandQuery) => fillPath(P.cmdExport, { view }) + queryString({ ...q, limit: undefined }),
 };
 
 export const intelApi = {

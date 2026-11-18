@@ -114,11 +114,11 @@ def validate(text: str, bundle: ContextBundle, *, authoritative_severity: str | 
         update = {"agrees_with_stored": severity.proposed == authoritative_severity}
         if downward:
             update["uncertainty"] = "high"
-            limitations.append(f"The model proposed {severity.proposed}, lower than the Wazuh severity {authoritative_severity}. "
-                               "The Wazuh detection is authoritative and stands; an analyst decides.")
-            notes.append("Severity disagreement (lower than Wazuh): flagged, uncertainty raised to high; nothing changed.")
+            limitations.append(f"The model proposed {severity.proposed}, lower than the NovrSIEM severity {authoritative_severity}. "
+                               "The NovrSIEM detection is authoritative and stands; an analyst decides.")
+            notes.append("Severity disagreement (lower than NovrSIEM): flagged, uncertainty raised to high; nothing changed.")
         elif upward:
-            notes.append("The model proposed a higher severity than Wazuh: advisory only, for analyst review.")
+            notes.append("The model proposed a higher severity than NovrSIEM: advisory only, for analyst review.")
         severity = severity.model_copy(update=update)
 
     cap = MODEL_CONFIDENCE_CEILING

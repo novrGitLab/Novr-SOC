@@ -8,12 +8,17 @@ every further statement) -> prompt from the stored, redacted bundle -> AI Gatewa
 input bound, single concurrency, timeout) -> deterministic validation (app.nhai.validate) -> store the draft result.
 Transient failures (timeout, backend unavailable) re-queue the job while attempts remain; invalid or ungrounded model
 output fails it with a reason. Nothing the worker does triggers a response action.
-The worker uses the API's database role (novrsoc_app); it never bypasses RLS except through the claim function.
+Database: the dedicated least-privilege role novrsoc_nhai (migration 0016): the claim/expire functions, a few columns of
+nhai_jobs, the severity columns of alerts and findings, and INSERT into ai_activity / audit_events. Every statement after
+the claim runs in the job's organization context (RLS).
+Context window: the whole prompt plus the answer must fit nhai_num_ctx (checked at start by nhai_budget): Ollama silently
+drops the BEGINNING of an over-long prompt, which is where the rules are.
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import signal
 import socket
@@ -42,7 +47,7 @@ SYSTEM_PROMPT = f"""You are {NHAI_NAME} (NHAI), assisting a human security analy
 Rules:
 - Use ONLY the evidence items provided. Cite them by id (E1, E2, ...) in every statement, recommendation and the
   severity assessment. Do not invent IP addresses, domains, URLs, hashes, CVEs, hosts or users.
-- The Wazuh severity in E1 is authoritative. You may propose a different severity, with a rationale and citations,
+- The NovrSIEM severity in E1 is authoritative. You may propose a different severity, with a rationale and citations,
   but say how uncertain you are. If evidence is thin, say so.
 - List the evidence that is missing and would change your assessment (missing_evidence). Be specific.
 - Recommendations are suggestions for a human. requires_human_approval is always true.
@@ -51,12 +56,34 @@ Rules:
 RETRYABLE = {"timeout", "backend_unavailable", "concurrency_limit"}
 
 
+CHARS_PER_TOKEN = 3.0   # conservative for JSON with ids and timestamps (English prose is ~4)
+
+
+def nhai_budget(settings: Settings) -> dict:
+    """Worst-case context use: the largest input the gateway admits plus the longest answer, against nhai_num_ctx."""
+    input_chars = settings.nhai_max_prompt_chars + 4000   # the gateway's max_input_chars (gateway_for)
+    input_tokens = math.ceil(input_chars / CHARS_PER_TOKEN)
+    need = input_tokens + settings.nhai_max_output_tokens
+    return {"max_input_chars": input_chars, "estimated_input_tokens": input_tokens, "max_output_tokens": settings.nhai_max_output_tokens,
+            "needed_tokens": need, "num_ctx": settings.nhai_num_ctx, "fits": need <= settings.nhai_num_ctx,
+            "system_prompt_chars": len(SYSTEM_PROMPT), "output_schema_chars": len(json.dumps(output_schema()))}
+
+
+def check_budget(settings: Settings) -> None:
+    b = nhai_budget(settings)
+    if not b["fits"]:
+        raise SystemExit(f"NHAI context budget does not fit: up to {b['needed_tokens']} tokens (input {b['estimated_input_tokens']} + "
+                         f"answer {b['max_output_tokens']}) but NOVRSOC_NHAI_NUM_CTX={b['num_ctx']}. Raise NOVRSOC_NHAI_NUM_CTX or lower "
+                         "NOVRSOC_NHAI_MAX_PROMPT_CHARS / NOVRSOC_NHAI_MAX_OUTPUT_TOKENS; otherwise Ollama drops the start of the prompt.")
+
+
 def backend_for(settings: Settings):
     if settings.nhai_backend == "test_adapter":
         return TestInferenceAdapter(), TestInferenceAdapter.MODEL
     if settings.nhai_backend == "ollama":
+        check_budget(settings)
         ep, token = ollama_worker_endpoint(os.environ, settings.env)
-        return OllamaBackend(ep, token), settings.nhai_model
+        return OllamaBackend(ep, token, num_ctx=settings.nhai_num_ctx), settings.nhai_model
     raise SystemExit("NOVRSOC_NHAI_BACKEND is unconfigured: the NHAI worker has nothing to run against")
 
 
@@ -107,6 +134,7 @@ def run_once(engine: Engine, settings: Settings, gateway: Gateway, model: str, w
                 WHEN 'alert' THEN EXISTS (SELECT 1 FROM novrsoc.alerts a WHERE a.id = CAST(j.subject_id AS uuid))
                 WHEN 'vms_finding' THEN EXISTS (SELECT 1 FROM novrsoc.vms_findings f WHERE f.id = CAST(j.subject_id AS uuid))
                 WHEN 'asset' THEN EXISTS (SELECT 1 FROM novrsoc.assets x WHERE x.id = CAST(j.subject_id AS uuid))
+                WHEN 'case' THEN EXISTS (SELECT 1 FROM novrsoc.cases x WHERE x.id = CAST(j.subject_id AS uuid))
                 WHEN 'chat_message' THEN true
                 ELSE false
               END AS present
@@ -126,7 +154,8 @@ def run_once(engine: Engine, settings: Settings, gateway: Gateway, model: str, w
         status, error, result = "failed", None, None
         try:
             gen = gateway.generate(caller, Lane.SECURITY_ANALYSIS, model=model, messages=messages_for(bundle),
-                                   max_tokens=settings.nhai_max_output_tokens, temperature=0.1, request_id=str(job_id))
+                                   max_tokens=settings.nhai_max_output_tokens, temperature=0.1, request_id=str(job_id),
+                                   json_schema=output_schema())
             res = validate(gen.text, bundle, authoritative_severity=job.severity, model=model, latency_ms=gen.latency_ms)
             status, result = "succeeded", res.model_dump_json()
         except GatewayRejected as r:
@@ -158,7 +187,7 @@ def _record_activity(conn, job, job_id, worker_id, model, status, error, result)
     None of these executes anything."""
     common = dict(task=job.task, subject_type=job.subject_type, subject_id=job.subject_id, actor_type="system",
                   actor_label=f"nhai-worker:{worker_id}"[:200], model=model, nhai_job_id=job_id)
-    module = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat"}.get(job.subject_type, "nhai")
+    module = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat", "case": "soc"}.get(job.subject_type, "nhai")
     if status != "succeeded":
         activity.ai(conn, "analysis_failed", module, outcome="failure", summary=f"NHAI {job.task} ended {status} ({error})",
                     details={"status": status, "error_code": error}, **common)

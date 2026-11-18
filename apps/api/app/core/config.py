@@ -51,14 +51,26 @@ class Settings(BaseSettings):
     nhai_max_output_tokens: int = Field(default=384, ge=64, le=1024)
     nhai_max_prompt_chars: int = Field(default=12_000, ge=1_000, le=64_000)
     nhai_job_deadline_seconds: int = Field(default=1_800, ge=60, le=6 * 3600)
+    # Ollama context window (tokens). The whole prompt (system rules, evidence, output schema) plus the answer must fit:
+    # Ollama silently drops the BEGINNING of an over-long prompt, which is where the rules are (see nhai_budget()).
+    nhai_num_ctx: int = Field(default=8192, ge=2048, le=32768)
     # SOAR execution bridge on Server 1 (pilot: a local bridge on loopback with the simulated adapter). Unset = no
     # consequential step can be dispatched (it fails honestly; nothing executes).
     soar_bridge_url: str = ""
     soar_bridge_key_id: str = Field(default="server2-soar", pattern=r"^[a-z0-9_.-]{1,60}$")
     soar_bridge_key_file: str = ""
     soar_bridge_ca_cert: str = ""
-    # VMS scanning: disabled, or local_test_targets (pilot: scopes limited to loopback and *.test / *.localhost names)
-    vms_scanning: Literal["disabled", "local_test_targets"] = "disabled"
+    # VMS scanning: disabled; local_test_targets (development: scopes limited to loopback and *.test / *.localhost);
+    # authorized_scopes (scopes approved by the organization, held to its scan policy: protected networks, windows,
+    # rate and concurrency caps). Even then nothing runs until an organization enables its policy AND a worker runs a
+    # scanning engine inside a network it declares (services/vms-worker).
+    vms_scanning: Literal["disabled", "local_test_targets", "authorized_scopes"] = "disabled"
+    # Wazuh agent groups that collect agents but never establish ownership (an agent's organization must come from a
+    # group mapped to exactly one organization). Comma-separated; `default` is where Wazuh enrolls every new agent.
+    wazuh_collection_groups: str = Field(default="default", pattern=r"^[A-Za-z0-9_.,-]{0,500}$")
+    # Events the Wazuh manager generates itself (agent 000, not a registered syslog/agentless source): stored under the
+    # platform organization (they describe NovrSOC's own infrastructure), or quarantined.
+    manager_events: Literal["platform", "quarantine"] = "platform"
     # Brand Protection lookalike resolution source: unconfigured, or test_adapter (deterministic, no live DNS)
     brand_resolver: Literal["unconfigured", "test_adapter"] = "unconfigured"
     service_name: str = "novrsoc-api"
@@ -69,6 +81,10 @@ class Settings(BaseSettings):
         if not v.get_secret_value().startswith("postgresql+psycopg://"):
             raise ConfigError("NOVRSOC_DATABASE_URL must use the postgresql+psycopg:// scheme")
         return v
+
+    @property
+    def collection_groups(self) -> frozenset[str]:
+        return frozenset(g.strip() for g in self.wazuh_collection_groups.split(",") if g.strip())
 
     @property
     def database_host(self) -> str:

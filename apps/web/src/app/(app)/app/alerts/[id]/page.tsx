@@ -59,7 +59,7 @@ export default function AlertDetailPage() {
                                 <dl className="mt-3 grid grid-cols-[9rem_1fr] gap-y-2 text-sm" data-testid="alert-detail">
                                     <dt className="text-foreground-muted">Severity</dt><dd><SeverityBadge severity={a.severity} /> <span className="text-xs text-foreground-muted">(rule level {a.rule_level})</span></dd>
                                     <dt className="text-foreground-muted">Status</dt><dd data-testid="alert-status"><StatusPill tone={STATUS_TONE[a.status] ?? 'neutral'} label={ALERT_STATUS_LABEL[a.status] ?? a.status} />{a.status_reason && <span className="block text-xs text-foreground-muted">{a.status_reason}</span>}</dd>
-                                    <dt className="text-foreground-muted">Source</dt><dd className="flex items-center gap-2">{a.source === 'local_fixture' ? <><span>Local fixture</span><FixtureTag /></> : 'Wazuh'}</dd>
+                                    <dt className="text-foreground-muted">Source</dt><dd className="flex items-center gap-2">{a.source === 'local_fixture' ? <><span>Local fixture</span><FixtureTag /></> : 'NovrSIEM'}</dd>
                                     <dt className="text-foreground-muted">Rule</dt><dd className="font-mono text-xs">{a.rule_id}</dd>
                                     <dt className="text-foreground-muted">Endpoint</dt><dd>{a.agent_name || '—'} <span className="font-mono text-xs text-foreground-muted">#{a.agent_id}</span>
                                         {a.asset_id && <Link href={`/app/assets/${a.asset_id}`} className="ml-2 text-xs underline">Canonical asset</Link>}</dd>

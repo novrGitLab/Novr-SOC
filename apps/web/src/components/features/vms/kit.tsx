@@ -306,7 +306,7 @@ export function EvidenceViewer({ items, empty = 'No evidence recorded.' }: { ite
                             <button onClick={() => { void navigator.clipboard?.writeText(text).then(() => { setCopied(e.id); setTimeout(() => setCopied(null), 1500); }); }} aria-label="Copy evidence" className="p-1 rounded text-foreground-muted hover:text-foreground"><Copy className="w-3.5 h-3.5" /></button>
                             {copied === e.id && <span className="text-[10px] text-foreground-muted" role="status">Copied</span>}
                         </div>
-                        {isOpen && <pre className="text-[10.5px] leading-relaxed font-mono whitespace-pre-wrap break-all text-foreground bg-card-muted px-3 py-2 max-h-72 overflow-y-auto border-t border-border">{text}{e.truncated ? '\n… truncated by the worker' : ''}</pre>}
+                        {isOpen && <pre className="text-[10.5px] leading-relaxed font-mono whitespace-pre-wrap break-all text-foreground bg-card-muted px-3 py-2 max-h-72 overflow-y-auto border-t border-border">{text}{e.truncated ? '\n… truncated by NovrVMS' : ''}</pre>}
                     </div>
                 );
             })}

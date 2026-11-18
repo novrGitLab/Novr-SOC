@@ -30,12 +30,13 @@ from app.core.errors import ApiError, forbidden, not_found
 from app.core.redact import FAILED, redact_value
 from app.db.session import request_connection
 from app.modules import ModuleInfo
-from app.modules.soc.service import ingest_alerts
+from app.modules.soc.service import Attribution, classify_alerts, ingest_alerts
 from app.secops import sla
 from app.routers._responses import ERRORS
 from novrsoc_contracts.v1.soar import AlertToCasePromotion, CasePromotionResult
 from novrsoc_contracts.v1.endpoints import ConnectorState
-from novrsoc_contracts.v1.soc import (AlertDetail, AlertEvidence, AlertIngestBatch, AlertIngestResult, AlertList, AlertStatusUpdate,
+from novrsoc_contracts.v1.soc import (AlertClassification, AlertClassifyRequest, AlertClassifyResult, AlertDetail, AlertEvidence,
+                                      AlertIngestBatch, AlertIngestResult, AlertList, AlertStatusUpdate,
                                       AssignmentRequest,
                                       CaseDetail, CaseEvent, CaseList, CaseNoteCreate, CaseStatusUpdate, CaseSummary,
                                       StoredAlert)
@@ -102,21 +103,49 @@ def _event(conn: Connection, p: Principal, case_id: uuid.UUID, kind: str, body: 
 
 
 # ---------------------------------------------------------------- ingest (forwarder machine identity)
-@router.post("/ingest/alerts", response_model=AlertIngestResult, summary="Forwarder: deliver Wazuh alerts (machine identity)")
-def ingest(body: AlertIngestBatch, request: Request, s: ServicePrincipal = Depends(current_service),
-           conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> AlertIngestResult:
+def _require_forwarder(conn: Connection, s: ServicePrincipal, request: Request) -> None:
     platform = conn.execute(text("SELECT kind FROM novrsoc.organizations WHERE id = :id"), {"id": s.org_id}).scalar()
     if s.kind != "forwarder" or "alerts:ingest" not in s.scopes or platform != "platform":
         audit.record("ALERT_INGEST_REFUSED", "denied", org_id=s.org_id, actor_type="service", actor_id=s.identity_id,
                      resource_type="service_identity", resource_id=str(s.identity_id),
                      request_id=request.state.request_id, ip=client_ip(request))
         raise forbidden("Only a platform forwarder identity with the alerts:ingest scope may deliver alerts")
+
+
+def attribution_for(s: ServicePrincipal, settings: Settings) -> Attribution:
+    """The installation's ownership rules. The platform forwarder's own organization IS the platform organization
+    (_require_forwarder checked it), which owns the Wazuh manager's own telemetry when manager_events=platform."""
+    return Attribution(collection_groups=settings.collection_groups,
+                       platform_org=s.org_id if settings.manager_events == "platform" else None)
+
+
+@router.post("/ingest/classify", response_model=AlertClassifyResult,
+             summary="Forwarder: dry run of ingest (owner or quarantine reason per alert); nothing is stored")
+def classify(body: AlertClassifyRequest, request: Request, s: ServicePrincipal = Depends(current_service),
+             conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> AlertClassifyResult:
+    """Historical backfill planning: the SAME ownership decision as ingest (agent groups from the Wazuh manager in live
+    mode, registered sources for agent 000), read-only. The organization of every alert is reported to the platform
+    forwarder identity only."""
+    _require_forwarder(conn, s, request)
+    items = [AlertClassification(**x) for x in classify_alerts(conn, _authoritative_groups(body.alerts, settings), source="wazuh",
+                                                                 attr=attribution_for(s, settings))]
+    counts = {v: sum(1 for i in items if i.verdict == v) for v in ("new", "duplicate", "quarantine")}
+    audit.record("ALERT_BATCH_CLASSIFIED", "success", org_id=s.org_id, actor_type="service", actor_id=s.identity_id,
+                 resource_type="ingest_dry_run", resource_id=str(len(items)), request_id=request.state.request_id,
+                 ip=client_ip(request), details=counts)
+    return AlertClassifyResult(items=items, classified_at=datetime.now(timezone.utc))
+
+
+@router.post("/ingest/alerts", response_model=AlertIngestResult, summary="Forwarder: deliver Wazuh alerts (machine identity)")
+def ingest(body: AlertIngestBatch, request: Request, s: ServicePrincipal = Depends(current_service),
+           conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> AlertIngestResult:
+    _require_forwarder(conn, s, request)
     digest = hashlib.sha256("\n".join(a.id for a in body.alerts).encode()).hexdigest()
     prior = _receipt(conn, body.batch_id)
     if prior is not None:
         return _replay(prior, body, s, digest, request)
     alerts = _authoritative_groups(body.alerts, settings)
-    c = ingest_alerts(conn, alerts, source="wazuh")
+    c = ingest_alerts(conn, alerts, source="wazuh", attr=attribution_for(s, settings))
     recorded = conn.execute(text("SELECT novrsoc.ingest_batch_record(:b, :i, :h, :n, :a, :d, :q)"),
                             {"b": body.batch_id, "i": s.identity_id, "h": digest, "n": len(alerts),
                              "a": c.accepted, "d": c.duplicates, "q": c.quarantined}).scalar()
@@ -147,14 +176,14 @@ def _authoritative_groups(alerts, settings: Settings):
         return list(alerts)
     live = registry.wazuh(settings)
     if live is None:
-        raise ApiError(503, "integration_unconfigured", "Live Wazuh mode is selected but the manager is not configured")
+        raise ApiError(503, "integration_unconfigured", "Live NovrSIEM mode is selected but the manager is not configured")
     out = []
     try:
         for a in alerts:
             groups = live.agent_groups(a.agent.id) or ()
             out.append(a.model_copy(update={"agent": a.agent.model_copy(update={"groups": list(groups)})}))
     except ConnectorError as e:
-        raise ApiError(503, "integration_unavailable", "Agent groups could not be verified with the Wazuh manager: " + str(e)[:200])
+        raise ApiError(503, "integration_unavailable", "Agent groups could not be verified with NovrSIEM: " + str(e)[:200])
     return out
 
 
@@ -225,7 +254,7 @@ def alert_evidence(alert_id: uuid.UUID, p: Principal = Depends(require("alerts:r
                                      detail="Stored copy of a local fixture alert. Not live telemetry."), row.raw)
     if settings.wazuh_mode != "live":  # the fixture is not an indexer: a real alert's evidence is simply unavailable here
         return answer(ConnectorState(connector="wazuh_indexer", state="unconfigured",
-                                     detail="No live Wazuh indexer is configured, so the original alert cannot be retrieved."), None)
+                                     detail="No live NovrSIEM event store is configured, so the original alert cannot be retrieved."), None)
     indexer_state = registry.wazuh_states(settings)[1]
     if indexer_state.state != "connected":
         return answer(indexer_state, None)
@@ -235,7 +264,7 @@ def alert_evidence(alert_id: uuid.UUID, p: Principal = Depends(require("alerts:r
         return answer(indexer_state.model_copy(update={"state": "unavailable", "detail": str(e)[:300]}), None)
     if doc is None:
         return answer(indexer_state.model_copy(update={"state": "unavailable", "detail":
-                      "The alert is no longer in the indexer (retention), or its agent is no longer in this organization's groups."}), None)
+                      "The alert is no longer in the NovrSIEM event store (retention), or its agent is no longer in this organization's groups."}), None)
     return answer(indexer_state, doc)
 
 

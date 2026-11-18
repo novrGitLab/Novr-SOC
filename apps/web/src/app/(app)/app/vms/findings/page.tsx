@@ -2,6 +2,7 @@
 
 // Vulnerability findings with filters, and a detail drawer: CVE intelligence (CVSS, EPSS, KEV), the canonical asset,
 // remediation, verification requests (retests resolved by scan evidence), audit history and an NHAI explanation.
+import { activityName } from '@/foundation/ui/names';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { Bug } from 'lucide-react';
@@ -38,7 +39,7 @@ function FindingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
                     <div className="space-y-4 text-sm">
                         <p className="flex flex-wrap items-center gap-2"><PriorityBadge priority={x.finding.priority} /><SeverityBadge severity={x.finding.severity} /><StateTag state={x.finding.status} />
                             <Tag>risk {x.finding.risk.score}</Tag>{x.finding.kev && <Tag strong>Known exploited (KEV)</Tag>}</p>
-                        <p className="text-xs">Asset: {x.finding.asset_id ? <Link className="underline" href={`/app/assets/${x.finding.asset_id}`}>{x.finding.asset_name}</Link> : 'not linked'} · source {x.finding.source} · seen {x.finding.occurrences}× · first {fmt(x.finding.first_seen_at)} · last {fmt(x.finding.last_seen_at)}</p>
+                        <p className="text-xs">Asset: {x.finding.asset_id ? <Link className="underline" href={`/app/assets/${x.finding.asset_id}`}>{x.finding.asset_name}</Link> : 'not linked'} · source {activityName(x.finding.source)} · seen {x.finding.occurrences}× · first {fmt(x.finding.first_seen_at)} · last {fmt(x.finding.last_seen_at)}</p>
                         <div><p className="text-xs font-semibold mb-1">CVE intelligence</p>
                             {x.cve_intel.length === 0 && x.cves_without_intel.length === 0 && <p className="text-xs text-foreground-muted">No CVE is named by this finding.</p>}
                             <ul className="text-xs space-y-1">{x.cve_intel.map((c) => <li key={c.cve_id}><span className="font-mono">{c.cve_id}</span> CVSS {c.cvss_v3 ?? 'unknown'} · EPSS {c.epss ?? 'unknown'} · {c.kev ? 'KEV' : 'not in KEV'} · {c.source}<span className="block text-foreground-muted">{c.description}</span></li>)}</ul>
@@ -56,7 +57,7 @@ function FindingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
                             <ul className="text-xs space-y-1">{x.verifications.length === 0 ? <li className="text-foreground-muted">No retest requested.</li>
                                 : x.verifications.map((v) => <li key={v.id}><StateTag state={v.status === 'verified' ? 'verified' : v.status.startsWith('blocked') ? 'unconfigured' : 'pending'} label={v.status.replace(/_/g, ' ')} /> {fmt(v.created_at)} · {v.requested_label}{v.note && ` · ${v.note}`}</li>)}</ul>
                             {can('vms:scan') && !['verified', 'risk_accepted'].includes(x.finding.status) && <button className={`${btn('secondary')} mt-2`} disabled={act.busy}
-                                onClick={() => void act.run(() => vmsxApi.retest(orgId, id, reason.trim()), (r) => (r.status === 'scan_requested' ? 'Retest scan queued for the local worker.' : `Retest recorded: ${r.status.replace(/_/g, ' ')}.`)).then(done)}>Request a retest</button>}
+                                onClick={() => void act.run(() => vmsxApi.retest(orgId, id, reason.trim()), (r) => (r.status === 'scan_requested' ? 'Retest scan queued for NovrVMS.' : `Retest recorded: ${r.status.replace(/_/g, ' ')}.`)).then(done)}>Request a retest</button>}
                         </div>
                         <NhaiSubjectPanel title="NHAI explanation" testid="finding-nhai" request={() => vmsxApi.explain(orgId, id)} />
                         <details><summary className="text-xs cursor-pointer">Audit history ({x.history.length})</summary>
@@ -79,7 +80,7 @@ export default function FindingsPage() {
     return (
         <>
             <PageHeader title="Vulnerability findings" icon={Bug}
-                description="Deduplicated per host, port and check; risk-scored and prioritized; verified or reopened only by scan evidence. Wazuh package-based detection is shown on each asset, separately." />
+                description="Deduplicated per host, port and check; risk-scored and prioritized; verified or reopened only by scan evidence. NovrAgent package-based detection is shown on each asset, separately." />
             <div className="flex flex-wrap items-center gap-2">
                 <Select label="Status" options={STATUS} value={status} onChange={setStatus} />
                 <Select label="Severity" options={SEV} value={sev} onChange={setSev} />

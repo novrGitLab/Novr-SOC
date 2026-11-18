@@ -10,12 +10,12 @@ import { GroupMappingsPanel } from '../_org/GroupMappingsPanel';
 import { LogSourcesPanel } from '../_org/LogSourcesPanel';
 import { QuarantinePanel } from '../_org/QuarantinePanel';
 
-export default function WazuhGroupsPage() {
+export default function AgentGroupsPage() {
     const { orgId, can, session } = useSession();
     return (
         <>
-            <PageHeader title="Wazuh group mappings" icon={Activity}
-                description={`How security events are attributed to ${session.active_org.name}: Wazuh agent groups for agents, registered sources for syslog and agentless devices. A group or source belongs to at most one organization.`} />
+            <PageHeader title="NovrAgent group mappings" icon={Activity}
+                description={`How security events are attributed to ${session.active_org.name}: NovrAgent groups for agents, registered sources for syslog and agentless devices. A group or source belongs to at most one organization.`} />
             <GroupMappingsPanel orgId={orgId} orgName={session.active_org.name} canManage={can('endpoints:manage')} />
             <LogSourcesPanel orgId={orgId} orgName={session.active_org.name} canManage={can('endpoints:manage')} />
             <QuarantinePanel />

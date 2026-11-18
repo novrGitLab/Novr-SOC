@@ -12,7 +12,7 @@ import { useResource } from '@/foundation/ui/useResource';
 const REASON: Record<string, string> = {
     no_organization_for_groups: 'No organization maps the agent groups', ambiguous_organization: 'Groups map to several organizations',
     unknown_log_source: 'Unregistered syslog / agentless source', log_source_disabled: 'Source disabled or organization archived',
-    manager_local_event: "The Wazuh manager's own event (no tenant)",
+    manager_local_event: "NovrSIEM's own event (no tenant)",
 };
 
 export function QuarantinePanel() {
@@ -25,7 +25,7 @@ export function QuarantinePanel() {
             {(x) => x && (
                 <div className="space-y-3 text-xs">
                     <p>{x.last_24h} in the last 24 hours · {Object.entries(x.by_reason).map(([k, v]) => `${v} ${REASON[k] ?? k.replace(/_/g, ' ')}`).join(' · ') || 'none'}</p>
-                    <p className="flex flex-wrap gap-1 items-center">Unmapped Wazuh groups seen: {x.unmapped_groups.length ? x.unmapped_groups.map((g) => <Tag key={g}>{g}</Tag>) : 'none'}</p>
+                    <p className="flex flex-wrap gap-1 items-center">Unmapped NovrAgent groups seen: {x.unmapped_groups.length ? x.unmapped_groups.map((g) => <Tag key={g}>{g}</Tag>) : 'none'}</p>
                     <DataTable rows={x.unattributed_sources} rowKey={(s) => `${s.reason}:${s.value}`} testid="unattributed-sources"
                         empty="No unattributed syslog, agentless or manager event." columns={[
                             { key: 'v', header: 'Source', render: (s) => <span className="font-mono">{s.value || '(no location)'}<span className="block font-sans text-[11px] text-foreground-muted">{s.kind.replace('_', ' ')}</span></span> },

@@ -46,7 +46,7 @@ export default function SlaPage() {
     return (
         <>
             <PageHeader title="SLA management" icon={Timer}
-                description="Response and resolution targets per case severity, fixed on each case when it is created. Breaches escalate once to the policy's role; the jobs worker checks every minute and you can run the check now." />
+                description="Response and resolution targets per case severity, fixed on each case when it is created. Breaches escalate once to the policy's role; NovrSOC checks every minute and you can run the check now." />
             {act.notice}
             <Loaded title="Policies" data={policies.data} error={policies.error} reload={policies.reload} testid="sla-policies"
                 action={can('sla:manage') && !edit ? <button className={btn('secondary')} onClick={startEdit}>Edit policies</button> : undefined}>

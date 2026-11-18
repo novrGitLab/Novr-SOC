@@ -20,7 +20,7 @@ export default function NhaiPage() {
     return (
         <>
             <PageHeader title="Novr Human-Assisted Intelligence (NHAI)" icon={Sparkles}
-                description="Asynchronous, evidence-grounded drafts for human review. Deterministic checks cap confidence, keep the Wazuh severity authoritative, refuse indicators that are not in the evidence and always list missing evidence. NHAI never acts." />
+                description="Asynchronous, evidence-grounded drafts for human review. Deterministic checks cap confidence, keep the NovrSIEM severity authoritative, refuse indicators that are not in the evidence and always list missing evidence. NHAI never acts." />
             <Loaded title="Jobs" data={jobs.data} error={jobs.error} reload={jobs.reload}>
                 {(d) => <DataTable testid="nhai-jobs" rows={d.items} rowKey={(j) => j.id} empty="No NHAI job yet. Ask for an explanation from an alert." columns={[
                     { key: 's', header: 'Subject', render: (j) => <Link className="underline text-xs" href={`/app/alerts/${j.subject.id}`}>{j.task.replace(/_/g, ' ')}</Link> },

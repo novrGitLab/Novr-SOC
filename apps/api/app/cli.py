@@ -16,6 +16,7 @@ import json
 import os
 import secrets
 import sys
+import uuid
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
@@ -195,6 +196,179 @@ def revoke_service_identity(ident: str) -> int:
     return 0
 
 
+def backfill_rollback(ledger: Path, execute: bool) -> int:
+    """Undo a historical backfill import from its ledger (backfill-ledger.jsonl, copied from Server 1). Removes ONLY
+    alerts the import inserted: the ids the API classified as not yet stored just before each batch was sent
+    (`new_ids`), received while the import ran, and untouched since (status still `new`, in no case). An alert that
+    already existed (e.g. delivered by the live forwarder) was classified a duplicate and is never matched.
+    Dry run unless --execute. Audited per organization."""
+    owner_url = os.environ.get("NOVRSOC_MIGRATION_DATABASE_URL") or _from_env_file("NOVRSOC_MIGRATION_DATABASE_URL")
+    if not owner_url:
+        print("NOVRSOC_MIGRATION_DATABASE_URL is required (schema owner)", file=sys.stderr)
+        return 2
+    from datetime import datetime, timedelta
+    ids, times, batches = set(), [], set()
+    for line in ledger.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        rec = json.loads(line)
+        if not str(rec.get("batch_id", "")).startswith("bkf-"):
+            print("refused: not a backfill ledger", file=sys.stderr)
+            return 2
+        if rec.get("kind") == "intent":
+            ids.update(str(i) for i in rec.get("new_ids") or [])
+            times.append(datetime.fromisoformat(rec["at"]))
+            batches.add(rec["batch_id"])
+    if not ids:
+        print("the ledger lists no alert: nothing to roll back")
+        return 0
+    lo, hi = min(times) - timedelta(minutes=1), max(times) + timedelta(hours=1)   # inserted after its intent line
+    with create_engine(owner_url).begin() as conn:
+        rows = conn.execute(text("""
+            SELECT a.id, a.org_id, a.status, a.log_source_id,
+                   EXISTS (SELECT 1 FROM novrsoc.case_alerts ca WHERE ca.alert_id = a.id) AS in_case
+              FROM novrsoc.alerts a
+             WHERE a.source = 'wazuh' AND a.external_id = ANY(:ids) AND a.received_at BETWEEN :lo AND :hi"""),
+            {"ids": sorted(ids), "lo": lo, "hi": hi}).all()
+        removable = [r for r in rows if r.status == "new" and not r.in_case]
+        kept = [r for r in rows if r not in removable]
+        per_org: dict = {}
+        for r in removable:
+            per_org[str(r.org_id)] = per_org.get(str(r.org_id), 0) + 1
+        summary = {"ledger_alert_ids": len(ids), "batches": len(batches), "inserted_by_the_import": len(rows),
+                   "removable": len(removable), "kept_worked_on": len(kept), "by_organization": per_org, "executed": execute}
+        if execute and removable:
+            gone = [r.id for r in removable]
+            per_src: dict = {}
+            for r in removable:
+                if r.log_source_id:
+                    per_src[r.log_source_id] = per_src.get(r.log_source_id, 0) + 1
+            conn.execute(text("DELETE FROM novrsoc.alerts WHERE id = ANY(:ids) AND status = 'new'"), {"ids": gone})
+            for src, n in per_src.items():
+                conn.execute(text("UPDATE novrsoc.log_sources SET event_count = GREATEST(event_count - :n, 0) WHERE id = :s"),
+                             {"n": n, "s": src})
+            for org, n in per_org.items():
+                conn.execute(text("""INSERT INTO novrsoc.audit_events (org_id, actor_type, actor_label, action, outcome, resource_type,
+                                                                      resource_id, details)
+                                     VALUES (:o, 'system', 'app.cli', 'BACKFILL_ROLLED_BACK', 'success', 'backfill', :r, CAST(:d AS jsonb))"""),
+                             {"o": org, "r": ledger.name[:200], "d": json.dumps({"removed": n, "batches": len(batches)})})
+    print(json.dumps(summary, indent=2))
+    if not execute:
+        print("dry run: nothing removed. Re-run with --execute to remove the 'removable' alerts.")
+    return 0
+
+
+def attribution_audit(days: int) -> int:
+    """READ-ONLY report of how alerts are attributed, and of every inconsistency, BEFORE any mapping is changed:
+    group mappings (collection groups such as `default` flagged: ignored for attribution from release 0018), active
+    client organizations with no mapping and no source, agents whose recent alerts carry only collection groups (their
+    alerts would be quarantined after the upgrade, with the organization that currently receives them), agent ids seen
+    under more than one organization, registered log sources, and quarantine by reason. Changes nothing (READ ONLY
+    transaction). Run on Server 2:  docker compose run --rm migrate python -m app.cli attribution-audit --days 7"""
+    owner_url = os.environ.get("NOVRSOC_MIGRATION_DATABASE_URL") or _from_env_file("NOVRSOC_MIGRATION_DATABASE_URL")
+    if not owner_url:
+        print("NOVRSOC_MIGRATION_DATABASE_URL is required (schema owner)", file=sys.stderr)
+        return 2
+    settings = Settings()  # type: ignore[call-arg]
+    coll = sorted(settings.collection_groups)
+    eng = create_engine(owner_url)
+    since = {"d": f"{int(days)} days"}
+    with eng.connect() as c:
+        c.execute(text("SET TRANSACTION READ ONLY"))
+        orgs = {r.id: r for r in c.execute(text("SELECT id, slug::text AS slug, kind, status FROM novrsoc.organizations"))}
+        maps = c.execute(text("SELECT org_id, group_name FROM novrsoc.wazuh_group_mappings ORDER BY group_name")).all()
+        srcs = c.execute(text("""SELECT org_id, name, kind, match_value, enabled, retired_at IS NOT NULL AS retired, event_count, last_event_at
+                                 FROM novrsoc.log_sources ORDER BY org_id, name""")).all()
+        only_coll = c.execute(text("""SELECT org_id, agent_id, max(agent_name) AS agent_name, agent_groups, count(*) AS alerts
+                                      FROM novrsoc.alerts WHERE observed_at > now() - CAST(:d AS interval)
+                                        AND agent_id <> '000' AND agent_groups <@ CAST(:g AS text[])
+                                      GROUP BY org_id, agent_id, agent_groups ORDER BY alerts DESC LIMIT 500"""), {**since, "g": coll}).all()
+        multi = c.execute(text("""SELECT agent_id, array_agg(DISTINCT org_id::text) AS orgs, count(*) AS alerts FROM novrsoc.alerts
+                                  WHERE observed_at > now() - CAST(:d AS interval) AND agent_id <> '000'
+                                  GROUP BY agent_id HAVING count(DISTINCT org_id) > 1 LIMIT 200"""), since).all()
+        by_org_groups = c.execute(text("""SELECT org_id, agent_groups, count(DISTINCT agent_id) AS agents, count(*) AS alerts
+                                          FROM novrsoc.alerts WHERE observed_at > now() - CAST(:d AS interval)
+                                          GROUP BY org_id, agent_groups ORDER BY org_id, alerts DESC"""), since).all()
+        quarantine = c.execute(text("""SELECT reason, count(*) AS n FROM novrsoc.alert_quarantine
+                                       WHERE received_at > now() - CAST(:d AS interval) GROUP BY reason ORDER BY reason"""), since).all()
+    slug = lambda o: orgs[o].slug if o in orgs else str(o)  # noqa: E731
+    issues = []
+    for m in maps:
+        if m.group_name in settings.collection_groups:
+            issues.append({"issue": "collection_group_mapped", "organization": slug(m.org_id), "group": m.group_name,
+                           "effect": "ignored for attribution: agents that carry only this group are quarantined, never given "
+                                     "to this organization; remove the mapping once its agents are in a group of their own"})
+    mapped_orgs = {m.org_id for m in maps if m.group_name not in settings.collection_groups}
+    sourced = {s.org_id for s in srcs if s.retired is False}
+    for o in orgs.values():
+        if o.kind == "client" and o.status == "active" and o.id not in mapped_orgs and o.id not in sourced:
+            issues.append({"issue": "organization_without_attribution", "organization": o.slug,
+                           "effect": "no endpoint group (other than a collection group) and no log source: it receives no alerts"})
+    for r in only_coll:
+        issues.append({"issue": "agent_only_in_collection_groups", "organization_now": slug(r.org_id), "agent_id": r.agent_id,
+                       "agent_name": r.agent_name, "groups": list(r.agent_groups), f"alerts_last_{days}d": r.alerts,
+                       "effect": "after the upgrade its alerts are quarantined (collection_group_only) until the agent is put "
+                                 "in its organization's own group"})
+    for r in multi:
+        issues.append({"issue": "agent_id_in_several_organizations", "agent_id": r.agent_id, "organizations": [slug(uuid.UUID(o)) for o in r.orgs], f"alerts_last_{days}d": r.alerts,
+                       "effect": "the agent moved between groups, or an agent id was reused; check the history before backfilling"})
+    report = {
+        "read_only": True, "window_days": days, "collection_groups": coll, "manager_events": settings.manager_events,
+        "mappings": [{"organization": slug(m.org_id), "group": m.group_name, "collection_group": m.group_name in settings.collection_groups}
+                     for m in maps],
+        "log_sources": [{"organization": slug(s.org_id), "name": s.name, "kind": s.kind, "match_value": s.match_value,
+                         "enabled": s.enabled, "retired": s.retired, "event_count": s.event_count,
+                         "last_event_at": s.last_event_at.isoformat() if s.last_event_at else None} for s in srcs],
+        "alerts_by_organization_and_groups": [{"organization": slug(r.org_id), "groups": list(r.agent_groups), "agents": r.agents,
+                                               "alerts": r.alerts} for r in by_org_groups],
+        "quarantine_by_reason": {r.reason: r.n for r in quarantine},
+        "inconsistencies": issues,
+    }
+    print(json.dumps(report, indent=2, default=str))
+    return 0
+
+
+def soar_bridge_tenant(org_slug: str) -> int:
+    """READ-ONLY: print the `tenants` entry of the Server 1 bridge configuration (bridge.json) for ONE organization,
+    derived from that organization's SOAR response policy, so the bridge's independent authorization matches what the
+    organization approved. Only its own mapped Wazuh groups are listed (never a collection group). The operator reviews the
+    entry and adds it to /etc/novrsoc-bridge/bridge.json on Server 1; the bridge keeps adapter=simulated and
+    allow_live=false until live response is separately authorized."""
+    owner_url = os.environ.get("NOVRSOC_MIGRATION_DATABASE_URL") or _from_env_file("NOVRSOC_MIGRATION_DATABASE_URL")
+    if not owner_url:
+        print("NOVRSOC_MIGRATION_DATABASE_URL is required (schema owner)", file=sys.stderr)
+        return 2
+    settings = Settings()  # type: ignore[call-arg]
+    bridge_actions = {"block_ip", "isolate_agent", "disable_account"}
+    with create_engine(owner_url).connect() as c:
+        c.execute(text("SET TRANSACTION READ ONLY"))
+        org = c.execute(text("SELECT id, status, kind FROM novrsoc.organizations WHERE slug = :s"), {"s": org_slug}).first()
+        if org is None:
+            print(f"unknown organization {org_slug}", file=sys.stderr)
+            return 2
+        pol = c.execute(text("SELECT * FROM novrsoc.soar_policies WHERE org_id = :o"), {"o": org.id}).first()
+        mapped = {r[0] for r in c.execute(text("SELECT group_name FROM novrsoc.wazuh_group_mappings WHERE org_id = :o"), {"o": org.id})}
+    if pol is None or not pol.allowed_actions:
+        print(f"{org_slug} has no SOAR response policy with allowed actions: nothing to authorize on the bridge", file=sys.stderr)
+        return 1
+    groups = sorted(g for g in pol.allowed_agent_groups if g in mapped and g not in settings.collection_groups)
+    dropped = sorted(set(pol.allowed_agent_groups) - set(groups))
+    actions = sorted(a for a in pol.allowed_actions if a in bridge_actions)
+    entry = {str(org.id): {"actions": actions, "agent_groups": groups}}
+    notes = []
+    if dropped:
+        notes.append(f"left out (not this organization's mapped groups, or collection groups): {', '.join(dropped)}")
+    if org.status != "active":
+        notes.append(f"the organization is {org.status}: do not authorize it")
+    if pol.emergency_stop:
+        notes.append("the organization's SOAR emergency stop is ON")
+    if any(a != "block_ip" for a in actions):
+        notes.append("agent-targeted actions also need the adapter to look up the agent's groups on the manager (bridge: adapter)")
+    print(json.dumps({"organization": org_slug, "tenants_entry": entry, "notes": notes,
+                      "bridge_must_keep": {"adapter": "simulated", "allow_live": False}}, indent=2))
+    return 0
+
+
 def check_env() -> int:
     """Validate the environment before the API starts: settings, database (as the API role), migration head, and the
     configured adapters. Prints one line per check; exits 1 when any check fails. Never prints secret values."""
@@ -272,7 +446,20 @@ def main() -> int:
     bp.add_argument("--org-name", default="NovrSOC Platform")
     bp.add_argument("--out", required=True, type=Path)
     sub.add_parser("check-env", help="validate settings, database, migration head and adapters before starting")
+    rb = sub.add_parser("backfill-rollback", help="undo a historical backfill import from its ledger (dry run unless --execute)")
+    rb.add_argument("--ledger", required=True, type=Path)
+    rb.add_argument("--execute", action="store_true")
+    sb = sub.add_parser("soar-bridge-tenant", help="read-only: the bridge.json tenants entry derived from one organization's SOAR policy")
+    sb.add_argument("--org", required=True, help="organization slug")
+    aa = sub.add_parser("attribution-audit", help="read-only report of alert attribution and mapping inconsistencies")
+    aa.add_argument("--days", type=int, default=7, choices=range(1, 91), metavar="1..90")
     args = ap.parse_args()
+    if args.cmd == "soar-bridge-tenant":
+        return soar_bridge_tenant(args.org)
+    if args.cmd == "attribution-audit":
+        return attribution_audit(args.days)
+    if args.cmd == "backfill-rollback":
+        return backfill_rollback(args.ledger, args.execute)
     if args.cmd == "check-env":
         return check_env()
     if args.cmd == "bootstrap-platform":

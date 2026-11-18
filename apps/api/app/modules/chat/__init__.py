@@ -157,7 +157,7 @@ def t_assets(c: Ctx) -> None:
             count(*) FILTER (WHERE kind = 'host' AND NOT EXISTS (SELECT 1 FROM novrsoc.asset_identifiers i WHERE i.asset_id = a.id
                              AND i.kind = 'wazuh_agent')) AS no_agent FROM novrsoc.assets a WHERE status = 'active'""")).one()
         c.tool("assets", "assets:read", "ok" if stats.n else "empty", f"{stats.n} active assets", 0)
-        c.lines.append(f"Asset inventory: {stats.n} active assets, {stats.crit} critical or high, {stats.no_agent} host(s) without a Wazuh agent."
+        c.lines.append(f"Asset inventory: {stats.n} active assets, {stats.crit} critical or high, {stats.no_agent} host(s) without a NovrAgent."
                        if stats.n else "Asset inventory: no assets are recorded.")
         return
     seen = {}

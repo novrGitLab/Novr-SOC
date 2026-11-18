@@ -661,6 +661,131 @@
         "x-novrsoc-direction": "api",
         "x-novrsoc-module": "soar"
       },
+      "AlertClassification": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "log_source_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Log Source Id"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Org Id"
+          },
+          "org_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Org Slug"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The quarantine reason (the same values ingest records)",
+            "title": "Reason"
+          },
+          "verdict": {
+            "description": "new: ingest would store it; duplicate: already stored for its organization; quarantine: no organization",
+            "enum": [
+              "new",
+              "duplicate",
+              "quarantine"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "verdict"
+        ],
+        "title": "AlertClassification",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "soc"
+      },
+      "AlertClassifyRequest": {
+        "additionalProperties": false,
+        "description": "Dry run of ingest (historical backfill planning): the same ownership decision as ingest, nothing is stored.",
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/WazuhAlertIn"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Alerts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "alerts"
+        ],
+        "title": "AlertClassifyRequest",
+        "type": "object",
+        "x-novrsoc-direction": "machine_inbound",
+        "x-novrsoc-module": "soc"
+      },
+      "AlertClassifyResult": {
+        "additionalProperties": false,
+        "properties": {
+          "classified_at": {
+            "format": "date-time",
+            "title": "Classified At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AlertClassification"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "classified_at"
+        ],
+        "title": "AlertClassifyResult",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "soc"
+      },
       "AlertDetail": {
         "additionalProperties": false,
         "properties": {
@@ -3734,6 +3859,24 @@
         "title": "Capability",
         "type": "string"
       },
+      "CaseAssistanceRequest": {
+        "additionalProperties": false,
+        "description": "Investigation assistance for one case: its linked alerts (authoritative severities), notes, timeline and the\nThreat Insights matches of those alerts. A draft for the analyst; it never changes the case.",
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id"
+        ],
+        "title": "CaseAssistanceRequest",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "nhai"
+      },
       "CaseDetail": {
         "additionalProperties": false,
         "properties": {
@@ -6537,6 +6680,275 @@
         "type": "object",
         "x-novrsoc-direction": "api",
         "x-novrsoc-module": "inventory"
+      },
+      "CommandList": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommandRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "per_organization": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Records returned per organization slug (before the overall limit)",
+            "title": "Per Organization",
+            "type": "object"
+          },
+          "truncated": {
+            "description": "True when an organization had more matching records than were read",
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "view": {
+            "enum": [
+              "assets",
+              "alerts",
+              "vulnerabilities",
+              "scans",
+              "cases",
+              "intel",
+              "nhai",
+              "soar_runs",
+              "soar_approvals",
+              "reports"
+            ],
+            "title": "View",
+            "type": "string"
+          }
+        },
+        "required": [
+          "view",
+          "generated_at",
+          "items",
+          "per_organization",
+          "truncated"
+        ],
+        "title": "CommandList",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "command"
+      },
+      "CommandOrg": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "platform",
+              "client"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "suspended",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "kind",
+          "status"
+        ],
+        "title": "CommandOrg",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "command"
+      },
+      "CommandOverview": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "organizations": {
+            "items": {
+              "$ref": "#/components/schemas/OrgPosture"
+            },
+            "title": "Organizations",
+            "type": "array"
+          },
+          "scope": {
+            "enum": [
+              "platform",
+              "assigned"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "totals": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Totals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "generated_at",
+          "scope",
+          "organizations",
+          "totals"
+        ],
+        "title": "CommandOverview",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "command"
+      },
+      "CommandRecord": {
+        "additionalProperties": false,
+        "description": "One tenant-owned record, labelled with its owner. `fields` holds the view's columns (documented per view).",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "At"
+          },
+          "fields": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Fields",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "org": {
+            "$ref": "#/components/schemas/CommandOrg"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Severity"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org",
+          "id",
+          "title"
+        ],
+        "title": "CommandRecord",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "command"
+      },
+      "CommandScope": {
+        "additionalProperties": false,
+        "properties": {
+          "can_export": {
+            "title": "Can Export",
+            "type": "boolean"
+          },
+          "organizations": {
+            "items": {
+              "$ref": "#/components/schemas/CommandOrg"
+            },
+            "title": "Organizations",
+            "type": "array"
+          },
+          "scope": {
+            "description": "platform: every organization; assigned: home + operations assignments",
+            "enum": [
+              "platform",
+              "assigned"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "views": {
+            "description": "The views this person's permissions allow",
+            "items": {
+              "enum": [
+                "assets",
+                "alerts",
+                "vulnerabilities",
+                "scans",
+                "cases",
+                "intel",
+                "nhai",
+                "soar_runs",
+                "soar_approvals",
+                "reports"
+              ],
+              "type": "string"
+            },
+            "title": "Views",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scope",
+          "organizations",
+          "views",
+          "can_export"
+        ],
+        "title": "CommandScope",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "command"
       },
       "CompliancePolicyRow": {
         "additionalProperties": false,
@@ -9668,6 +10080,12 @@
             "default": false,
             "description": "A broad group (Wazuh's `default`): shown with a warning",
             "title": "Broad",
+            "type": "boolean"
+          },
+          "collection": {
+            "default": false,
+            "description": "A collection group (NOVRSOC_WAZUH_COLLECTION_GROUPS): this mapping is IGNORED for attribution; it never makes the organization an agent's owner",
+            "title": "Collection",
             "type": "boolean"
           },
           "created_at": {
@@ -13464,6 +13882,154 @@
         "x-novrsoc-direction": "api",
         "x-novrsoc-module": "platform"
       },
+      "OrgPosture": {
+        "additionalProperties": false,
+        "description": "One organization's security posture, computed from its own records at request time.",
+        "properties": {
+          "alerts_24h": {
+            "default": 0,
+            "title": "Alerts 24H",
+            "type": "integer"
+          },
+          "assets": {
+            "default": 0,
+            "title": "Assets",
+            "type": "integer"
+          },
+          "critical_alerts_24h": {
+            "default": 0,
+            "title": "Critical Alerts 24H",
+            "type": "integer"
+          },
+          "critical_cases": {
+            "default": 0,
+            "title": "Critical Cases",
+            "type": "integer"
+          },
+          "critical_findings": {
+            "default": 0,
+            "title": "Critical Findings",
+            "type": "integer"
+          },
+          "high_alerts_24h": {
+            "default": 0,
+            "title": "High Alerts 24H",
+            "type": "integer"
+          },
+          "intel_matches_7d": {
+            "default": 0,
+            "title": "Intel Matches 7D",
+            "type": "integer"
+          },
+          "last_alert_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Alert At"
+          },
+          "nhai_awaiting_review": {
+            "default": 0,
+            "title": "Nhai Awaiting Review",
+            "type": "integer"
+          },
+          "nhai_failed_24h": {
+            "default": 0,
+            "title": "Nhai Failed 24H",
+            "type": "integer"
+          },
+          "nhai_queued": {
+            "default": 0,
+            "title": "Nhai Queued",
+            "type": "integer"
+          },
+          "open_alerts": {
+            "default": 0,
+            "title": "Open Alerts",
+            "type": "integer"
+          },
+          "open_cases": {
+            "default": 0,
+            "title": "Open Cases",
+            "type": "integer"
+          },
+          "open_findings": {
+            "default": 0,
+            "title": "Open Findings",
+            "type": "integer"
+          },
+          "org": {
+            "$ref": "#/components/schemas/CommandOrg"
+          },
+          "overdue_remediation": {
+            "default": 0,
+            "title": "Overdue Remediation",
+            "type": "integer"
+          },
+          "posture": {
+            "enum": [
+              "critical",
+              "elevated",
+              "normal",
+              "no_data"
+            ],
+            "title": "Posture",
+            "type": "string"
+          },
+          "posture_reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Posture Reasons",
+            "type": "array"
+          },
+          "reports_7d": {
+            "default": 0,
+            "title": "Reports 7D",
+            "type": "integer"
+          },
+          "scan_policy_enabled": {
+            "default": false,
+            "title": "Scan Policy Enabled",
+            "type": "boolean"
+          },
+          "scans_failed_7d": {
+            "default": 0,
+            "title": "Scans Failed 7D",
+            "type": "integer"
+          },
+          "scans_running": {
+            "default": 0,
+            "title": "Scans Running",
+            "type": "integer"
+          },
+          "soar_pending_approvals": {
+            "default": 0,
+            "title": "Soar Pending Approvals",
+            "type": "integer"
+          },
+          "soar_runs_7d": {
+            "default": 0,
+            "title": "Soar Runs 7D",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "org",
+          "posture"
+        ],
+        "title": "OrgPosture",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "command"
+      },
       "OrgStatusChange": {
         "additionalProperties": false,
         "description": "suspended: members cannot sign in or switch to it; telemetry keeps arriving. archived: kept for the record; it\nmust hold no Wazuh group mapping and no live log source first, so no event can reach it.",
@@ -14388,6 +14954,40 @@
         "type": "object",
         "x-novrsoc-direction": "api",
         "x-novrsoc-module": "soar"
+      },
+      "PolicyWindow": {
+        "additionalProperties": false,
+        "description": "A weekly window in the policy's timezone during which scans of the organization may run.",
+        "properties": {
+          "end_minute": {
+            "maximum": 1440,
+            "minimum": 1,
+            "title": "End Minute",
+            "type": "integer"
+          },
+          "start_minute": {
+            "maximum": 1439,
+            "minimum": 0,
+            "title": "Start Minute",
+            "type": "integer"
+          },
+          "weekday": {
+            "description": "0 = Monday",
+            "maximum": 6,
+            "minimum": 0,
+            "title": "Weekday",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weekday",
+          "start_minute",
+          "end_minute"
+        ],
+        "title": "PolicyWindow",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "vms"
       },
       "PostureAssessment": {
         "additionalProperties": false,
@@ -17029,7 +17629,10 @@
             "enum": [
               "job",
               "no_job",
-              "scanning_disabled"
+              "scanning_disabled",
+              "policy_disabled",
+              "outside_scan_window",
+              "concurrency_limit"
             ],
             "title": "Reason",
             "type": "string"
@@ -17123,11 +17726,35 @@
             "title": "Job Id",
             "type": "string"
           },
+          "max_rate_pps": {
+            "anyOf": [
+              {
+                "maximum": 1000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The organization's scan-policy packet-rate ceiling; the worker never exceeds it (nor its own)",
+            "title": "Max Rate Pps"
+          },
           "max_runtime_seconds": {
             "maximum": 43200,
             "minimum": 60,
             "title": "Max Runtime Seconds",
             "type": "integer"
+          },
+          "protected_networks": {
+            "default": [],
+            "description": "Never touched, whatever the targets say (scan policy)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Protected Networks",
+            "type": "array"
           },
           "targets": {
             "items": {
@@ -17231,7 +17858,8 @@
                 "completed",
                 "unreachable",
                 "refused_out_of_scope",
-                "failed"
+                "failed",
+                "no_route"
               ],
               "type": "string"
             },
@@ -20593,6 +21221,236 @@
         "x-novrsoc-direction": "api",
         "x-novrsoc-module": "vms"
       },
+      "VmsEnrollmentEvaluation": {
+        "additionalProperties": false,
+        "properties": {
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Status",
+            "type": "object"
+          },
+          "evaluated": {
+            "title": "Evaluated",
+            "type": "integer"
+          },
+          "scans_queued": {
+            "default": 0,
+            "title": "Scans Queued",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "evaluated",
+          "by_status"
+        ],
+        "title": "VmsEnrollmentEvaluation",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "vms"
+      },
+      "VmsEnrollmentExclusion": {
+        "additionalProperties": false,
+        "properties": {
+          "excluded": {
+            "title": "Excluded",
+            "type": "boolean"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "excluded",
+          "reason"
+        ],
+        "title": "VmsEnrollmentExclusion",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "vms"
+      },
+      "VmsEnrollmentList": {
+        "additionalProperties": false,
+        "properties": {
+          "by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Status",
+            "type": "object"
+          },
+          "evaluated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Evaluated At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VmsEnrollmentView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "by_status"
+        ],
+        "title": "VmsEnrollmentList",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "vms"
+      },
+      "VmsEnrollmentView": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Address"
+          },
+          "asset_id": {
+            "format": "uuid",
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "asset_name": {
+            "title": "Asset Name",
+            "type": "string"
+          },
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "hostname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hostname"
+          },
+          "last_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Job Id"
+          },
+          "last_scanned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Scanned At"
+          },
+          "open_findings": {
+            "default": 0,
+            "title": "Open Findings",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scope Id"
+          },
+          "scope_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scope Value"
+          },
+          "sources": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "enrolled",
+              "eligible",
+              "excluded_protected",
+              "outside_scope",
+              "public_address",
+              "shared_address",
+              "stale_address",
+              "no_address",
+              "unverified_source",
+              "manual_exclusion"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "asset_id",
+          "asset_name",
+          "status",
+          "reason",
+          "evaluated_at"
+        ],
+        "title": "VmsEnrollmentView",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "vms"
+      },
       "VmsFindingDetail": {
         "additionalProperties": false,
         "properties": {
@@ -21078,11 +21936,253 @@
         "x-novrsoc-direction": "api",
         "x-novrsoc-module": "vms"
       },
+      "VmsScanPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "address_max_age_hours": {
+            "default": 72,
+            "maximum": 720,
+            "minimum": 1,
+            "title": "Address Max Age Hours",
+            "type": "integer"
+          },
+          "authorization_reference": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Authorization Reference",
+            "type": "string"
+          },
+          "auto_enroll": {
+            "default": false,
+            "title": "Auto Enroll",
+            "type": "boolean"
+          },
+          "configured": {
+            "description": "False until the organization saves a policy (the defaults shown are not in force)",
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "enroll_activity": {
+            "$ref": "#/components/schemas/ScanActivity",
+            "default": "ports"
+          },
+          "in_window_now": {
+            "title": "In Window Now",
+            "type": "boolean"
+          },
+          "installation_mode": {
+            "enum": [
+              "disabled",
+              "local_test_targets",
+              "authorized_scopes"
+            ],
+            "title": "Installation Mode",
+            "type": "string"
+          },
+          "max_concurrent_scans": {
+            "default": 1,
+            "maximum": 4,
+            "minimum": 1,
+            "title": "Max Concurrent Scans",
+            "type": "integer"
+          },
+          "max_rate_pps": {
+            "default": 100,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Max Rate Pps",
+            "type": "integer"
+          },
+          "max_targets_per_scan": {
+            "default": 32,
+            "maximum": 256,
+            "minimum": 1,
+            "title": "Max Targets Per Scan",
+            "type": "integer"
+          },
+          "protected_networks": {
+            "default": [],
+            "items": {
+              "maxLength": 49,
+              "minLength": 3,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Protected Networks",
+            "type": "array"
+          },
+          "rescan_interval_days": {
+            "default": 7,
+            "maximum": 90,
+            "minimum": 1,
+            "title": "Rescan Interval Days",
+            "type": "integer"
+          },
+          "timezone": {
+            "default": "UTC",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Updated At"
+          },
+          "updated_by_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Updated By Label"
+          },
+          "windows": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PolicyWindow"
+            },
+            "maxItems": 28,
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "configured",
+          "installation_mode",
+          "in_window_now"
+        ],
+        "title": "VmsScanPolicy",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "vms"
+      },
+      "VmsScanPolicyUpdate": {
+        "additionalProperties": false,
+        "description": "The organization's standing scan authorization (vms:scope). Enabling requires an authorization reference and at\nleast one window. auto_enroll enrolls imported assets that fall inside an approved scope; it never widens a scope.",
+        "properties": {
+          "address_max_age_hours": {
+            "default": 72,
+            "maximum": 720,
+            "minimum": 1,
+            "title": "Address Max Age Hours",
+            "type": "integer"
+          },
+          "authorization_reference": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Authorization Reference",
+            "type": "string"
+          },
+          "auto_enroll": {
+            "default": false,
+            "title": "Auto Enroll",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "enroll_activity": {
+            "$ref": "#/components/schemas/ScanActivity",
+            "default": "ports"
+          },
+          "max_concurrent_scans": {
+            "default": 1,
+            "maximum": 4,
+            "minimum": 1,
+            "title": "Max Concurrent Scans",
+            "type": "integer"
+          },
+          "max_rate_pps": {
+            "default": 100,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Max Rate Pps",
+            "type": "integer"
+          },
+          "max_targets_per_scan": {
+            "default": 32,
+            "maximum": 256,
+            "minimum": 1,
+            "title": "Max Targets Per Scan",
+            "type": "integer"
+          },
+          "protected_networks": {
+            "default": [],
+            "items": {
+              "maxLength": 49,
+              "minLength": 3,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Protected Networks",
+            "type": "array"
+          },
+          "rescan_interval_days": {
+            "default": 7,
+            "maximum": 90,
+            "minimum": 1,
+            "title": "Rescan Interval Days",
+            "type": "integer"
+          },
+          "timezone": {
+            "default": "UTC",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          },
+          "windows": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PolicyWindow"
+            },
+            "maxItems": 28,
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "VmsScanPolicyUpdate",
+        "type": "object",
+        "x-novrsoc-direction": "api",
+        "x-novrsoc-module": "vms"
+      },
       "VmsScanView": {
         "additionalProperties": false,
         "properties": {
           "activity": {
             "$ref": "#/components/schemas/ScanActivity"
+          },
+          "asset_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Asset Ids",
+            "type": "array"
           },
           "claimed_at": {
             "anyOf": [
@@ -21132,10 +22232,28 @@
             "title": "Id",
             "type": "string"
           },
+          "origin": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "schedule",
+              "rescan",
+              "enrollment"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
           "outcome": {
             "additionalProperties": true,
             "default": {},
             "title": "Outcome",
+            "type": "object"
+          },
+          "progress": {
+            "additionalProperties": true,
+            "default": {},
+            "description": "targets_total, targets_reported, per-target outcomes, observations",
+            "title": "Progress",
             "type": "object"
           },
           "scope_id": {

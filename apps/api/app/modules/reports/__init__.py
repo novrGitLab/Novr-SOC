@@ -57,12 +57,12 @@ def build_organization_summary(conn: Connection, p: Principal, settings: Setting
         out.append(_section("sites", "Sites", "not_permitted"))
 
     if not p.has("endpoints:read"):
-        out.append(_section("endpoints", "Endpoints (Wazuh)", "not_permitted"))
+        out.append(_section("endpoints", "Endpoints (NovrSIEM)", "not_permitted"))
     else:
         source = registry.wazuh(settings)
         if source is None:
-            out.append(_section("endpoints", "Endpoints (Wazuh)", "integration_unconfigured",
-                                note="No Wazuh connection is configured; endpoint figures are unavailable, not zero."))
+            out.append(_section("endpoints", "Endpoints (NovrSIEM)", "integration_unconfigured",
+                                note="No NovrSIEM connection is configured; endpoint figures are unavailable, not zero."))
         else:
             scope = org_scope(conn, p.org_id)
             agents = source.list_agents(scope)
@@ -77,7 +77,7 @@ def build_organization_summary(conn: Connection, p: Principal, settings: Setting
                     for k in vulns:
                         vulns[k] += v.get(k, 0)
             fixture = registry.wazuh_states(settings)[0].state == "local_fixture"
-            out.append(_section("endpoints", "Endpoints (Wazuh)", "local_fixture" if fixture else "ok",
+            out.append(_section("endpoints", "Endpoints (NovrSIEM)", "local_fixture" if fixture else "ok",
                                 {"count": len(agents), "by_status": by_status, "vulnerabilities": vulns,
                                  "endpoints_with_vulnerability_data": with_vuln_data},
                                 note="Local fixture data for development; not live telemetry." if fixture else ""))
@@ -253,9 +253,9 @@ def build_compliance(conn, p, settings, start, end) -> list[ReportSection]:
     from app.modules.posture import compliance
     cv = compliance(conn, p, settings)
     if cv.source.state not in ("connected", "local_fixture"):
-        return [_section("sca", "Configuration assessment (Wazuh SCA)", "integration_unconfigured" if cv.source.state == "unconfigured" else "error",
+        return [_section("sca", "Configuration assessment (NovrAgent SCA)", "integration_unconfigured" if cv.source.state == "unconfigured" else "error",
                          note=(cv.note or cv.source.detail or "")[:200])]
-    return [_section("sca", "Configuration assessment (Wazuh SCA)", "local_fixture" if cv.source.state == "local_fixture" else "ok",
+    return [_section("sca", "Configuration assessment (NovrAgent SCA)", "local_fixture" if cv.source.state == "local_fixture" else "ok",
                      {"endpoints_assessed": cv.endpoints_assessed, "policies": [x.model_dump() for x in cv.policies]}, note=cv.note[:200])]
 
 

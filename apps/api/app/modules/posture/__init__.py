@@ -85,7 +85,7 @@ def measures(conn: Connection, p: Principal) -> list[Measure]:
                                  FROM novrsoc.email_domains""")).one()
     return [
         _pct("endpoint_coverage", "Endpoint agent coverage", hosts.agent, hosts.n, weight=0.15, perm_ok=a, href="/app/assets?monitoring=unmonitored",
-             formula="host assets with a Wazuh agent / active host assets", reason_empty="No host assets are in the inventory."),
+             formula="host assets with a NovrAgent / active host assets", reason_empty="No host assets are in the inventory."),
         _pct("scan_coverage", "Vulnerability scan coverage (30 days)", scannable.scanned, scannable.n, weight=0.15, perm_ok=a and v,
              href="/app/vms/scans", formula="active assets in a completed VMS scan in 30 days / active assets",
              reason_empty="No assets are in the inventory."),
@@ -216,7 +216,7 @@ def compliance(conn: Connection, p: Principal, settings: Settings) -> Compliance
         return ComplianceView(source=state.model_copy(update={"detail": "Your role cannot read endpoint configuration assessments."}),
                               note="Not permitted for your role.")
     if source is None or state.state not in ("connected", "local_fixture"):
-        return ComplianceView(source=state, note="Configuration assessment (Wazuh SCA) is unavailable: " + (state.detail or state.state))
+        return ComplianceView(source=state, note="Configuration assessment (NovrAgent SCA) is unavailable: " + (state.detail or state.state))
     scope = org_scope(conn, p.org_id)
     agg: dict[str, dict] = {}
     n = 0
@@ -246,7 +246,7 @@ def _gaps(conn: Connection, p: Principal) -> list[PostureGap]:
         g.append(PostureGap(key="no_sla", title="No SLA policies", detail="Cases have no response or resolution targets; SLA cannot be measured.",
                             severity="high", href="/app/sla"))
     if not q("SELECT count(*) FROM novrsoc.wazuh_group_mappings"):
-        g.append(PostureGap(key="no_wazuh_mapping", title="No Wazuh agent groups mapped",
+        g.append(PostureGap(key="no_wazuh_mapping", title="No NovrAgent groups mapped",
                             detail="No alert or endpoint can be attributed to this organization.", severity="high", href="/app/admin/wazuh-groups"))
     if not q("SELECT count(*) FROM novrsoc.soar_policies"):
         g.append(PostureGap(key="no_response_policy", title="No response policy", detail="Every consequential SOAR step is refused until one is set.",
@@ -254,7 +254,7 @@ def _gaps(conn: Connection, p: Principal) -> list[PostureGap]:
     n = q("""SELECT count(*) FROM novrsoc.assets a WHERE a.status = 'active' AND a.kind = 'host'
              AND NOT EXISTS (SELECT 1 FROM novrsoc.asset_identifiers i WHERE i.asset_id = a.id AND i.kind = 'wazuh_agent')""")
     if n:
-        g.append(PostureGap(key="hosts_without_agent", title=f"{n} host(s) without a Wazuh agent", detail="No host telemetry or configuration assessment.",
+        g.append(PostureGap(key="hosts_without_agent", title=f"{n} host(s) without a NovrAgent", detail="No host telemetry or configuration assessment.",
                             severity="high", href="/app/assets?monitoring=unmonitored"))
     n = q("""SELECT count(*) FROM novrsoc.assets a WHERE a.status = 'active' AND NOT EXISTS (SELECT 1 FROM novrsoc.vms_scan_jobs j
              WHERE j.state = 'completed' AND j.targets && ARRAY(SELECT i.value FROM novrsoc.asset_identifiers i WHERE i.asset_id = a.id))""")

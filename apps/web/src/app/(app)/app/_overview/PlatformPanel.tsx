@@ -53,7 +53,7 @@ export function PlatformPanel() {
                     reason={!can('sites:read') ? NOT_IN_ROLE : reasonOf(sites.error)} href={can('sites:read') ? '/app/sites' : undefined} />
                 <KpiCard label="Endpoints" icon={Monitor} loading={endpoints.loading}
                     value={inv && inv.source.state !== 'unconfigured' ? inv.items.length : null}
-                    reason={!can('endpoints:read') ? NOT_IN_ROLE : inv?.source.state === 'unconfigured' ? 'No Wazuh connection is configured' : reasonOf(endpoints.error)}
+                    reason={!can('endpoints:read') ? NOT_IN_ROLE : inv?.source.state === 'unconfigured' ? 'No NovrSIEM connection is configured' : reasonOf(endpoints.error)}
                     hint={inv?.source.state === 'local_fixture' ? 'Local fixture data, not live telemetry' : inv ? `${inv.mapped_groups} agent group(s) mapped` : undefined}
                     href={can('endpoints:read') ? '/app/endpoints' : undefined} />
                 <KpiCard label="New alerts" icon={Bell} loading={newAlerts.loading}

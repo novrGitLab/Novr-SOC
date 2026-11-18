@@ -21,18 +21,18 @@ export default function EndpointsPage() {
     return (
         <>
             <PageHeader title="Endpoints" icon={Monitor}
-                description="Wazuh agents in the agent groups mapped to this organization. Read through the NovrSOC API; agent health is as last reported by the Wazuh manager." />
+                description="NovrAgents in the agent groups mapped to this organization. Read through the NovrSOC API; agent health is as last reported by NovrSIEM." />
             {error ? <ApiErrorState error={error} onRetry={() => void reload()} />
                 : !data ? <LoadingState label="Loading endpoints" />
                 : (
                     <>
                         <SourceBanner source={data.source} what="Endpoint inventory" />
                         {data.source.state === 'unconfigured' ? (
-                            <Card><EmptyState icon={Unplug} title="No Wazuh connection is configured"
-                                body="Endpoint inventory appears here once the Wazuh connector is configured for this installation. No endpoint data is shown until then." /></Card>
+                            <Card><EmptyState icon={Unplug} title="No NovrSIEM connection is configured"
+                                body="Endpoint inventory appears here once the NovrSIEM connector is configured for this installation. No endpoint data is shown until then." /></Card>
                         ) : data.mapped_groups === 0 ? (
                             <Card><EmptyState title="No agent groups are mapped to this organization"
-                                body="A SOC manager maps Wazuh agent groups to an organization; only agents in mapped groups are shown." /></Card>
+                                body="A SOC manager maps NovrAgent groups to an organization; only agents in mapped groups are shown." /></Card>
                         ) : (
                             <>
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-foreground-muted" data-testid="endpoint-counts">

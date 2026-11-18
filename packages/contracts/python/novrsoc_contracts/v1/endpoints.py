@@ -94,6 +94,8 @@ class GroupMapping(Contract):
     group_name: str
     created_at: datetime
     broad: bool = Field(default=False, description="A broad group (Wazuh's `default`): shown with a warning")
+    collection: bool = Field(default=False, description="A collection group (NOVRSOC_WAZUH_COLLECTION_GROUPS): this mapping is "
+                                                        "IGNORED for attribution; it never makes the organization an agent's owner")
 
 
 class GroupMappingList(Contract):

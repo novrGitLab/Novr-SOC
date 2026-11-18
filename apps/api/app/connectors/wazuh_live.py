@@ -58,6 +58,14 @@ def _tls_failure(exc: BaseException) -> bool:
     return False
 
 
+
+_SHOWN = {"WAZUH": "NovrSIEM", "WAZUH_INDEXER": "NovrSIEM event store"}
+
+
+def shown(endpoint_name: str) -> str:
+    """The product name of an endpoint in messages people read (never the vendor or configuration prefix)."""
+    return _SHOWN.get(endpoint_name, endpoint_name)
+
 class HttpService:
     """One TLS-verified HTTP service with bounded retries. Raises only ConnectorError subclasses."""
 
@@ -71,22 +79,22 @@ class HttpService:
 
     def request(self, method: str, path: str, *, headers: Mapping[str, str] | None = None,
                 params: Mapping[str, Any] | None = None, json: Any = None) -> httpx.Response:
-        last: ConnectorError = ConnectorUnavailable(f"{self.ep.name} could not be reached")
+        last: ConnectorError = ConnectorUnavailable(f"{shown(self.ep.name)} could not be reached")
         for attempt in range(self.retries + 1):
             try:
                 r = self.client.request(method, path, headers=headers, params=params, json=json, extensions=self._ext)
             except httpx.TimeoutException:
-                last = ConnectorTimeout(f"{self.ep.name} did not answer within {self.ep.timeout_seconds:g} s")
+                last = ConnectorTimeout(f"{shown(self.ep.name)} did not answer within {self.ep.timeout_seconds:g} s")
             except httpx.HTTPError as e:
                 if _tls_failure(e):
-                    raise ConnectorUnavailable(f"{self.ep.name}: TLS certificate verification failed "
-                                               f"(check {self.ep.name}_CA_CERT / {self.ep.name}_TLS_SERVERNAME)") from None
-                last = ConnectorUnavailable(f"{self.ep.name} could not be reached")
+                    raise ConnectorUnavailable(f"{shown(self.ep.name)}: TLS certificate verification failed "
+                                               "(check its CA certificate and TLS server name)") from None
+                last = ConnectorUnavailable(f"{shown(self.ep.name)} could not be reached")
             else:
                 if r.status_code in (401, 403):
-                    raise ConnectorRejected(f"{self.ep.name} refused the request ({r.status_code}); check its read-only credentials")
+                    raise ConnectorRejected(f"{shown(self.ep.name)} refused the request ({r.status_code}); check its read-only credentials")
                 if r.status_code == 429 or r.status_code >= 500:
-                    last = ConnectorUnavailable(f"{self.ep.name} answered {r.status_code}")
+                    last = ConnectorUnavailable(f"{shown(self.ep.name)} answered {r.status_code}")
                 else:
                     return r
             if attempt < self.retries:
@@ -120,11 +128,11 @@ class LiveWazuhManager:
                 return self._token
             r = self.http.request("POST", "/security/user/authenticate", headers={"Authorization": self._basic})
             if r.status_code != 200:
-                raise ConnectorRejected(f"WAZUH authentication failed ({r.status_code})")
+                raise ConnectorRejected(f"NovrSIEM authentication failed ({r.status_code})")
             try:
                 self._token = r.json()["data"]["token"]
             except (ValueError, KeyError, TypeError):
-                raise ConnectorUnavailable("WAZUH returned an unexpected authentication response") from None
+                raise ConnectorUnavailable("NovrSIEM returned an unexpected authentication response") from None
             self._token_exp = self.clock() + self.TOKEN_SECONDS
             return self._token
 
@@ -142,12 +150,12 @@ class LiveWazuhManager:
             if r.status_code == 404:
                 return {"data": {"affected_items": [], "total_affected_items": 0}}
             if r.status_code != 200:
-                raise ConnectorUnavailable(f"WAZUH answered {r.status_code} for a read request")
+                raise ConnectorUnavailable(f"NovrSIEM answered {r.status_code} for a read request")
             try:
                 return r.json()
             except ValueError:
-                raise ConnectorUnavailable("WAZUH returned a response that is not JSON") from None
-        raise ConnectorRejected("WAZUH refused the request")
+                raise ConnectorUnavailable("NovrSIEM returned a response that is not JSON") from None
+        raise ConnectorRejected("NovrSIEM refused the request")
 
     @staticmethod
     def _items(body: dict) -> list[dict]:
@@ -182,7 +190,7 @@ class LiveWazuhManager:
                     if agent is not None:
                         found[agent.agent_id] = agent
                 if len(found) > MAX_AGENTS:
-                    raise ConnectorUnavailable(f"WAZUH returned more than {MAX_AGENTS} agents for one organization")
+                    raise ConnectorUnavailable(f"NovrSIEM returned more than {MAX_AGENTS} agents for one organization")
                 total = (body.get("data") or {}).get("total_affected_items") or 0
                 offset += PAGE
                 if not items or offset >= total:
@@ -255,11 +263,11 @@ class LiveWazuhIndexer:
         if r.status_code == 404:
             return None  # index not present (e.g. vulnerability detection disabled)
         if r.status_code != 200:
-            raise ConnectorUnavailable(f"WAZUH_INDEXER answered {r.status_code} for a search")
+            raise ConnectorUnavailable(f"NovrSIEM event store answered {r.status_code} for a search")
         try:
             return r.json()
         except ValueError:
-            raise ConnectorUnavailable("WAZUH_INDEXER returned a response that is not JSON") from None
+            raise ConnectorUnavailable("NovrSIEM event store returned a response that is not JSON") from None
 
     def vulnerability_counts(self, agent_id: str) -> dict[str, int] | None:
         body = self._search(VULN_INDEX, {"size": 0, "track_total_hits": True, "query": {"term": {"agent.id": agent_id}},
@@ -284,14 +292,14 @@ class LiveWazuhIndexer:
         hits = ((body or {}).get("hits") or {}).get("hits") or []
         doc = hits[0].get("_source") if hits else None
         if doc is not None and str((doc.get("agent") or {}).get("id")) not in agent_ids:
-            raise ScopeViolation("indexer returned an alert outside the organization scope")
+            raise ScopeViolation("the NovrSIEM event store returned an alert outside the organization scope")
         return doc
 
     def health(self) -> ConnectorHealth:
         r = self.http.request("GET", "/", headers={"Authorization": self._basic})
         if r.status_code != 200:
-            raise ConnectorUnavailable(f"WAZUH_INDEXER answered {r.status_code}")
-        return ConnectorHealth("WAZUH_INDEXER", configured=True, reachable=True, tls_verified=True, detail="indexer answered")
+            raise ConnectorUnavailable(f"NovrSIEM event store answered {r.status_code}")
+        return ConnectorHealth("WAZUH_INDEXER", configured=True, reachable=True, tls_verified=True, detail="NovrSIEM event store answered")
 
 
 class LiveWazuh:
@@ -324,7 +332,7 @@ class LiveWazuh:
 
     def alert_document(self, scope: OrgScope, agent_id: str, external_id: str) -> dict | None:
         if self.indexer is None:
-            raise ConnectorUnavailable("WAZUH_INDEXER is not configured")
+            raise ConnectorUnavailable("NovrSIEM event store is not configured")
         if self.manager.get_agent(scope, agent_id) is None:
             return None
         return self.indexer.alert_document([agent_id], external_id)

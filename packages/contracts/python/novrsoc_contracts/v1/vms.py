@@ -173,6 +173,9 @@ class ScanJobClaim(MachineOutbound):
     targets: list[ScopeEntry]
     deadline_at: datetime
     max_runtime_seconds: Annotated[int, Field(ge=60, le=12 * 3600)]
+    max_rate_pps: Annotated[int, Field(ge=1, le=1000)] | None = Field(
+        default=None, description="The organization's scan-policy packet-rate ceiling; the worker never exceeds it (nor its own)")
+    protected_networks: list[str] = Field(default=[], description="Never touched, whatever the targets say (scan policy)")
 
 
 class ObservationKind(str, Enum):
@@ -200,7 +203,7 @@ class ScanResultBatch(MachineInbound):
     batch_id: IdempotencyKey
     job_id: uuid.UUID
     observations: Annotated[list[Observation], Field(max_length=5000)]
-    per_target_outcome: dict[str, Literal["completed", "unreachable", "refused_out_of_scope", "failed"]] = {}
+    per_target_outcome: dict[str, Literal["completed", "unreachable", "refused_out_of_scope", "failed", "no_route"]] = {}
 
 
 # ---------------------------------------------------------------- findings, risk, remediation, verification
@@ -289,7 +292,7 @@ class ScanClaimResult(MachineOutbound):
     """Answer to a worker's claim. `job` is present only when a job is handed out. In this release scanning is
     disabled by design, so the API answers `scanning_disabled` and never hands out a job."""
     job: ScanJobClaim | None = None
-    reason: Literal["job", "no_job", "scanning_disabled"]
+    reason: Literal["job", "no_job", "scanning_disabled", "policy_disabled", "outside_scan_window", "concurrency_limit"]
 
 
 class VmsWorkerStatus(Contract):
@@ -348,6 +351,9 @@ class VmsScanView(Contract):
     outcome: dict = {}
     error: str | None = None
     created_at: datetime
+    origin: Literal["manual", "schedule", "rescan", "enrollment"] = "manual"
+    progress: dict = Field(default={}, description="targets_total, targets_reported, per-target outcomes, observations")
+    asset_ids: list[uuid.UUID] = []
 
 
 class VmsScanList(Contract):
@@ -538,3 +544,79 @@ class ServiceRow(Contract):
 class ServiceList(Contract):
     items: list[ServiceRow]
     by_product: dict[str, int] = {}
+
+
+# ---------------------------------------------------------------- organization scan policy and enrollment (additive)
+class PolicyWindow(Contract):
+    """A weekly window in the policy's timezone during which scans of the organization may run."""
+    weekday: Annotated[int, Field(ge=0, le=6, description="0 = Monday")]
+    start_minute: Annotated[int, Field(ge=0, le=1439)]
+    end_minute: Annotated[int, Field(ge=1, le=1440)]
+
+    @model_validator(mode="after")
+    def _order(self):
+        if self.end_minute <= self.start_minute:
+            raise ValueError("end_minute must be after start_minute")
+        return self
+
+
+class VmsScanPolicyUpdate(Contract):
+    """The organization's standing scan authorization (vms:scope). Enabling requires an authorization reference and at
+    least one window. auto_enroll enrolls imported assets that fall inside an approved scope; it never widens a scope."""
+    enabled: bool
+    auto_enroll: bool = False
+    enroll_activity: ScanActivity = ScanActivity.PORTS
+    rescan_interval_days: Annotated[int, Field(ge=1, le=90)] = 7
+    protected_networks: Annotated[list[Annotated[str, Field(min_length=3, max_length=49)]], Field(max_length=64)] = []
+    windows: Annotated[list[PolicyWindow], Field(max_length=28)] = []
+    timezone: Annotated[str, Field(min_length=1, max_length=64)] = "UTC"
+    max_targets_per_scan: Annotated[int, Field(ge=1, le=256)] = 32
+    max_rate_pps: Annotated[int, Field(ge=1, le=1000)] = 100
+    max_concurrent_scans: Annotated[int, Field(ge=1, le=4)] = 1
+    address_max_age_hours: Annotated[int, Field(ge=1, le=720)] = 72
+    authorization_reference: Annotated[str, Field(max_length=200)] = ""
+
+
+class VmsScanPolicy(VmsScanPolicyUpdate):
+    configured: bool = Field(description="False until the organization saves a policy (the defaults shown are not in force)")
+    installation_mode: Literal["disabled", "local_test_targets", "authorized_scopes"]
+    in_window_now: bool
+    updated_by_label: str | None = None
+    updated_at: datetime | None = None
+
+
+EnrollmentStatus = Literal["enrolled", "eligible", "excluded_protected", "outside_scope", "public_address", "shared_address",
+                           "stale_address", "no_address", "unverified_source", "manual_exclusion"]
+
+
+class VmsEnrollmentView(Contract):
+    asset_id: uuid.UUID
+    asset_name: str
+    hostname: str | None = None
+    address: str | None = None
+    sources: list[str] = []
+    status: EnrollmentStatus
+    reason: str
+    scope_id: uuid.UUID | None = None
+    scope_value: str | None = None
+    evaluated_at: datetime
+    last_scanned_at: datetime | None = None
+    last_job_id: uuid.UUID | None = None
+    open_findings: int = 0
+
+
+class VmsEnrollmentList(Contract):
+    items: list[VmsEnrollmentView]
+    by_status: dict[str, int]
+    evaluated_at: datetime | None = None
+
+
+class VmsEnrollmentExclusion(Contract):
+    excluded: bool
+    reason: Annotated[str, Field(min_length=3, max_length=500)]
+
+
+class VmsEnrollmentEvaluation(Contract):
+    evaluated: int
+    by_status: dict[str, int]
+    scans_queued: int = 0

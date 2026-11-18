@@ -1,5 +1,124 @@
 {
   "$defs": {
+    "AlertClassification": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "log_source_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Log Source Id"
+        },
+        "org_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Org Id"
+        },
+        "org_slug": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Org Slug"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The quarantine reason (the same values ingest records)",
+          "title": "Reason"
+        },
+        "verdict": {
+          "description": "new: ingest would store it; duplicate: already stored for its organization; quarantine: no organization",
+          "enum": [
+            "new",
+            "duplicate",
+            "quarantine"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "verdict"
+      ],
+      "title": "AlertClassification",
+      "type": "object"
+    },
+    "AlertClassifyRequest": {
+      "additionalProperties": false,
+      "description": "Dry run of ingest (historical backfill planning): the same ownership decision as ingest, nothing is stored.",
+      "properties": {
+        "alerts": {
+          "items": {
+            "$ref": "#/$defs/WazuhAlertIn"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Alerts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "alerts"
+      ],
+      "title": "AlertClassifyRequest",
+      "type": "object"
+    },
+    "AlertClassifyResult": {
+      "additionalProperties": false,
+      "properties": {
+        "classified_at": {
+          "format": "date-time",
+          "title": "Classified At",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AlertClassification"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items",
+        "classified_at"
+      ],
+      "title": "AlertClassifyResult",
+      "type": "object"
+    },
     "AlertDetail": {
       "additionalProperties": false,
       "properties": {

@@ -251,7 +251,18 @@ def get_policy(p: Principal = Depends(require("cases:read")), conn: Connection =
 
 @router.put("/policy", response_model=SoarPolicyView, summary="Set the organization's response authorization policy")
 def put_policy(body: SoarPolicyUpdate, request: Request, p: Principal = Depends(require("soar:manage")),
-               conn: Connection = Depends(request_connection)) -> SoarPolicyView:
+               conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> SoarPolicyView:
+    # Response targets are limited to agents this organization OWNS: its own mapped groups, never a collection group
+    # (Wazuh `default` holds new agents of every organization; authorizing it would reach other tenants' endpoints).
+    coll = sorted(set(body.allowed_agent_groups) & settings.collection_groups)
+    if coll:
+        raise ApiError(422, "collection_group_not_allowed", f"{', '.join(coll)}: a collection group holds agents of every organization "
+                       "and can never be a response target", {"groups": coll})
+    mine = {r[0] for r in conn.execute(text("SELECT group_name FROM novrsoc.wazuh_group_mappings"))}   # RLS: this organization's
+    foreign = sorted(set(body.allowed_agent_groups) - mine)
+    if foreign:
+        raise ApiError(422, "group_not_mapped", "Response actions may target only NovrAgent groups mapped to this organization",
+                       {"groups": foreign[:20]})
     conn.execute(text("""INSERT INTO novrsoc.soar_policies (org_id, allowed_actions, allowed_agent_groups, live_enabled, approval_ttl_minutes,
                                                         updated_by, max_runs_per_hour, max_dispatch_attempts)
                          VALUES (:o, :a, :g, :l, :t, :u, :mr, :md)
@@ -443,7 +454,7 @@ def create_run(body: RunCreate, request: Request, p: Principal = Depends(require
         elif action not in [a.value for a in policy.allowed_actions]:
             _step(conn, sid, "refused_by_policy", f"{action} is not in the organization's response policy")
         elif not set(groups) & set(policy.allowed_agent_groups):
-            _step(conn, sid, "refused_by_policy", "The endpoint's Wazuh groups are not authorized by the response policy")
+            _step(conn, sid, "refused_by_policy", "The endpoint's NovrAgent groups are not authorized by the response policy")
         elif body.mode.value == "live" and not policy.live_enabled:
             _step(conn, sid, "refused_by_policy", "Live mode is not enabled in the organization's response policy")
             _audit(p, request, "SOAR_LIVE_REFUSED", run_id, {"step": s.step_key})

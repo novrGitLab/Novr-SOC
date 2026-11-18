@@ -136,7 +136,7 @@ try {
 
     // ------------------------------------------------------------ Phase 4: dashboard, endpoints, alerts, cases, reports
     const banner = await waitFor(A.tab, `document.querySelector('[data-testid=source-banner]')?.dataset.state || null`);
-    step('dashboard labels the Wazuh data as local fixture data (never live telemetry)', banner === 'local_fixture', String(banner));
+    step('dashboard labels the NovrSIEM data as local fixture data (never live telemetry)', banner === 'local_fixture', String(banner));
     const ready = await waitFor(A.tab, `(() => { const r = document.querySelector('[data-testid=readiness]'); if (!r) return null;
         return [...r.querySelectorAll('[data-connector]')].map((li) => li.dataset.connector + '=' + li.dataset.state).join(','); })()`);
     // The orchestrator runs NHAI with the labelled test adapter, which the API reports as local_fixture (never connected).
@@ -240,7 +240,7 @@ try {
     for (const path of ['/app/soar', '/app/insights', '/app/nhai', '/app/vms', '/app/email', '/app/brand', '/app/cnii', '/app/admin', '/app/audit',
         '/app/posture', '/app/playbooks', '/app/soar/approvals', '/app/soar/ai', '/app/soar/policy', '/app/handover', '/app/sla', '/app/vms/findings',
         '/app/vms/scans', '/app/vms/risk', '/app/vms/remediation', '/app/vms/surface', '/app/vms/reports', '/app/assets', '/app/assets/collectors',
-        '/app/insights/actors', '/app/insights/cves', '/app/chat', '/app/recovery', '/app/admin/exports', '/app/admin/wazuh-groups', '/app/cnii/authorizations']) {
+        '/app/insights/actors', '/app/insights/cves', '/app/chat', '/app/recovery', '/app/admin/exports', '/app/admin/agent-groups', '/app/cnii/authorizations']) {
         await go(M.tab, path);
         const ok = await waitFor(M.tab, `location.pathname === ${JSON.stringify(path)} && !!document.querySelector('main h1') && !document.querySelector('main [aria-busy=true]')`, 30000);
         await sleep(400);
@@ -304,10 +304,10 @@ try {
     step('NHAI explanation is produced asynchronously by the worker, labelled as the test adapter', !!nhai && /test-adapter/.test(nhai), (nhai ?? '').slice(0, 120));
     await N.tab.screenshot(join(OUT, 'pilot-alert-nhai.png'));
     await go(M.tab, '/app/assets');
-    await waitFor(M.tab, `!!document.querySelector('[data-testid=wazuh-sync]')`);
-    await M.tab.eval(`document.querySelector('[data-testid=wazuh-sync]').click()`);
+    await waitFor(M.tab, `!!document.querySelector('[data-testid=agent-sync]')`);
+    await M.tab.eval(`document.querySelector('[data-testid=agent-sync]').click()`);
     const assetRows = await waitFor(M.tab, `document.querySelectorAll('[data-testid=assets-table] tbody tr').length || null`, 15000);
-    step('the asset inventory reconciles the Wazuh agents into canonical assets', !!assetRows && assetRows >= 1, String(assetRows));
+    step('the asset inventory reconciles the NovrAgents into canonical assets', !!assetRows && assetRows >= 1, String(assetRows));
     await M.tab.screenshot(join(OUT, 'assets-inventory.png'));
     await go(N.tab, '/app/chat');
     await waitFor(N.tab, `!!document.querySelector('[data-testid=chat-input]')`);

@@ -51,8 +51,8 @@ def failed_state(state, exc: ConnectorError):
 
 
 def unavailable(exc: ConnectorError) -> ApiError:
-    return ApiError(503, "integration_unavailable", "The Wazuh connector is unavailable: " + str(exc)[:200]
-                    if not isinstance(exc, ScopeViolation) else "The Wazuh connector returned out-of-scope data")
+    return ApiError(503, "integration_unavailable", "The NovrSIEM connector is unavailable: " + str(exc)[:200]
+                    if not isinstance(exc, ScopeViolation) else "The NovrSIEM connector returned out-of-scope data")
 
 
 def org_scope(conn: Connection, org_id: uuid.UUID) -> OrgScope:
@@ -102,19 +102,26 @@ BROAD_GROUPS = frozenset({"default"})
 
 
 @router.get("/group-mappings", response_model=GroupMappingList, summary="Wazuh agent groups mapped to the organization")
-def list_mappings(p: Principal = Depends(require("endpoints:read")), conn: Connection = Depends(request_connection)) -> GroupMappingList:
+def list_mappings(p: Principal = Depends(require("endpoints:read")), conn: Connection = Depends(request_connection),
+                  settings: Settings = Depends(get_settings)) -> GroupMappingList:
     rows = conn.execute(text("SELECT id, group_name, created_at FROM novrsoc.wazuh_group_mappings ORDER BY group_name")).all()
     return GroupMappingList(items=[GroupMapping(id=r.id, group_name=r.group_name, created_at=r.created_at,
-                                                broad=r.group_name in BROAD_GROUPS) for r in rows])
+                                                broad=r.group_name in BROAD_GROUPS,
+                                                collection=r.group_name in settings.collection_groups) for r in rows])
 
 
 @router.post("/group-mappings", response_model=GroupMapping, status_code=201, summary="Map a Wazuh agent group to the organization")
 def create_mapping(body: GroupMappingCreate, request: Request, p: Principal = Depends(require("endpoints:manage")),
-                   conn: Connection = Depends(request_connection)) -> GroupMapping:
+                   conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> GroupMapping:
+    if body.group_name in settings.collection_groups:
+        raise ApiError(422, "collection_group_not_mappable",
+                       f"'{body.group_name}' is a collection group: NovrSIEM places agents of every "
+                       "organization in it, so it can never establish ownership. Put the organization's agents in a group of its "
+                       "own and map that group.")
     broad = body.group_name in BROAD_GROUPS
     if broad and not body.acknowledge_broad_group:
         raise ApiError(422, "broad_group_requires_acknowledgement",
-                       f"Every Wazuh agent is in '{body.group_name}' until it is reassigned: mapping it attributes every agent that "
+                       f"Every NovrAgent is in '{body.group_name}' until it is reassigned: mapping it attributes every agent that "
                        "is in no other mapped group to this organization. Confirm with acknowledge_broad_group.")
     try:
         with conn.begin_nested():
@@ -122,7 +129,7 @@ def create_mapping(body: GroupMappingCreate, request: Request, p: Principal = De
                                      VALUES (:o, :g, :u) RETURNING id, group_name, created_at"""),
                              {"o": p.org_id, "g": body.group_name, "u": p.user_id}).one()
     except IntegrityError:
-        raise ApiError(409, "conflict", "This Wazuh agent group is already mapped to an organization (one group, one organization: "
+        raise ApiError(409, "conflict", "This NovrAgent group is already mapped to an organization (one group, one organization: "
                        "an agent's alerts must never match two tenants)")
     audit.record("WAZUH_GROUP_MAPPED", "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email,
                  resource_type="wazuh_group", resource_id=body.group_name, request_id=request.state.request_id, ip=client_ip(request),
@@ -146,9 +153,9 @@ def detail(agent_id: str = AgentId, p: Principal = Depends(require("endpoints:re
     manager_state, indexer_state = registry.wazuh_states(settings)
     source = registry.wazuh(settings)
     if source is None:
-        raise ApiError(503, "integration_unconfigured", "No Wazuh connection is configured, so endpoint details are unavailable")
+        raise ApiError(503, "integration_unconfigured", "No NovrSIEM connection is configured, so endpoint details are unavailable")
     if manager_state.state not in ("connected", "local_fixture"):
-        raise ApiError(503, "integration_unavailable", f"The Wazuh manager is {manager_state.state}: {manager_state.detail}"[:300])
+        raise ApiError(503, "integration_unavailable", f"NovrSIEM is {manager_state.state}: {manager_state.detail}"[:300])
     scope = org_scope(conn, p.org_id)
     try:
         agent = source.get_agent(scope, agent_id)

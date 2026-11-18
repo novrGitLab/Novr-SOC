@@ -22,6 +22,7 @@ EXPECTED = {
     ("alerts", "SELECT"): {"id", "org_id", "severity"},
     ("vms_findings", "SELECT"): {"id", "org_id", "severity"},
     ("assets", "SELECT"): {"id", "org_id"},
+    ("cases", "SELECT"): {"id", "org_id"},                       # migration 0018: does the case still exist
     ("ai_activity", "INSERT"): {"org_id", "kind", "module", "task", "subject_type", "subject_id", "actor_type", "actor_id",
                                 "actor_label", "model", "outcome", "summary", "details", "nhai_job_id"},
     ("audit_events", "INSERT"): {"org_id", "actor_type", "actor_id", "actor_label", "action", "outcome", "resource_type",
@@ -68,15 +69,18 @@ def test_worker_completes_every_consolidated_task_as_the_worker_role(fixture_set
     a = Client(app, "analyst_a")
     alert_id = a.get("/api/v1/soc/alerts?limit=200").json()["items"][0]["id"]
     fid, asset = alpha_finding
+    case = a.post("/api/v1/soc/cases", {"alert_ids": [alert_id], "title": "NHAI case assistance", "severity": "medium",
+                                        "source_id": f"nhai-role-{alert_id}"}).json()
     jobs = [a.post("/api/v1/nhai/alert-explanations", {"alert_id": alert_id}).json(),
             a.post("/api/v1/nhai/finding-explanations", {"finding_id": str(fid)}).json(),
-            a.post("/api/v1/nhai/asset-summaries", {"asset_id": str(asset)}).json()]
+            a.post("/api/v1/nhai/asset-summaries", {"asset_id": str(asset)}).json(),
+            a.post("/api/v1/nhai/case-assistance", {"case_id": case["case_id"]}).json()]
     conv = a.post("/api/v1/chat/conversations", {}).json()
     chat = a.post(f"/api/v1/chat/conversations/{conv['id']}/messages", {"content": "Which critical and high alerts came in this month?"})
     assert chat.status_code == 201, chat.text
     jobs.append(chat.json()["answer"]["nhai"])
     ids = {j["id"] for j in jobs if j and j.get("id")}
-    assert len(ids) == 4, jobs
+    assert len(ids) == 5, jobs
     # audit.record writes through the module engine: point it at the worker role too, as on Server 1
     monkeypatch.setattr(db_session, "_engine", nhai_role_engine)
     statuses = drain(nhai_role_engine, fixture_settings, TestInferenceAdapter())
@@ -85,13 +89,13 @@ def test_worker_completes_every_consolidated_task_as_the_worker_role(fixture_set
         c.execute(text("SELECT set_config('app.org_id', :v, true)"), {"v": str(world.alpha)})
         done = dict(c.execute(text("SELECT task, status FROM novrsoc.nhai_jobs WHERE id = ANY(CAST(:i AS uuid[]))"), {"i": list(ids)}).all())
         assert done == {"alert_explanation": "succeeded", "finding_explanation": "succeeded", "asset_summary": "succeeded",
-                        "chat_answer": "succeeded"}
+                        "chat_answer": "succeeded", "investigation_assistance": "succeeded"}
         acts = c.execute(text("SELECT count(*) FROM novrsoc.ai_activity WHERE nhai_job_id = ANY(CAST(:i AS uuid[])) AND kind = 'analysis_completed'"),
                          {"i": list(ids)}).scalar()
-        assert acts == 4
+        assert acts == 5
         audits = c.execute(text("""SELECT count(*) FROM novrsoc.audit_events WHERE action = 'NHAI_JOB_FINISHED'
                                    AND resource_id = ANY(:i)"""), {"i": list(ids)}).scalar()
-        assert audits == 4
+        assert audits == 5
 
 
 @pytest.mark.parametrize("sql", [
@@ -99,7 +103,7 @@ def test_worker_completes_every_consolidated_task_as_the_worker_role(fixture_set
     "SELECT * FROM novrsoc.users",
     "SELECT * FROM novrsoc.sessions",
     "SELECT * FROM novrsoc.service_identities",
-    "SELECT * FROM novrsoc.cases",
+    "SELECT title FROM novrsoc.cases",                          # only id, org_id
     "SELECT content FROM novrsoc.chat_messages",
     "SELECT summary FROM novrsoc.ai_activity",                  # append-only for the worker: write, never read
     "SELECT action FROM novrsoc.audit_events",

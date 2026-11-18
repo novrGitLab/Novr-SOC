@@ -7,6 +7,9 @@ network that reaches only the API, with scanning disabled by default. It authent
 Scanning is controlled by NOVRSOC_VMS_SCANNING:
   disabled            (default) claims answer `scanning_disabled`; scopes may be recorded, scans are refused.
   local_test_targets  development/test only: a scope may only name loopback addresses or *.test / *.localhost names.
+  authorized_scopes   production: scopes the organization approves (bounded ranges, no loopback/link-local), held to the
+                      organization's scan policy (app.vms.policy): enabled policy, protected networks, weekly windows,
+                      target, rate and concurrency caps; assets inside an approved ip/cidr scope enroll automatically.
 Scope is checked when a scan is requested, re-checked at claim and again for every observation at ingest (an
 observation outside the scope is dropped and counted). Findings are deduplicated per organization by a fingerprint
 (host, port, protocol, check), risk-scored (formula 1.0) and prioritized P1-P4 with remediation due dates.
@@ -39,6 +42,7 @@ from app.core.errors import ApiError, forbidden, not_found
 from app.db.session import request_connection
 from app.modules import ModuleInfo
 from app.routers._responses import ERRORS
+from app.vms import policy as vpolicy
 from novrsoc_contracts.v1.operations import ComponentHeartbeat
 from novrsoc_contracts.v1.platform import AuditEvent, AuditEventList
 from novrsoc_contracts.v1.vms import (MANUAL_TRANSITIONS, FindingStatus, FindingTransition, RiskScore, ScanClaimResult, ScanJobClaim,
@@ -47,7 +51,8 @@ from novrsoc_contracts.v1.vms import (MANUAL_TRANSITIONS, FindingStatus, Finding
                                       VmsStatus, VmsWorkerStatus, WorkerFinish, FindingCveIntel, RemediationTaskList,
                                       RemediationTaskUpdate, RemediationTaskView, RetestRequest, RiskAssetRow, ServiceList, ServiceRow,
                                       VerificationRequestView, VmsFindingDetail, VmsRiskOverview, VmsScheduleCreate, VmsScheduleList,
-                                      VmsScheduleUpdate, VmsScheduleView)
+                                      VmsScheduleUpdate, VmsScheduleView, VmsEnrollmentEvaluation, VmsEnrollmentExclusion,
+                                      VmsEnrollmentList, VmsEnrollmentView, VmsScanPolicy, VmsScanPolicyUpdate)
 
 MODULE = ModuleInfo(name="vms", workstream="B", prefix="/api/v1/vms",
                     summary="Vulnerability management: scopes, scans, worker protocol, findings, remediation, report")
@@ -64,7 +69,22 @@ def _now() -> datetime:
 
 
 def _enabled(settings: Settings) -> bool:
-    return settings.vms_scanning == "local_test_targets"
+    return settings.vms_scanning in ("local_test_targets", "authorized_scopes")
+
+
+def _authorized(settings: Settings) -> bool:
+    return settings.vms_scanning == "authorized_scopes"
+
+
+def _target_allowed(settings: Settings, target: str) -> bool:
+    """The installation mode's rule for one concrete target (scope membership is checked separately)."""
+    if settings.vms_scanning == "local_test_targets":
+        return _local_test_target(_kind(target), target)
+    if settings.vms_scanning == "authorized_scopes":
+        if _kind(target) == "ip":
+            return vpolicy.production_scope_problem("ip", target) is None
+        return vpolicy.production_scope_problem("domain", target) is None
+    return False
 
 
 def _local_test_target(kind: str, value: str) -> bool:
@@ -133,9 +153,13 @@ def create_scope(body: VmsScopeCreate, request: Request, p: Principal = Depends(
             ipaddress.ip_network(e.value, strict=False)
         except ValueError:
             raise ApiError(422, "validation_error", "Not a valid address or range")
-    if not _local_test_target(e.kind, e.value):
-        raise ApiError(422, "scope_not_allowed", "In this release a scope may only name a local test target "
-                                                 "(loopback address, *.test or *.localhost); production scanning is not approved")
+    if _authorized(settings):
+        problem = vpolicy.production_scope_problem(e.kind, e.value)
+        if problem:
+            raise ApiError(422, "scope_not_allowed", f"This scope cannot be approved: {problem}")
+    elif not _local_test_target(e.kind, e.value):
+        raise ApiError(422, "scope_not_allowed", "In this installation a scope may only name a local test target "
+                                                 "(loopback address, *.test or *.localhost); production scanning is not enabled")
     r = conn.execute(text("""INSERT INTO novrsoc.vms_scopes (org_id, kind, value, allowed_activities, authorization_reference, approved_by, valid_until)
                              VALUES (:o, :k, :v, :a, :ref, :u, :until)
                              ON CONFLICT (org_id, kind, value) DO UPDATE SET allowed_activities = EXCLUDED.allowed_activities,
@@ -150,7 +174,8 @@ def create_scope(body: VmsScopeCreate, request: Request, p: Principal = Depends(
 
 def _scan_view(r) -> VmsScanView:
     return VmsScanView(id=r.id, scope_id=r.scope_id, activity=r.activity, targets=list(r.targets), state=r.state, claimed_at=r.claimed_at,
-                       finished_at=r.finished_at, outcome=r.outcome or {}, error=r.error, created_at=r.created_at)
+                       finished_at=r.finished_at, outcome=r.outcome or {}, error=r.error, created_at=r.created_at,
+                       origin=r.origin, progress=r.progress or {}, asset_ids=list(r.asset_ids or []))
 
 
 @router.post("/scans", response_model=VmsScanView, status_code=201, summary="Request a scan inside an approved scope (vms:scan)")
@@ -169,10 +194,23 @@ def create_scan(body: VmsScanCreate, request: Request, p: Principal = Depends(re
     outside = [t for t in body.targets if not in_scope(t, s.kind, s.value)]
     if outside:
         raise ApiError(422, "target_out_of_scope", f"{len(outside)} target(s) are outside the approved scope", {"targets": outside[:20]})
-    r = conn.execute(text("""INSERT INTO novrsoc.vms_scan_jobs (org_id, scope_id, activity, targets, profile, idempotency_key, requested_by)
-                             VALUES (:o, :s, :a, :t, :pr, :k, :u) RETURNING *"""),
+    rate = None
+    if _authorized(settings):
+        pol, _ = vpolicy.load(conn)
+        if not pol["enabled"]:
+            raise ApiError(409, "policy_disabled", "The organization's scan policy is not enabled (VMS > Scan policy)")
+        if len(body.targets) > pol["max_targets_per_scan"]:
+            raise ApiError(422, "too_many_targets", f"The scan policy allows at most {pol['max_targets_per_scan']} targets per scan")
+        refused = [t for t in body.targets if not _target_allowed(settings, t) or vpolicy.protected(t, pol["protected_networks"])]
+        if refused:
+            raise ApiError(422, "target_protected", f"{len(refused)} target(s) are protected or not scannable", {"targets": refused[:20]})
+        rate = pol["max_rate_pps"]
+    r = conn.execute(text("""INSERT INTO novrsoc.vms_scan_jobs (org_id, scope_id, activity, targets, profile, idempotency_key, requested_by,
+                                                                max_rate_pps, progress)
+                             VALUES (:o, :s, :a, :t, :pr, :k, :u, :rate, CAST(:pg AS jsonb)) RETURNING *"""),
                      {"o": p.org_id, "s": s.id, "a": body.activity.value, "t": [t.lower() for t in body.targets], "pr": body.profile,
-                      "k": body.idempotency_key, "u": p.user_id}).one()
+                      "k": body.idempotency_key, "u": p.user_id, "rate": rate,
+                      "pg": json.dumps({"targets_total": len(body.targets), "targets_reported": 0, "outcomes": {}})}).one()
     audit.record("VMS_SCAN_REQUESTED", "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email, resource_type="vms_scan",
                  resource_id=str(r.id), request_id=request.state.request_id, ip=client_ip(request), details={"activity": body.activity.value})
     return _scan_view(r)
@@ -263,9 +301,14 @@ def status(p: Principal = Depends(require("vms:read")), conn: Connection = Depen
     rows = conn.execute(text("""SELECT h.received_at, h.component_version, h.state, s.name
                                 FROM novrsoc.vms_worker_heartbeats h JOIN novrsoc.service_identities s ON s.id = h.identity_id
                                 ORDER BY s.name""")).all()
-    reason = ("Local test targets only (development): scopes are limited to loopback and *.test / *.localhost names. "
-              "In production the worker runs on Server 2 with scanning disabled." if _enabled(settings) else
-              "Scanning is disabled in this installation. Workers can report health; they never receive work.")
+    if settings.vms_scanning == "local_test_targets":
+        reason = ("Local test targets only (development): scopes are limited to loopback and *.test / *.localhost names. "
+                  "In production NovrVMS only reports health until scanning is approved.")
+    elif _authorized(settings):
+        reason = ("Authorized scopes: scans run only inside scopes this organization approved, under its enabled scan policy "
+                  "(windows, protected networks, rate and concurrency caps), on a worker that declares a route to the target.")
+    else:
+        reason = "Scanning is disabled in this installation. Workers can report health; they never receive work."
     return VmsStatus(scanning="enabled" if _enabled(settings) else "disabled", reason=reason, workers=[
         VmsWorkerStatus(identity_name=r.name, last_heartbeat_at=r.received_at, component_version=r.component_version,
                         state=r.state, stale=now - r.received_at > STALE_AFTER) for r in rows])
@@ -303,22 +346,36 @@ def claim(request: Request, s: ServicePrincipal = Depends(current_service), conn
         return ScanClaimResult(job=None, reason="scanning_disabled")
     conn.execute(text("""UPDATE novrsoc.vms_scan_jobs SET state = 'queued', claimed_by = NULL, lease_until = NULL
                          WHERE state = 'running' AND lease_until < now()"""))
+    pol = None
+    if _authorized(settings):
+        pol, _ = vpolicy.load(conn)
+        if not pol["enabled"]:
+            return ScanClaimResult(job=None, reason="policy_disabled")
+        if not vpolicy.in_window(pol):
+            return ScanClaimResult(job=None, reason="outside_scan_window")
+        running = conn.execute(text("SELECT count(*) FROM novrsoc.vms_scan_jobs WHERE state = 'running'")).scalar()
+        if running >= pol["max_concurrent_scans"]:
+            return ScanClaimResult(job=None, reason="concurrency_limit")
     run_due_schedules(conn, settings)
     job = conn.execute(text("""SELECT j.*, s.kind, s.value, s.valid_until, s.allowed_activities FROM novrsoc.vms_scan_jobs j
                                JOIN novrsoc.vms_scopes s ON s.id = j.scope_id AND s.org_id = j.org_id
                                WHERE j.state = 'queued' ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1""")).first()
     if job is None:
         return ScanClaimResult(job=None, reason="no_job")
+    protected_nets = pol["protected_networks"] if pol else []
     if job.valid_until <= _now() or job.activity not in job.allowed_activities or \
-            not all(in_scope(t, job.kind, job.value) and _local_test_target(_kind(t), t) for t in job.targets):
+            not all(in_scope(t, job.kind, job.value) and _target_allowed(settings, t) and not vpolicy.protected(t, protected_nets)
+                    for t in job.targets):
         conn.execute(text("UPDATE novrsoc.vms_scan_jobs SET state = 'failed', error = 'scope re-check failed at claim', finished_at = now() WHERE id = :i"),
                      {"i": job.id})
         return ScanClaimResult(job=None, reason="no_job")
     conn.execute(text("""UPDATE novrsoc.vms_scan_jobs SET state = 'running', claimed_by = :w, claimed_at = now(), lease_until = :l WHERE id = :i"""),
                  {"w": s.identity_id, "l": _now() + LEASE, "i": job.id})
+    rates = [x for x in (job.max_rate_pps, pol["max_rate_pps"] if pol else None) if x]
     return ScanClaimResult(reason="job", job=ScanJobClaim(job_id=job.id, activity=job.activity, deadline_at=_now() + LEASE,
                                                           max_runtime_seconds=int(LEASE.total_seconds()),
-                                                          targets=[ScopeEntry(kind=_kind(t), value=t) for t in job.targets]))
+                                                          targets=[ScopeEntry(kind=_kind(t), value=t) for t in job.targets],
+                                                          max_rate_pps=min(rates) if rates else None, protected_networks=protected_nets))
 
 
 def _running_job(conn: Connection, s: ServicePrincipal, job_id: uuid.UUID):
@@ -348,6 +405,9 @@ def results(job_id: uuid.UUID, body: ScanResultBatch, request: Request, s: Servi
     def asset_of(host: str, o) -> uuid.UUID | None:
         if host not in assets:
             ids = reconcile.host_identifiers(host)   # a scan target is a host: its IP, or its FQDN and short hostname
+            if ids and ids[0][0] == "ip" and vpolicy.address_holders(conn, host) > 1:
+                assets[host] = None   # an address two assets report: never guess which device answered
+                return None
             if not ids:
                 return None
             assets[host] = reconcile.upsert(conn, reconcile.Observation(
@@ -399,6 +459,12 @@ def results(job_id: uuid.UUID, body: ScanResultBatch, request: Request, s: Servi
             updated += 1
     conn.execute(text("""INSERT INTO novrsoc.vms_result_batches (org_id, batch_id, job_id, observations, new_findings)
                          VALUES (novrsoc.app_org(), :b, :j, :o, :n)"""), {"b": body.batch_id, "j": job_id, "o": len(body.observations), "n": new})
+    progress = dict(job.progress or {})
+    outcomes = {**progress.get("outcomes", {}), **{t.lower(): o for t, o in body.per_target_outcome.items() if t.lower() in job.targets}}
+    progress.update(outcomes=outcomes, targets_total=len(job.targets), targets_reported=len(outcomes),
+                    observations=int(progress.get("observations", 0)) + len(body.observations) - refused,
+                    refused_out_of_scope=int(progress.get("refused_out_of_scope", 0)) + refused)
+    conn.execute(text("UPDATE novrsoc.vms_scan_jobs SET progress = CAST(:pg AS jsonb) WHERE id = :i"), {"pg": json.dumps(progress), "i": job_id})
     return VmsResultAck(batch_id=body.batch_id, observations=len(body.observations), new_findings=new, updated_findings=updated,
                         refused_out_of_scope=refused)
 
@@ -411,10 +477,17 @@ def finish(job_id: uuid.UUID, body: WorkerFinish, request: Request, s: ServicePr
     if job.state != "running":
         raise ApiError(409, "conflict", "The job is not running")
     verified = 0
+    outcomes = (job.progress or {}).get("outcomes") or {}
+    # A target counts as scanned only when the worker reported it completed: no answer (unreachable, no route) is never
+    # evidence that a finding is fixed. A worker that reports no per-target outcome at all completed every target.
+    scanned = [t for t in job.targets if outcomes.get(t) == "completed"] if outcomes else list(job.targets)
     if body.outcome == "completed":
         verified = conn.execute(text("""UPDATE novrsoc.vms_findings SET status = 'verified'
                                         WHERE status = 'fixed_pending_verification' AND host = ANY(:h)
-                                          AND (last_job_id IS DISTINCT FROM :j)"""), {"h": list(job.targets), "j": job_id}).rowcount
+                                          AND (last_job_id IS DISTINCT FROM :j)"""), {"h": scanned, "j": job_id}).rowcount
+        if job.asset_ids:
+            conn.execute(text("""UPDATE novrsoc.vms_enrollments SET last_scanned_at = now(), last_job_id = :j
+                                 WHERE asset_id = ANY(:a) AND host(address) = ANY(:h)"""), {"j": job_id, "a": list(job.asset_ids), "h": scanned})
         conn.execute(text("""UPDATE novrsoc.vms_remediation_tasks t SET status = 'done', updated_at = now() FROM novrsoc.vms_findings f
                              WHERE f.id = t.finding_id AND f.status = 'verified' AND t.status <> 'done'"""))
         conn.execute(text("""UPDATE novrsoc.vms_verification_requests v SET updated_at = now(),
@@ -424,7 +497,8 @@ def finish(job_id: uuid.UUID, body: WorkerFinish, request: Request, s: ServicePr
     r = conn.execute(text("""UPDATE novrsoc.vms_scan_jobs SET state = :st, finished_at = now(), lease_until = NULL, error = :e,
                              outcome = CAST(:o AS jsonb) WHERE id = :i RETURNING *"""),
                      {"st": body.outcome, "e": body.detail if body.outcome == "failed" else None, "i": job_id,
-                      "o": json.dumps({"detail": body.detail, "verified": verified})}).one()
+                      "o": json.dumps({"detail": body.detail, "verified": verified, "targets_scanned": len(scanned),
+                                       "targets_not_scanned": len(job.targets) - len(scanned)})}).one()
     audit.record("VMS_SCAN_FINISHED", "success", org_id=s.org_id, actor_type="service", actor_id=s.identity_id, resource_type="vms_scan",
                  resource_id=str(job_id), request_id=request.state.request_id, ip=client_ip(request), details={"outcome": body.outcome, "verified": verified})
     return _scan_view(r)
@@ -488,8 +562,9 @@ def retest(finding_id: uuid.UUID, body: RetestRequest, request: Request, p: Prin
         if scope is None:
             status = "blocked_no_scope"
         else:
-            job_id = conn.execute(text("""INSERT INTO novrsoc.vms_scan_jobs (org_id, scope_id, activity, targets, profile, idempotency_key, requested_by)
-                                          VALUES (:o, :s, :a, :t, 'standard', :k, :u) RETURNING id"""),
+            job_id = conn.execute(text("""INSERT INTO novrsoc.vms_scan_jobs (org_id, scope_id, activity, targets, profile, idempotency_key,
+                                                                            requested_by, origin)
+                                          VALUES (:o, :s, :a, :t, 'standard', :k, :u, 'rescan') RETURNING id"""),
                                   {"o": p.org_id, "s": scope.id, "a": f.source, "t": [f.host], "u": p.user_id,
                                    "k": f"retest-{finding_id}-{uuid.uuid4().hex[:12]}"}).scalar()
             status = "scan_requested"
@@ -650,10 +725,134 @@ def run_due_schedules(conn: Connection, settings: Settings) -> int:
         if s.valid_until <= _now() or s.activity not in s.allowed_activities or not all(in_scope(t, s.kind, s.value) for t in s.targets):
             conn.execute(text("UPDATE novrsoc.vms_scan_schedules SET enabled = false WHERE id = :i"), {"i": s.id})
             continue
-        job = conn.execute(text("""INSERT INTO novrsoc.vms_scan_jobs (org_id, scope_id, activity, targets, profile, idempotency_key, requested_by)
-                                   VALUES (:o, :sc, :a, :t, 'standard', :k, :u) RETURNING id"""),
+        job = conn.execute(text("""INSERT INTO novrsoc.vms_scan_jobs (org_id, scope_id, activity, targets, profile, idempotency_key,
+                                                                    requested_by, origin)
+                                   VALUES (:o, :sc, :a, :t, 'standard', :k, :u, 'schedule') RETURNING id"""),
                            {"o": s.org_id, "sc": s.scope_id, "a": s.activity, "t": list(s.targets), "u": s.created_by,
                             "k": f"schedule-{s.id}-{int(s.next_run_at.timestamp())}"}).scalar()
         conn.execute(text("UPDATE novrsoc.vms_scan_schedules SET next_run_at = :n, last_job_id = :j WHERE id = :i"), {"n": nxt, "j": job, "i": s.id})
         made += 1
+    # Enrolled assets of the organization (policy enabled with auto_enroll) that are due for their rescan.
+    made += vpolicy.queue_enrollment_scans(conn, target_allowed=lambda t: _target_allowed(settings, t))
     return made
+
+
+# ---------------------------------------------------------------- organization scan policy and enrollment
+def _policy_view(conn: Connection, settings: Settings) -> VmsScanPolicy:
+    pol, configured = vpolicy.load(conn)
+    label = None
+    if pol.get("updated_by"):
+        label = conn.execute(text("SELECT email::text FROM novrsoc.users WHERE id = :u"), {"u": pol["updated_by"]}).scalar()
+    fields = {k: pol[k] for k in VmsScanPolicyUpdate.model_fields}
+    return VmsScanPolicy(**fields, configured=configured, installation_mode=settings.vms_scanning,
+                         in_window_now=vpolicy.in_window(pol) if pol["windows"] else False, updated_by_label=label,
+                         updated_at=pol.get("updated_at"))
+
+
+@router.get("/policy", response_model=VmsScanPolicy, summary="The organization's scan policy (standing scan authorization)")
+def get_policy(p: Principal = Depends(require("vms:read")), conn: Connection = Depends(request_connection),
+               settings: Settings = Depends(get_settings)) -> VmsScanPolicy:
+    return _policy_view(conn, settings)
+
+
+@router.put("/policy", response_model=VmsScanPolicy, summary="Save the organization's scan policy (vms:scope; audited)")
+def put_policy(body: VmsScanPolicyUpdate, request: Request, p: Principal = Depends(require("vms:scope")),
+               conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> VmsScanPolicy:
+    try:
+        nets = [str(n) for n in vpolicy.parse_networks(body.protected_networks)]
+        vpolicy.tz(body.timezone)
+    except ValueError as e:
+        raise ApiError(422, "validation_error", str(e))
+    if body.enabled and (len(body.authorization_reference.strip()) < 3 or not body.windows):
+        raise ApiError(422, "policy_incomplete", "Enabling the scan policy needs an authorization reference and at least one scan window")
+    if body.auto_enroll and not body.enabled:
+        raise ApiError(422, "policy_incomplete", "Automatic enrollment needs an enabled policy")
+    before, configured = vpolicy.load(conn)
+    conn.execute(text("""
+        INSERT INTO novrsoc.vms_scan_policies (org_id, enabled, auto_enroll, enroll_activity, rescan_interval_days, protected_networks, windows,
+                                               timezone, max_targets_per_scan, max_rate_pps, max_concurrent_scans, address_max_age_hours,
+                                               authorization_reference, updated_by, updated_at)
+        VALUES (novrsoc.app_org(), :en, :ae, :act, :ri, CAST(:pn AS cidr[]), CAST(:w AS jsonb), :tz, :mt, :rate, :mc, :age, :ref, :u, now())
+        ON CONFLICT (org_id) DO UPDATE SET enabled = EXCLUDED.enabled, auto_enroll = EXCLUDED.auto_enroll,
+          enroll_activity = EXCLUDED.enroll_activity, rescan_interval_days = EXCLUDED.rescan_interval_days,
+          protected_networks = EXCLUDED.protected_networks, windows = EXCLUDED.windows, timezone = EXCLUDED.timezone,
+          max_targets_per_scan = EXCLUDED.max_targets_per_scan, max_rate_pps = EXCLUDED.max_rate_pps,
+          max_concurrent_scans = EXCLUDED.max_concurrent_scans, address_max_age_hours = EXCLUDED.address_max_age_hours,
+          authorization_reference = EXCLUDED.authorization_reference, updated_by = EXCLUDED.updated_by, updated_at = now()"""),
+        {"en": body.enabled, "ae": body.auto_enroll, "act": body.enroll_activity.value, "ri": body.rescan_interval_days, "pn": nets,
+         "w": json.dumps([w.model_dump() for w in body.windows]), "tz": body.timezone, "mt": body.max_targets_per_scan,
+         "rate": body.max_rate_pps, "mc": body.max_concurrent_scans, "age": body.address_max_age_hours,
+         "ref": body.authorization_reference.strip(), "u": p.user_id})
+    counts = vpolicy.evaluate(conn, local_test_only=settings.vms_scanning == "local_test_targets")
+    changed = {k: [before.get(k), v] for k, v in body.model_dump(mode="json").items()
+               if json.dumps(before.get(k), default=str) != json.dumps(v, default=str)}
+    action = "VMS_POLICY_ENABLED" if body.enabled and not before["enabled"] else \
+        "VMS_POLICY_DISABLED" if before["enabled"] and not body.enabled else "VMS_POLICY_UPDATED"
+    audit.record(action, "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email, resource_type="vms_policy",
+                 resource_id=str(p.org_id), request_id=request.state.request_id, ip=client_ip(request),
+                 details={"changed": changed, "first_save": not configured, "enrollment": counts})
+    return _policy_view(conn, settings)
+
+
+_ENROLL_SQL = """SELECT e.*, host(e.address) AS addr, a.display_name, a.hostname::text AS hostname, sc.value AS scope_value,
+                        (SELECT array_agg(DISTINCT src) FROM novrsoc.asset_identifiers i, unnest(i.sources) src WHERE i.asset_id = a.id) AS srcs,
+                        (SELECT count(*) FROM novrsoc.vms_findings f WHERE f.asset_id = a.id
+                           AND f.status NOT IN ('verified', 'risk_accepted')) AS open_findings
+                 FROM novrsoc.vms_enrollments e JOIN novrsoc.assets a ON a.id = e.asset_id
+                 LEFT JOIN novrsoc.vms_scopes sc ON sc.id = e.scope_id"""
+
+
+def _enrollment(r) -> VmsEnrollmentView:
+    return VmsEnrollmentView(asset_id=r.asset_id, asset_name=r.display_name, hostname=r.hostname, address=r.addr, sources=sorted(r.srcs or []),
+                             status=r.status, reason=r.reason, scope_id=r.scope_id, scope_value=r.scope_value, evaluated_at=r.evaluated_at,
+                             last_scanned_at=r.last_scanned_at, last_job_id=r.last_job_id, open_findings=r.open_findings)
+
+
+@router.get("/enrollments", response_model=VmsEnrollmentList,
+            summary="Every asset of the inventory with its scan enrollment decision and reason")
+def list_enrollments(status: str | None = Query(None, pattern=r"^[a-z_]{3,30}$"), p: Principal = Depends(require("vms:read")),
+                     conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> VmsEnrollmentList:
+    last = conn.execute(text("SELECT max(evaluated_at) FROM novrsoc.vms_enrollments")).scalar()
+    unseen = conn.execute(text("""SELECT count(*) FROM novrsoc.assets a WHERE a.status = 'active' AND a.merged_into IS NULL
+                                  AND NOT EXISTS (SELECT 1 FROM novrsoc.vms_enrollments e WHERE e.asset_id = a.id)""")).scalar()
+    if last is None or unseen or last < _now() - vpolicy.REEVALUATE_AFTER:   # imported assets appear without a manual step
+        vpolicy.evaluate(conn, local_test_only=settings.vms_scanning == "local_test_targets")
+    rows = conn.execute(text(_ENROLL_SQL + " WHERE a.status = 'active' AND (CAST(:s AS text) IS NULL OR e.status = :s) "
+                                           "ORDER BY e.status, lower(a.display_name) LIMIT 2000"), {"s": status}).all()
+    by = {r.status: r.n for r in conn.execute(text("""SELECT e.status, count(*) AS n FROM novrsoc.vms_enrollments e
+                                                      JOIN novrsoc.assets a ON a.id = e.asset_id WHERE a.status = 'active' GROUP BY 1"""))}
+    return VmsEnrollmentList(items=[_enrollment(r) for r in rows], by_status=by,
+                             evaluated_at=conn.execute(text("SELECT max(evaluated_at) FROM novrsoc.vms_enrollments")).scalar())
+
+
+@router.post("/enrollments/evaluate", response_model=VmsEnrollmentEvaluation,
+             summary="Re-evaluate enrollment now and queue due enrollment scans (vms:scope; audited)")
+def evaluate_enrollments(request: Request, p: Principal = Depends(require("vms:scope")), conn: Connection = Depends(request_connection),
+                         settings: Settings = Depends(get_settings)) -> VmsEnrollmentEvaluation:
+    counts = vpolicy.evaluate(conn, local_test_only=settings.vms_scanning == "local_test_targets")
+    queued = vpolicy.queue_enrollment_scans(conn, target_allowed=lambda t: _target_allowed(settings, t)) if _enabled(settings) else 0
+    audit.record("VMS_ENROLLMENT_EVALUATED", "success", org_id=p.org_id, actor_id=p.user_id, actor_label=p.email, resource_type="vms_policy",
+                 resource_id=str(p.org_id), request_id=request.state.request_id, ip=client_ip(request),
+                 details={"by_status": counts, "scans_queued": queued})
+    return VmsEnrollmentEvaluation(evaluated=sum(counts.values()), by_status=counts, scans_queued=queued)
+
+
+@router.post("/enrollments/{asset_id}/exclusion", response_model=VmsEnrollmentView,
+             summary="Exclude one asset from scanning, or lift its exclusion (vms:scope; audited)")
+def set_exclusion(asset_id: uuid.UUID, body: VmsEnrollmentExclusion, request: Request, p: Principal = Depends(require("vms:scope")),
+                  conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)) -> VmsEnrollmentView:
+    if conn.execute(text("SELECT 1 FROM novrsoc.assets WHERE id = :a"), {"a": asset_id}).first() is None:
+        raise not_found("Asset not found")
+    if body.excluded:
+        conn.execute(text("""INSERT INTO novrsoc.vms_enrollments (org_id, asset_id, status, reason, excluded_by)
+                             VALUES (novrsoc.app_org(), :a, 'manual_exclusion', :r, :u)
+                             ON CONFLICT (org_id, asset_id) DO UPDATE SET status = 'manual_exclusion', reason = EXCLUDED.reason,
+                               excluded_by = EXCLUDED.excluded_by, scope_id = NULL, evaluated_at = now()"""),
+                     {"a": asset_id, "r": body.reason, "u": p.user_id})
+    else:
+        conn.execute(text("UPDATE novrsoc.vms_enrollments SET status = 'outside_scope', excluded_by = NULL WHERE asset_id = :a"), {"a": asset_id})
+        vpolicy.evaluate(conn, local_test_only=settings.vms_scanning == "local_test_targets")
+    audit.record("VMS_ASSET_EXCLUDED" if body.excluded else "VMS_ASSET_EXCLUSION_LIFTED", "success", org_id=p.org_id, actor_id=p.user_id,
+                 actor_label=p.email, resource_type="asset", resource_id=str(asset_id), request_id=request.state.request_id,
+                 ip=client_ip(request), details={"reason": body.reason})
+    return _enrollment(conn.execute(text(_ENROLL_SQL + " WHERE e.asset_id = :a"), {"a": asset_id}).one())

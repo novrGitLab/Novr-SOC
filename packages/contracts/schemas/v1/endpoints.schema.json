@@ -255,6 +255,12 @@
           "title": "Broad",
           "type": "boolean"
         },
+        "collection": {
+          "default": false,
+          "description": "A collection group (NOVRSOC_WAZUH_COLLECTION_GROUPS): this mapping is IGNORED for attribution; it never makes the organization an agent's owner",
+          "title": "Collection",
+          "type": "boolean"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",

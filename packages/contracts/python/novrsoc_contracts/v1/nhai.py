@@ -53,6 +53,12 @@ class AssetSummaryRequest(Contract):
     asset_id: uuid.UUID
 
 
+class CaseAssistanceRequest(Contract):
+    """Investigation assistance for one case: its linked alerts (authoritative severities), notes, timeline and the
+    Threat Insights matches of those alerts. A draft for the analyst; it never changes the case."""
+    case_id: uuid.UUID
+
+
 class BehaviouralInsightSummaryRequest(Contract):
     entity: ResourceRef
     window_start: datetime

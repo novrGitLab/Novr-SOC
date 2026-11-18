@@ -28,7 +28,7 @@ from novrsoc_contracts.v1.endpoints import ConnectorState
 
 HEALTH_TTL = 60.0
 _WAZUH_DETAIL = {
-    "unconfigured": "No Wazuh connection is configured for this installation.",
+    "unconfigured": "No NovrSIEM connection is configured for this installation.",
     "local_fixture": "Local fixture data for development and tests. Not live telemetry.",
 }
 
@@ -101,11 +101,11 @@ def wazuh_states(settings: Settings) -> list[ConnectorState]:
     manager = _checked("manager", "wazuh_manager", live.manager.health)
     indexer = (_checked("indexer", "wazuh_indexer", live.indexer.health) if live.indexer is not None else
                ConnectorState(connector="wazuh_indexer", state="unconfigured",
-                              detail="WAZUH_INDEXER_URL is not set: vulnerability counts and alert evidence are unavailable."))
+                              detail="The NovrSIEM event store is not configured: vulnerability counts and alert evidence are unavailable."))
     return [manager, indexer]
 
 
 def ollama_state() -> ConnectorState:
     """The API process never calls Ollama. Inference state is reported per NHAI job and by the NHAI worker."""
     return ConnectorState(connector="ollama", state="unconfigured",
-                          detail="The API does not call Ollama. NHAI inference runs in the NHAI worker; see NHAI status.")
+                          detail="NHAI analyses run through the NHAI interface, outside the API; see NHAI status.")

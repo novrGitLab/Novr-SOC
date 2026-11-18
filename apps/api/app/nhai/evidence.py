@@ -49,7 +49,7 @@ def alert_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, alert_
                                   observed_at=observed_at, excerpt=excerpt, redacted=redacted))
 
     summary = {"rule_id": a.rule_id, "rule_level": a.rule_level, "rule_description": a.rule_description,
-               "wazuh_severity_authoritative": a.severity, "agent_id": a.agent_id, "agent_name": a.agent_name,
+               "siem_severity_authoritative": a.severity, "agent_id": a.agent_id, "agent_name": a.agent_name,
                "agent_groups": list(a.agent_groups or []), "source_ip": a.src_ip, "mitre_techniques": list(a.mitre_techniques or []),
                "observed_at": a.observed_at.isoformat()}
     text_, red = _excerpt(json.dumps(summary))
@@ -200,6 +200,43 @@ def asset_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, asset_
                          evidence=_bounded(b.items, max_chars), assembled_at=datetime.now(timezone.utc), assembled_for=user_id)
 
 
+def case_bundle(conn: Connection, org_id: uuid.UUID, user_id: uuid.UUID, case_id: uuid.UUID, *, max_chars: int) -> ContextBundle:
+    """Investigation assistance: the case, its linked alerts (with Wazuh's authoritative severity), the analysts' notes and
+    timeline, Threat Insights matches of the linked alerts, and the assets involved. Active organization only (RLS)."""
+    c = conn.execute(text("SELECT * FROM novrsoc.cases WHERE id = :i"), {"i": case_id}).first()
+    if c is None:
+        raise not_found("Case not found")
+    b = _Builder()
+    b.add("case", c.id, {"number": f"CASE-{c.number:06d}", "title": c.title, "severity": c.severity, "status": c.status,
+                         "source": c.source, "opened_at": c.created_at, "updated_at": c.updated_at}, c.created_at)
+    alerts = conn.execute(text("""SELECT a.id, a.rule_id, a.rule_description, a.severity, a.agent_name, host(a.src_ip) AS src_ip,
+                                         a.mitre_techniques, a.observed_at, a.asset_id
+                                  FROM novrsoc.case_alerts ca JOIN novrsoc.alerts a ON a.id = ca.alert_id
+                                  WHERE ca.case_id = :c ORDER BY a.observed_at LIMIT 20"""), {"c": case_id}).all()
+    for a in alerts:
+        b.add("alert", a.id, {"rule_id": a.rule_id, "rule_description": a.rule_description, "siem_severity_authoritative": a.severity,
+                              "agent_name": a.agent_name, "source_ip": a.src_ip, "mitre_techniques": list(a.mitre_techniques or []),
+                              "observed_at": a.observed_at}, a.observed_at)
+    notes = conn.execute(text("""SELECT kind, body, actor_label, occurred_at FROM novrsoc.case_events WHERE case_id = :c
+                                 ORDER BY occurred_at DESC LIMIT 15"""), {"c": case_id}).all()
+    if notes:
+        b.add("case_timeline", c.id, "; ".join(f"{n.occurred_at:%Y-%m-%d %H:%M} {n.kind}" + (f": {n.body[:400]}" if n.body else "")
+                                               for n in reversed(notes)))
+    ids = [a.id for a in alerts]
+    if ids:
+        ti = conn.execute(text("""SELECT i.type, i.value, m.confidence, m.verdict FROM novrsoc.ti_matches m
+                                  JOIN novrsoc.ti_indicators i ON i.id = m.indicator_id
+                                  WHERE m.alert_id = ANY(:ids) AND m.verdict <> 'false_positive' LIMIT 15"""), {"ids": ids}).all()
+        if ti:
+            b.add("ti_matches", c.id, "; ".join(f"{r.type}={r.value} (confidence {r.confidence}, verdict {r.verdict})" for r in ti))
+        assets = conn.execute(text("""SELECT DISTINCT x.id, x.display_name, x.criticality, x.exposure FROM novrsoc.assets x
+                                      WHERE x.id = ANY(:a)"""), {"a": [a.asset_id for a in alerts if a.asset_id]}).all()
+        if assets:
+            b.add("assets", c.id, "; ".join(f"{r.display_name} (criticality {r.criticality}, exposure {r.exposure})" for r in assets))
+    return ContextBundle(bundle_id=uuid.uuid4(), org_id=org_id, task=NhaiTask.INVESTIGATION_ASSISTANCE, subject=ResourceRef(type="case", id=str(c.id)),
+                         evidence=_bounded(b.items, max_chars), assembled_at=datetime.now(timezone.utc), assembled_for=user_id)
+
+
 def chat_bundle(org_id: uuid.UUID, user_id: uuid.UUID, message_id: uuid.UUID, question: str, citations: list[dict], *,
                 max_chars: int) -> ContextBundle:
     b = _Builder()
@@ -232,7 +269,7 @@ def missing_evidence_for(bundle: ContextBundle) -> list[str]:
         if "alerts_30d" not in kinds:
             gaps.append("No alerts in 30 days are recorded for this asset.")
         if "wazuh_agent" not in " ".join(e.excerpt for e in bundle.evidence if e.ref.type == "asset_identifiers"):
-            gaps.append("No Wazuh agent is linked: host telemetry and configuration assessment are not available.")
+            gaps.append("No NovrAgent is linked: host telemetry and configuration assessment are not available.")
         gaps.append("Business context (data held, owners' risk appetite) is not in the bundle.")
         return gaps
     return ["Only the records retrieved for this question were used; other records may exist that the tools did not return."]

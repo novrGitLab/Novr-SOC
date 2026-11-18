@@ -36,7 +36,7 @@ MODULE = ModuleInfo(name="continuity", workstream="E", prefix="/api/v1/continuit
 router = APIRouter(prefix="/api/v1/continuity", tags=["continuity"], responses=ERRORS)
 
 EXECUTION = {
-    "novrsoc_platform_backup": "Connected: NovrSOC's own encrypted database backups and restore drills (platform administrator, Server 2).",
+    "novrsoc_platform_backup": "Connected: NovrSOC's own encrypted database backups and restore drills (platform administrator).",
     "external_provider": "Administrative workflow: the named provider performs the recovery; NovrSOC records decisions and evidence.",
     "manual_procedure": "Administrative workflow: a documented manual procedure; NovrSOC records decisions and evidence.",
 }
@@ -237,8 +237,8 @@ def overview(p: Principal = Depends(require("recovery:read")), conn: Connection 
                                         (SELECT finished_at FROM novrsoc.restore_drills ORDER BY finished_at DESC LIMIT 1) AS drill,
                                         (SELECT status FROM novrsoc.restore_drills ORDER BY finished_at DESC LIMIT 1) AS drill_status""")).one()
         backups = PlatformBackupState(visible=True, last_succeeded_at=b.ok, last_drill_at=b.drill, last_drill_status=b.drill_status,
-                                      note="NovrSOC's own database (Server 2). No backup recorded yet." if b.ok is None else
-                                      "NovrSOC's own database (Server 2).")
+                                      note="NovrSOC's own database. No backup recorded yet." if b.ok is None else
+                                      "NovrSOC's own database.")
     else:
         backups = PlatformBackupState(visible=False, note="Platform backup history is visible to platform administrators only.")
     plans = conn.execute(text("SELECT * FROM novrsoc.recovery_plans")).all()

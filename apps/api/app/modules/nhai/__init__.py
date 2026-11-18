@@ -25,10 +25,11 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, not_found
 from app.db.session import request_connection
 from app.modules import ModuleInfo
-from app.nhai.evidence import alert_bundle, asset_bundle, finding_bundle
+from app.nhai.evidence import alert_bundle, asset_bundle, case_bundle, finding_bundle
 from app.routers._responses import ERRORS
 from novrsoc_contracts.v1.common import ActorRef, ResourceRef
-from novrsoc_contracts.v1.nhai import (AlertExplanationRequest, AssetSummaryRequest, ContextBundle, FindingExplanationRequest, HumanReview,
+from novrsoc_contracts.v1.nhai import (AlertExplanationRequest, AssetSummaryRequest, CaseAssistanceRequest, ContextBundle,
+                                       FindingExplanationRequest, HumanReview,
                                        NhaiJob, NhaiJobList, NhaiResult, NhaiReviewRequest)
 
 MODULE = ModuleInfo(name="nhai", workstream="F", prefix="/api/v1/nhai",
@@ -60,7 +61,7 @@ def _get(conn: Connection, job_id: uuid.UUID):
     return r
 
 
-MODULE_OF = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat"}
+MODULE_OF = {"alert": "soc", "vms_finding": "vms", "asset": "assets", "chat_message": "chat", "case": "soc"}
 
 
 def queue_job(conn: Connection, p: Principal, settings: Settings, request: Request, bundle: ContextBundle):
@@ -124,6 +125,17 @@ def request_asset_summary(body: AssetSummaryRequest, request: Request, p: Princi
     if not p.has("assets:read"):
         raise ApiError(403, "forbidden", "Insufficient permissions", {"required": "assets:read"})
     bundle = asset_bundle(conn, p.org_id, p.user_id, body.asset_id, max_chars=settings.nhai_max_prompt_chars)
+    return _answer(*queue_job(conn, p, settings, request, bundle))
+
+
+@router.post("/case-assistance", response_model=NhaiJob, status_code=202,
+             summary="Queue investigation assistance for one case: linked alerts, timeline, intelligence matches (asynchronous)")
+def request_case_assistance(body: CaseAssistanceRequest, request: Request, p: Principal = Depends(require("nhai:analyze")),
+                            conn: Connection = Depends(request_connection), settings: Settings = Depends(get_settings)):
+    _require_backend(settings)
+    if not p.has("cases:read"):
+        raise ApiError(403, "forbidden", "Insufficient permissions", {"required": "cases:read"})
+    bundle = case_bundle(conn, p.org_id, p.user_id, body.case_id, max_chars=settings.nhai_max_prompt_chars)
     return _answer(*queue_job(conn, p, settings, request, bundle))
 
 

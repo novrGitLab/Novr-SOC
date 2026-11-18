@@ -64,15 +64,21 @@ def test_a_registered_syslog_source_attributes_its_events_to_its_organization_on
     assert {"LOG_SOURCE_REGISTERED"} <= {e["action"] for e in audit_actions(owner, org=world.alpha)}
 
 
-def test_unknown_disabled_and_manager_local_events_are_quarantined_never_assigned(fixture_app, as_user, forwarder_token, world, owner, mapped):
+def test_unknown_and_disabled_sources_are_quarantined_and_manager_telemetry_is_platform_level(fixture_app, as_user, forwarder_token,
+                                                                                               world, owner, mapped):
     unknown = _event(_ip())
     local = _event("/var/ossec/logs/active-responses.log")
     grouped = _event(_ip(), groups=["nv-alpha-servers"])           # agent 000's groups are never used, even when mapped
     res = _ingest(fixture_app, forwarder_token, [unknown, local, grouped])
-    assert (res["accepted"], res["quarantined"]) == (0, 3)
+    assert (res["accepted"], res["quarantined"]) == (1, 2)
     assert _quarantine_reason(owner, unknown["id"]) == "unknown_log_source"
-    assert _quarantine_reason(owner, local["id"]) == "manager_local_event"
     assert _quarantine_reason(owner, grouped["id"]) == "unknown_log_source"
+    # the manager's own telemetry belongs to the platform organization, never to a client
+    assert _quarantine_reason(owner, local["id"]) is None
+    with owner.connect() as c:
+        assert c.execute(text("SELECT org_id FROM novrsoc.alerts WHERE external_id = :x"), {"x": local["id"]}).scalar() == world.platform
+    for key in ("analyst_a", "analyst_b"):
+        assert not [x for x in as_user(key).get("/api/v1/soc/alerts").json()["items"] if x["external_id"] == local["id"]]
     mgr = as_user("manager")
     src = _register(mgr, world.alpha).json()
     assert mgr.patch(f"{SRC}/{src['id']}", {"enabled": False}, org=world.alpha).json()["status"] == "disabled"
@@ -84,7 +90,6 @@ def test_unknown_disabled_and_manager_local_events_are_quarantined_never_assigne
     q = as_user("admin").get("/api/v1/admin/wazuh/quarantine").json()
     seen = {(s["kind"], s["value"], s["reason"]) for s in q["unattributed_sources"]}
     assert ("syslog", unknown["raw"]["location"], "unknown_log_source") in seen
-    assert ("manager_local", "/var/ossec/logs/active-responses.log", "manager_local_event") in seen
     actions = {e["action"] for e in audit_actions(owner, org=world.alpha)}
     assert {"LOG_SOURCE_DISABLED", "LOG_SOURCE_ENABLED"} <= actions
 
@@ -163,15 +168,68 @@ def test_permissions_and_validation(as_user, world):
     assert _register(mgr, world.alpha, site_id=beta_site["id"]).status_code == 422  # another organization's site
 
 
-def test_broad_wazuh_group_needs_an_acknowledgement_and_groups_stay_unique(as_user, world):
+def test_a_collection_group_can_never_establish_ownership(fixture_app, as_user, forwarder_token, world, owner, mapped):
+    """Wazuh's `default` group holds every newly enrolled agent, of every organization. It is refused as a mapping, and an
+    existing mapping of it (created before this rule) is ignored: never attributed, never makes an agent ambiguous."""
     mgr = as_user("manager")
-    r = mgr.post("/api/v1/endpoints/group-mappings", {"group_name": "default", "acknowledge_broad_group": False}, org=world.alpha)
-    assert r.status_code == 422 and r.json()["error"]["code"] == "broad_group_requires_acknowledgement"
-    ok = mgr.post("/api/v1/endpoints/group-mappings", {"group_name": "default", "acknowledge_broad_group": True}, org=world.alpha)
+    r = mgr.post("/api/v1/endpoints/group-mappings", {"group_name": "default", "acknowledge_broad_group": True}, org=world.alpha)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "collection_group_not_mappable"
+    with owner.begin() as c:   # the state an older release could have left behind
+        c.execute(text("INSERT INTO novrsoc.wazuh_group_mappings (org_id, group_name) VALUES (:o, 'default')"), {"o": world.alpha})
     try:
-        assert ok.status_code == 201 and ok.json()["broad"] is True
-        dup = as_user("manager_b").post("/api/v1/endpoints/group-mappings", {"group_name": "default", "acknowledge_broad_group": True},
-                                        org=world.beta)
-        assert dup.status_code == 409
+        listed = {m["group_name"]: m for m in mgr.get("/api/v1/endpoints/group-mappings", org=world.alpha).json()["items"]}
+        assert listed["default"]["collection"] is True and listed["nv-alpha-servers"]["collection"] is False
+        only_default = _event("", groups=["default"], agent="301")
+        beta_and_default = _event("", groups=["default", "nv-beta-servers"], agent="302")
+        res = _ingest(fixture_app, forwarder_token, [only_default, beta_and_default])
+        assert (res["accepted"], res["quarantined"]) == (1, 1)
+        assert _quarantine_reason(owner, only_default["id"]) == "collection_group_only"     # not alpha's, although alpha maps it
+        with owner.connect() as c:
+            org = c.execute(text("SELECT org_id FROM novrsoc.alerts WHERE external_id = :x"), {"x": beta_and_default["id"]}).scalar()
+        assert org == world.beta                                                             # verified owner, not "ambiguous"
     finally:
-        mgr.delete(f"/api/v1/endpoints/group-mappings/{ok.json()['id']}", org=world.alpha)
+        with owner.begin() as c:
+            c.execute(text("DELETE FROM novrsoc.wazuh_group_mappings WHERE group_name = 'default'"))
+
+
+def test_wazuh_groups_stay_unique_across_organizations(as_user, world):
+    g = f"grp-{uuid.uuid4().hex[:8]}"
+    ok = as_user("manager").post("/api/v1/endpoints/group-mappings", {"group_name": g}, org=world.alpha)
+    try:
+        assert ok.status_code == 201 and ok.json()["broad"] is False and ok.json()["collection"] is False
+        assert as_user("manager_b").post("/api/v1/endpoints/group-mappings", {"group_name": g}, org=world.beta).status_code == 409
+    finally:
+        as_user("manager").delete(f"/api/v1/endpoints/group-mappings/{ok.json()['id']}", org=world.alpha)
+
+
+def test_attribution_audit_reports_inconsistencies_and_changes_nothing(owner, world, db, monkeypatch, capsys):
+    """The read-only audit an operator runs BEFORE changing mappings: a mapped collection group, the agents whose alerts
+    would be quarantined after the upgrade (with the organization that receives them today), and nothing is written."""
+    import json as _json
+    from app import cli
+    agent = f"9{random.randint(1000, 9999)}"
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO novrsoc.wazuh_group_mappings (org_id, group_name) VALUES (:o, 'default')"), {"o": world.gamma})
+        c.execute(text("""INSERT INTO novrsoc.alerts (org_id, source, external_id, rule_id, rule_level, rule_description, severity, agent_id,
+                                                      agent_name, agent_groups, observed_at, raw)
+                          VALUES (:o, 'wazuh', :x, '5710', 5, 'sshd: invalid user', 'low', :a, 'kiosk-01', ARRAY['default'], now(), '{}')"""),
+                  {"o": world.gamma, "x": f"aud-{uuid.uuid4().hex}", "a": agent})
+        before = c.execute(text("SELECT count(*) FROM novrsoc.alerts")).scalar()
+    try:
+        monkeypatch.setenv("NOVRSOC_MIGRATION_DATABASE_URL", db.owner_url)
+        capsys.readouterr()
+        assert cli.attribution_audit(7) == 0
+        rep = _json.loads(capsys.readouterr().out)
+        assert rep["read_only"] is True and rep["collection_groups"] == ["default"]
+        issues = rep["inconsistencies"]
+        assert {"issue": "collection_group_mapped", "organization": "t-gamma", "group": "default"}.items() <= \
+            next(i for i in issues if i["issue"] == "collection_group_mapped").items()
+        mine = [i for i in issues if i["issue"] == "agent_only_in_collection_groups" and i["agent_id"] == agent]
+        assert mine and mine[0]["organization_now"] == "t-gamma" and mine[0]["groups"] == ["default"]
+        assert any(m == {"organization": "t-gamma", "group": "default", "collection_group": True} for m in rep["mappings"])
+        with owner.connect() as c:
+            assert c.execute(text("SELECT count(*) FROM novrsoc.alerts")).scalar() == before
+    finally:
+        with owner.begin() as c:
+            c.execute(text("DELETE FROM novrsoc.wazuh_group_mappings WHERE group_name = 'default'"))
+            c.execute(text("DELETE FROM novrsoc.alerts WHERE agent_id = :a"), {"a": agent})

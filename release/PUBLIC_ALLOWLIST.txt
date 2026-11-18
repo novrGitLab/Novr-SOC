@@ -53,6 +53,7 @@ apps/api/app/modules/admin/__init__.py
 apps/api/app/modules/assets/__init__.py
 apps/api/app/modules/chat/__init__.py
 apps/api/app/modules/cnii/__init__.py
+apps/api/app/modules/command/__init__.py
 apps/api/app/modules/continuity/__init__.py
 apps/api/app/modules/endpoints/__init__.py
 apps/api/app/modules/insights/__init__.py
@@ -67,6 +68,7 @@ apps/api/app/modules/soc/__init__.py
 apps/api/app/modules/soc/service.py
 apps/api/app/modules/vms/__init__.py
 apps/api/app/nhai/__init__.py
+apps/api/app/nhai/diagnose.py
 apps/api/app/nhai/evidence.py
 apps/api/app/nhai/validate.py
 apps/api/app/nhai/worker.py
@@ -83,6 +85,8 @@ apps/api/app/secops/log_sources.py
 apps/api/app/secops/sla.py
 apps/api/app/soar/__init__.py
 apps/api/app/soar/bridge_client.py
+apps/api/app/vms/__init__.py
+apps/api/app/vms/policy.py
 apps/api/pyproject.toml
 apps/api/requirements.lock
 apps/api/requirements.runtime.lock
@@ -98,6 +102,7 @@ apps/api/tests/modules/admin/test_org_management.py
 apps/api/tests/modules/assets/test_assets.py
 apps/api/tests/modules/chat/test_chat.py
 apps/api/tests/modules/cnii/test_cnii_monitoring.py
+apps/api/tests/modules/command/test_command_center.py
 apps/api/tests/modules/conftest.py
 apps/api/tests/modules/continuity/test_continuity.py
 apps/api/tests/modules/endpoints/test_endpoints_api.py
@@ -108,6 +113,7 @@ apps/api/tests/modules/insights/test_stix_taxii.py
 apps/api/tests/modules/log_sources/test_log_sources.py
 apps/api/tests/modules/nhai/test_nhai.py
 apps/api/tests/modules/nhai/test_nhai_consolidation.py
+apps/api/tests/modules/nhai/test_nhai_readiness.py
 apps/api/tests/modules/nhai/test_nhai_worker_role.py
 apps/api/tests/modules/nhai/test_ollama_backend.py
 apps/api/tests/modules/posture/test_posture.py
@@ -116,12 +122,14 @@ apps/api/tests/modules/reports/test_reports_api.py
 apps/api/tests/modules/secops/test_secops.py
 apps/api/tests/modules/soar/test_playbook_lifecycle.py
 apps/api/tests/modules/soar/test_soar_engine.py
+apps/api/tests/modules/soc/test_backfill_contract.py
 apps/api/tests/modules/soc/test_forwarder_contract.py
 apps/api/tests/modules/soc/test_ingest_phase5.py
 apps/api/tests/modules/soc/test_soc_api.py
 apps/api/tests/modules/vms/test_vms_consolidation.py
 apps/api/tests/modules/vms/test_vms_flow.py
 apps/api/tests/modules/vms/test_vms_integration.py
+apps/api/tests/modules/vms/test_vms_policy.py
 apps/api/tests/test_account_security.py
 apps/api/tests/test_ai_gateway.py
 apps/api/tests/test_architecture.py
@@ -161,6 +169,7 @@ apps/web/src/app/(app)/app/admin/_org/IdentitiesPanel.tsx
 apps/web/src/app/(app)/app/admin/_org/LogSourcesPanel.tsx
 apps/web/src/app/(app)/app/admin/_org/QuarantinePanel.tsx
 apps/web/src/app/(app)/app/admin/_org/meta.ts
+apps/web/src/app/(app)/app/admin/agent-groups/page.tsx
 apps/web/src/app/(app)/app/admin/analytics/page.tsx
 apps/web/src/app/(app)/app/admin/api.ts
 apps/web/src/app/(app)/app/admin/billing/page.tsx
@@ -169,7 +178,6 @@ apps/web/src/app/(app)/app/admin/health/page.tsx
 apps/web/src/app/(app)/app/admin/organizations/[id]/page.tsx
 apps/web/src/app/(app)/app/admin/page.tsx
 apps/web/src/app/(app)/app/admin/users/page.tsx
-apps/web/src/app/(app)/app/admin/wazuh-groups/page.tsx
 apps/web/src/app/(app)/app/alerts/[id]/page.tsx
 apps/web/src/app/(app)/app/alerts/api.ts
 apps/web/src/app/(app)/app/alerts/page.tsx
@@ -188,6 +196,7 @@ apps/web/src/app/(app)/app/cnii/authorizations/page.tsx
 apps/web/src/app/(app)/app/cnii/designations/page.tsx
 apps/web/src/app/(app)/app/cnii/layout.tsx
 apps/web/src/app/(app)/app/cnii/page.tsx
+apps/web/src/app/(app)/app/command/page.tsx
 apps/web/src/app/(app)/app/email/page.tsx
 apps/web/src/app/(app)/app/endpoints/[agentId]/page.tsx
 apps/web/src/app/(app)/app/endpoints/api.ts
@@ -227,6 +236,7 @@ apps/web/src/app/(app)/app/soar/runs/page.tsx
 apps/web/src/app/(app)/app/vms/api.ts
 apps/web/src/app/(app)/app/vms/findings/page.tsx
 apps/web/src/app/(app)/app/vms/page.tsx
+apps/web/src/app/(app)/app/vms/policy/page.tsx
 apps/web/src/app/(app)/app/vms/remediation/page.tsx
 apps/web/src/app/(app)/app/vms/reports/page.tsx
 apps/web/src/app/(app)/app/vms/risk/page.tsx
@@ -257,6 +267,7 @@ apps/web/src/foundation/session/SessionProvider.tsx
 apps/web/src/foundation/session/redirect.ts
 apps/web/src/foundation/shell/AppShell.tsx
 apps/web/src/foundation/ui/module.tsx
+apps/web/src/foundation/ui/names.ts
 apps/web/src/foundation/ui/pilot.tsx
 apps/web/src/foundation/ui/sources.tsx
 apps/web/src/foundation/ui/states.tsx
@@ -268,6 +279,7 @@ deploy/README.md
 deploy/dev/compose.yaml
 deploy/dev/postgres/init/01-roles.sh
 deploy/docker/api.Dockerfile
+deploy/docker/vms-scanner.Dockerfile
 deploy/docker/vms-worker.Dockerfile
 deploy/docker/web.Dockerfile
 deploy/server1/bridge.json.example
@@ -305,6 +317,7 @@ packages/contracts/python/novrsoc_contracts/v1/administration.py
 packages/contracts/python/novrsoc_contracts/v1/ai_gateway.py
 packages/contracts/python/novrsoc_contracts/v1/chat.py
 packages/contracts/python/novrsoc_contracts/v1/collector.py
+packages/contracts/python/novrsoc_contracts/v1/command.py
 packages/contracts/python/novrsoc_contracts/v1/common.py
 packages/contracts/python/novrsoc_contracts/v1/continuity.py
 packages/contracts/python/novrsoc_contracts/v1/endpoints.py
@@ -325,6 +338,7 @@ packages/contracts/schemas/v1/administration.schema.json
 packages/contracts/schemas/v1/ai_gateway.schema.json
 packages/contracts/schemas/v1/chat.schema.json
 packages/contracts/schemas/v1/collector.schema.json
+packages/contracts/schemas/v1/command.schema.json
 packages/contracts/schemas/v1/common.schema.json
 packages/contracts/schemas/v1/continuity.schema.json
 packages/contracts/schemas/v1/endpoints.schema.json
@@ -367,6 +381,7 @@ packages/db/migrations/versions/0014_intel_cnii_continuity.py
 packages/db/migrations/versions/0015_admin_exports_chat.py
 packages/db/migrations/versions/0016_nhai_worker_role.py
 packages/db/migrations/versions/0017_org_management_log_sources.py
+packages/db/migrations/versions/0018_vms_policy_attribution.py
 release/PUBLIC_ALLOWLIST.txt
 release/PUBLIC_MANIFEST.tsv
 scripts/contracts/compat.py
@@ -383,14 +398,17 @@ scripts/release/rehearse_server2.sh
 scripts/release/runtime_lock.py
 services/edge/README.md
 services/edge/forwarder/README.md
+services/edge/forwarder/deploy/backfill.env.example
 services/edge/forwarder/deploy/forwarder.env.example
 services/edge/forwarder/deploy/novrsoc-forwarder.service
 services/edge/forwarder/novrsoc_forwarder/__init__.py
 services/edge/forwarder/novrsoc_forwarder/__main__.py
+services/edge/forwarder/novrsoc_forwarder/backfill.py
 services/edge/forwarder/novrsoc_forwarder/core.py
 services/edge/forwarder/novrsoc_forwarder/http.py
 services/edge/forwarder/novrsoc_forwarder/logs.py
 services/edge/forwarder/novrsoc_forwarder/state.py
+services/edge/forwarder/tests/test_backfill.py
 services/edge/forwarder/tests/test_forwarder.py
 services/edge/response_bridge/novrsoc_bridge/__init__.py
 services/edge/response_bridge/novrsoc_bridge/__main__.py
@@ -410,6 +428,7 @@ services/vms-worker/fixtures/greenbone-report.xml
 services/vms-worker/requirements.lock
 services/vms-worker/requirements.txt
 services/vms-worker/test_greenbone.py
+services/vms-worker/test_nmap_engine.py
 services/vms-worker/test_openvas_report.py
 services/vms-worker/test_v2_adapter.py
 services/vms-worker/test_worker.py

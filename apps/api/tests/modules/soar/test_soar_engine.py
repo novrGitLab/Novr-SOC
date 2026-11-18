@@ -175,3 +175,25 @@ def test_permissions_and_isolation(as_user, owner, app_engine, world):
     assert_tenant_isolation(owner, app_engine, table="novrsoc.soar_playbooks", org_a=world.alpha, org_b=world.beta,
                             make_row=lambda org: {"org_id": org, "name": f"iso-{uuid.uuid4().hex[:6]}", "version": 1,
                                                   "title": "isolation", "steps": json.dumps([])}, update_set="enabled = false")
+
+
+def test_response_groups_must_be_the_organizations_own_and_never_a_collection_group(as_user, world, mapped, owner, db, monkeypatch, capsys):
+    """A response may only reach agents the organization owns: `default` (every new agent of every tenant) and another
+    organization's group are refused; the bridge tenants entry is derived from the stored policy, read-only."""
+    import json as _json
+    from app import cli
+    m = as_user("manager")
+    put = lambda groups: m.c.put("/api/v1/soar/policy", json={"allowed_actions": ["block_ip"], "allowed_agent_groups": groups},  # noqa: E731
+                                 headers={"X-CSRF-Token": m.csrf, "X-Org-Id": str(world.alpha)})
+    r = put(["default"])
+    assert r.status_code == 422 and r.json()["error"]["code"] == "collection_group_not_allowed"
+    r = put(["nv-beta-servers"])                                     # beta's group
+    assert r.status_code == 422 and r.json()["error"]["code"] == "group_not_mapped"
+    assert put(["nv-alpha-servers"]).status_code == 200
+    monkeypatch.setenv("NOVRSOC_MIGRATION_DATABASE_URL", db.owner_url)
+    capsys.readouterr()
+    assert cli.soar_bridge_tenant("t-alpha") == 0
+    out = _json.loads(capsys.readouterr().out)
+    assert out["tenants_entry"] == {str(world.alpha): {"actions": ["block_ip"], "agent_groups": ["nv-alpha-servers"]}}
+    assert out["bridge_must_keep"] == {"adapter": "simulated", "allow_live": False}
+    assert cli.soar_bridge_tenant("t-gamma") == 1                    # no policy: nothing to authorize

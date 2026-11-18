@@ -125,7 +125,7 @@ from novrsoc_contracts.v1.governance import (CniiAuthorizationCreate, CniiAuthor
                                              CniiScheduleView)
 
 PROBE = ("No availability probe is configured in this installation: due checks are recorded as not_run, never as up. "
-         "A probe on Server 1 needs separate authorization.")
+         "A probe needs separate authorization.")
 
 
 class CniiScope:

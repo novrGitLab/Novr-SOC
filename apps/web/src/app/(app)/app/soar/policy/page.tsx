@@ -35,13 +35,13 @@ export default function SoarPolicyPage() {
     return (
         <>
             <PageHeader title="Response policy" icon={Scale}
-                description="What this organization authorizes SOAR to request from the Server 1 bridge. The bridge applies its own authorization as well; both must agree, and a person approves every step." />
+                description="What this organization authorizes NovrSOAR to execute. NovrSOAR applies its own authorization as well; both must agree, and a person approves every step." />
             {act.notice}
             <Loaded title="Policy" data={policy.data} error={policy.error} reload={policy.reload} testid="soar-policy">
                 {(p) => d === null ? (
                     <div className="text-sm space-y-2">
                         <p>Allowed actions: {p.allowed_actions.length ? p.allowed_actions.map((a) => <Tag key={a}>{a}</Tag>) : <em className="text-foreground-muted">none</em>}</p>
-                        <p>Authorized Wazuh groups: {p.allowed_agent_groups.length ? p.allowed_agent_groups.map((g) => <Tag key={g}>{g}</Tag>) : <em className="text-foreground-muted">none</em>}</p>
+                        <p>Authorized NovrAgent groups: {p.allowed_agent_groups.length ? p.allowed_agent_groups.map((g) => <Tag key={g}>{g}</Tag>) : <em className="text-foreground-muted">none</em>}</p>
                         <p>Live execution: <StatusPill tone={p.live_enabled ? 'warning' : 'neutral'} label={p.live_enabled ? 'enabled (still needs approval)' : 'disabled (dry runs only)'} /></p>
                         <p>Approvals expire after {p.approval_ttl_minutes} min · at most {p.max_runs_per_hour} runs per hour · {p.max_dispatch_attempts} dispatch attempts per step</p>
                         <p>Emergency stop: <StatusPill tone={p.emergency_stop ? 'critical' : 'good'} label={p.emergency_stop ? `ON: ${p.emergency_reason}` : 'not active'} /></p>
@@ -53,7 +53,7 @@ export default function SoarPolicyPage() {
                             <label key={a} className="flex items-center gap-1"><input type="checkbox" checked={d.actions.has(a)} onChange={() => {
                                 const s = new Set(d.actions); if (s.has(a)) s.delete(a); else s.add(a); setD({ ...d, actions: s });
                             }} />{a}</label>))}</div>
-                        <Field label="Authorized Wazuh agent groups (comma separated)"><TextInput value={d.groups} onChange={(e) => setD({ ...d, groups: e.target.value })} /></Field>
+                        <Field label="Authorized NovrAgent groups (comma separated)"><TextInput value={d.groups} onChange={(e) => setD({ ...d, groups: e.target.value })} /></Field>
                         <label className="flex items-center gap-1"><input type="checkbox" checked={d.live} onChange={() => setD({ ...d, live: !d.live })} />Allow live execution (each step still needs approval)</label>
                         <div className="grid grid-cols-3 gap-2">
                             <Field label="Approval expiry (min)"><TextInput type="number" min={5} max={1440} value={d.ttl} onChange={(e) => setD({ ...d, ttl: Number(e.target.value) })} /></Field>

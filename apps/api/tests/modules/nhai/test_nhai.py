@@ -20,7 +20,7 @@ from tests.conftest import audit_actions
 from tests.helpers.rls import assert_tenant_isolation
 from tests.modules.conftest import Client
 
-E1 = json.dumps({"rule_id": "5710", "rule_level": 10, "rule_description": "sshd: non-existent user", "wazuh_severity_authoritative": "high",
+E1 = json.dumps({"rule_id": "5710", "rule_level": 10, "rule_description": "sshd: non-existent user", "siem_severity_authoritative": "high",
                  "agent_id": "001", "agent_name": "alpha-web-01", "agent_groups": ["nv-alpha-servers"], "source_ip": "203.0.113.50",
                  "mitre_techniques": ["T1110"], "observed_at": "2026-11-10T09:00:00+00:00"})
 
@@ -52,7 +52,7 @@ def test_benchmark_case_low_severity_high_confidence_is_contained():
     sa = r.severity_assessment
     assert sa.proposed == "low" and sa.agrees_with_stored is False and sa.uncertainty == "high"
     assert r.confidence == "low"                                         # never high; low when it disagrees downward
-    assert any("Wazuh detection is authoritative" in x for x in r.limitations)
+    assert any("NovrSIEM detection is authoritative" in x for x in r.limitations)
     assert len(r.missing_evidence) >= 3 and any("Endpoint context" in g for g in r.missing_evidence)
     assert any("inadequate" in n for n in r.validation_notes) and any("Confidence lowered" in n for n in r.validation_notes)
     assert r.status == "draft" and r.review is None

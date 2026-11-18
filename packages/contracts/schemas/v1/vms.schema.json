@@ -441,6 +441,38 @@
       "title": "ObservationKind",
       "type": "string"
     },
+    "PolicyWindow": {
+      "additionalProperties": false,
+      "description": "A weekly window in the policy's timezone during which scans of the organization may run.",
+      "properties": {
+        "end_minute": {
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "End Minute",
+          "type": "integer"
+        },
+        "start_minute": {
+          "maximum": 1439,
+          "minimum": 0,
+          "title": "Start Minute",
+          "type": "integer"
+        },
+        "weekday": {
+          "description": "0 = Monday",
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Weekday",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "weekday",
+        "start_minute",
+        "end_minute"
+      ],
+      "title": "PolicyWindow",
+      "type": "object"
+    },
     "RemediationTask": {
       "additionalProperties": false,
       "properties": {
@@ -1028,7 +1060,10 @@
           "enum": [
             "job",
             "no_job",
-            "scanning_disabled"
+            "scanning_disabled",
+            "policy_disabled",
+            "outside_scan_window",
+            "concurrency_limit"
           ],
           "title": "Reason",
           "type": "string"
@@ -1057,11 +1092,35 @@
           "title": "Job Id",
           "type": "string"
         },
+        "max_rate_pps": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The organization's scan-policy packet-rate ceiling; the worker never exceeds it (nor its own)",
+          "title": "Max Rate Pps"
+        },
         "max_runtime_seconds": {
           "maximum": 43200,
           "minimum": 60,
           "title": "Max Runtime Seconds",
           "type": "integer"
+        },
+        "protected_networks": {
+          "default": [],
+          "description": "Never touched, whatever the targets say (scan policy)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Protected Networks",
+          "type": "array"
         },
         "targets": {
           "items": {
@@ -1161,7 +1220,8 @@
               "completed",
               "unreachable",
               "refused_out_of_scope",
-              "failed"
+              "failed",
+              "no_route"
             ],
             "type": "string"
           },
@@ -1573,6 +1633,228 @@
         "updated_at"
       ],
       "title": "VerificationRequestView",
+      "type": "object"
+    },
+    "VmsEnrollmentEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "by_status": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Status",
+          "type": "object"
+        },
+        "evaluated": {
+          "title": "Evaluated",
+          "type": "integer"
+        },
+        "scans_queued": {
+          "default": 0,
+          "title": "Scans Queued",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "evaluated",
+        "by_status"
+      ],
+      "title": "VmsEnrollmentEvaluation",
+      "type": "object"
+    },
+    "VmsEnrollmentExclusion": {
+      "additionalProperties": false,
+      "properties": {
+        "excluded": {
+          "title": "Excluded",
+          "type": "boolean"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "excluded",
+        "reason"
+      ],
+      "title": "VmsEnrollmentExclusion",
+      "type": "object"
+    },
+    "VmsEnrollmentList": {
+      "additionalProperties": false,
+      "properties": {
+        "by_status": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Status",
+          "type": "object"
+        },
+        "evaluated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evaluated At"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/VmsEnrollmentView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items",
+        "by_status"
+      ],
+      "title": "VmsEnrollmentList",
+      "type": "object"
+    },
+    "VmsEnrollmentView": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Address"
+        },
+        "asset_id": {
+          "format": "uuid",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "asset_name": {
+          "title": "Asset Name",
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "hostname": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hostname"
+        },
+        "last_job_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Job Id"
+        },
+        "last_scanned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Scanned At"
+        },
+        "open_findings": {
+          "default": 0,
+          "title": "Open Findings",
+          "type": "integer"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "scope_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope Id"
+        },
+        "scope_value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope Value"
+        },
+        "sources": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "enrolled",
+            "eligible",
+            "excluded_protected",
+            "outside_scope",
+            "public_address",
+            "shared_address",
+            "stale_address",
+            "no_address",
+            "unverified_source",
+            "manual_exclusion"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "asset_name",
+        "status",
+        "reason",
+        "evaluated_at"
+      ],
+      "title": "VmsEnrollmentView",
       "type": "object"
     },
     "VmsFindingDetail": {
@@ -2044,11 +2326,249 @@
       "title": "VmsScanList",
       "type": "object"
     },
+    "VmsScanPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "address_max_age_hours": {
+          "default": 72,
+          "maximum": 720,
+          "minimum": 1,
+          "title": "Address Max Age Hours",
+          "type": "integer"
+        },
+        "authorization_reference": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "auto_enroll": {
+          "default": false,
+          "title": "Auto Enroll",
+          "type": "boolean"
+        },
+        "configured": {
+          "description": "False until the organization saves a policy (the defaults shown are not in force)",
+          "title": "Configured",
+          "type": "boolean"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "enroll_activity": {
+          "$ref": "#/$defs/ScanActivity",
+          "default": "ports"
+        },
+        "in_window_now": {
+          "title": "In Window Now",
+          "type": "boolean"
+        },
+        "installation_mode": {
+          "enum": [
+            "disabled",
+            "local_test_targets",
+            "authorized_scopes"
+          ],
+          "title": "Installation Mode",
+          "type": "string"
+        },
+        "max_concurrent_scans": {
+          "default": 1,
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Max Concurrent Scans",
+          "type": "integer"
+        },
+        "max_rate_pps": {
+          "default": 100,
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Max Rate Pps",
+          "type": "integer"
+        },
+        "max_targets_per_scan": {
+          "default": 32,
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Max Targets Per Scan",
+          "type": "integer"
+        },
+        "protected_networks": {
+          "default": [],
+          "items": {
+            "maxLength": 49,
+            "minLength": 3,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Protected Networks",
+          "type": "array"
+        },
+        "rescan_interval_days": {
+          "default": 7,
+          "maximum": 90,
+          "minimum": 1,
+          "title": "Rescan Interval Days",
+          "type": "integer"
+        },
+        "timezone": {
+          "default": "UTC",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "updated_by_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated By Label"
+        },
+        "windows": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PolicyWindow"
+          },
+          "maxItems": 28,
+          "title": "Windows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "enabled",
+        "configured",
+        "installation_mode",
+        "in_window_now"
+      ],
+      "title": "VmsScanPolicy",
+      "type": "object"
+    },
+    "VmsScanPolicyUpdate": {
+      "additionalProperties": false,
+      "description": "The organization's standing scan authorization (vms:scope). Enabling requires an authorization reference and at\nleast one window. auto_enroll enrolls imported assets that fall inside an approved scope; it never widens a scope.",
+      "properties": {
+        "address_max_age_hours": {
+          "default": 72,
+          "maximum": 720,
+          "minimum": 1,
+          "title": "Address Max Age Hours",
+          "type": "integer"
+        },
+        "authorization_reference": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Authorization Reference",
+          "type": "string"
+        },
+        "auto_enroll": {
+          "default": false,
+          "title": "Auto Enroll",
+          "type": "boolean"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "enroll_activity": {
+          "$ref": "#/$defs/ScanActivity",
+          "default": "ports"
+        },
+        "max_concurrent_scans": {
+          "default": 1,
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Max Concurrent Scans",
+          "type": "integer"
+        },
+        "max_rate_pps": {
+          "default": 100,
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Max Rate Pps",
+          "type": "integer"
+        },
+        "max_targets_per_scan": {
+          "default": 32,
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Max Targets Per Scan",
+          "type": "integer"
+        },
+        "protected_networks": {
+          "default": [],
+          "items": {
+            "maxLength": 49,
+            "minLength": 3,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Protected Networks",
+          "type": "array"
+        },
+        "rescan_interval_days": {
+          "default": 7,
+          "maximum": 90,
+          "minimum": 1,
+          "title": "Rescan Interval Days",
+          "type": "integer"
+        },
+        "timezone": {
+          "default": "UTC",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "windows": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PolicyWindow"
+          },
+          "maxItems": 28,
+          "title": "Windows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "title": "VmsScanPolicyUpdate",
+      "type": "object"
+    },
     "VmsScanView": {
       "additionalProperties": false,
       "properties": {
         "activity": {
           "$ref": "#/$defs/ScanActivity"
+        },
+        "asset_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Asset Ids",
+          "type": "array"
         },
         "claimed_at": {
           "anyOf": [
@@ -2098,10 +2618,28 @@
           "title": "Id",
           "type": "string"
         },
+        "origin": {
+          "default": "manual",
+          "enum": [
+            "manual",
+            "schedule",
+            "rescan",
+            "enrollment"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": true,
           "default": {},
           "title": "Outcome",
+          "type": "object"
+        },
+        "progress": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "targets_total, targets_reported, per-target outcomes, observations",
+          "title": "Progress",
           "type": "object"
         },
         "scope_id": {

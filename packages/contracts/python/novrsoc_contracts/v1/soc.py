@@ -56,6 +56,26 @@ class AlertIngestResult(Contract):
                            "the stored acknowledgement is returned and nothing is ingested again")
 
 
+class AlertClassifyRequest(MachineInbound):
+    """Dry run of ingest (historical backfill planning): the same ownership decision as ingest, nothing is stored."""
+    alerts: Annotated[list[WazuhAlertIn], Field(min_length=1, max_length=100)]
+
+
+class AlertClassification(Contract):
+    id: str
+    verdict: Literal["new", "duplicate", "quarantine"] = Field(description="new: ingest would store it; duplicate: already "
+                                                                "stored for its organization; quarantine: no organization")
+    org_id: uuid.UUID | None = None
+    org_slug: str | None = None
+    reason: str | None = Field(default=None, description="The quarantine reason (the same values ingest records)")
+    log_source_id: uuid.UUID | None = None
+
+
+class AlertClassifyResult(Contract):
+    items: list[AlertClassification]
+    classified_at: datetime
+
+
 # ---------------------------------------------------------------- stored alerts
 class StoredAlert(Contract):
     id: uuid.UUID

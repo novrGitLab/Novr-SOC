@@ -48,10 +48,10 @@ Every security event is stored under exactly one organization, or quarantined:
 
 | Event | Attributed by | Quarantined when |
 |---|---|---|
-| From a Wazuh agent | The organization that maps the agent's groups. A group maps to at most one organization. | No mapped group, or groups of two organizations |
+| From a Wazuh agent | The organization that maps the agent's groups, collection groups left out. A group maps to at most one organization. | No mapped group, groups of two organizations, or only collection groups (`collection_group_only`) |
 | Received by the Wazuh manager itself (agent `000`): remote syslog | The live registration of the sender address that the manager records in `location` | The sender isn't registered, or its registration is disabled |
 | Received by the Wazuh manager itself: agentless check | The live registration of the host configured on the manager | Same as remote syslog |
-| The manager's own logs and modules | Never attributed | Always |
+| The manager's own logs and modules | The platform organization (`NOVRSOC_MANAGER_EVENTS=platform`): they describe NovrSOC's own infrastructure, never a client | Only with `NOVRSOC_MANAGER_EVENTS=quarantine` |
 
 Agent `000`'s groups and name are never used, and the hostname inside a syslog message is never trusted.
 
@@ -59,10 +59,54 @@ A source is registered to one organization at a time, across all organizations, 
 Moving it to another organization retires the old registration, which keeps its history and alert links, and only
 later events go to the new organization.
 
-Wazuh's `default` group contains every agent until the agent is reassigned. Mapping it needs an explicit
-acknowledgement, and the group stays flagged as broad.
+Wazuh's `default` group contains every newly enrolled agent, of every organization. It is a **collection group**
+(`NOVRSOC_WAZUH_COLLECTION_GROUPS`).
+
+- It never establishes ownership, and it can't be mapped.
+- A mapping left from an earlier release is ignored.
+- It can't be named as a SOAR response target.
+
+An agent in both `cybernovr` and `default` therefore belongs to the organization that maps `cybernovr`. An agent only
+in `default` is quarantined until it is placed in its organization's group. `python -m app.cli attribution-audit` is a
+read-only report of mappings and inconsistencies.
 
 Quarantined events are visible to platform administrators, with the unmapped groups and unattributed sources.
+
+## Command Center
+
+Platform staff see every organization's alerts, assets, vulnerabilities, scans, cases, intelligence matches, NHAI
+analyses, SOAR runs and approvals, and reports in one place (`/api/v1/command`).
+
+- **How records are read.** For each organization in scope, the API switches the transaction's organization context
+  and runs the query under that organization's row-level security. It labels each row with its owner, merges, and
+  restores the caller's context. Nothing is copied, and there is no database function that unions tenants.
+- **Who sees what.** Platform administrators (`platform:monitor`) see every organization. Platform SOC staff see their
+  assigned organizations. Each view also needs its own permission, and export needs `exports:manage`.
+- **Audit.** Every view and export is audited. CSV exports neutralize spreadsheet formulas.
+
+## VMS scan policy and enrollment
+
+An organization authorizes scanning once, with its **scan policy**, instead of approving each endpoint. The policy
+records:
+
+- an authorization reference;
+- weekly windows;
+- protected networks;
+- caps on targets, packet rate and concurrency.
+
+Assets imported from monitoring are enrolled automatically only when all of these hold:
+
+- the address is private;
+- it was reported within the age limit, because dynamic addresses move;
+- it is unique in the organization;
+- the asset comes from a source that establishes ownership;
+- the address is inside an approved scope.
+
+Public, carrier-NAT, shared and stale addresses are listed with the reason and never scanned from telemetry. A finding
+on an address shared by two assets is linked to neither.
+
+Production scanning (`authorized_scopes`) needs a scanner placed where it has a route to the client network. That is
+an explicit deployment decision (gate G-B2).
 
 ## Organizations
 

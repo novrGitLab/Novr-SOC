@@ -21,7 +21,7 @@ type ReportTypeKey = 'organization_summary' | 'executive' | 'secops' | 'vms_exec
     | 'email_security' | 'cnii_sector' | 'compliance_sca' | 'sla' | 'audit' | 'soc_monthly';
 const TYPES: readonly (readonly [ReportTypeKey, string])[] = [['executive', 'Executive'], ['secops', 'SECOPS'], ['vms_executive', 'VMS (executive)'],
     ['vms_technical', 'VMS (technical)'], ['threat_intel', 'Threat intelligence'], ['brand_protection', 'Brand protection'],
-    ['email_security', 'Email security'], ['cnii_sector', 'CNII (designated sectors)'], ['compliance_sca', 'Compliance (Wazuh SCA)'],
+    ['email_security', 'Email security'], ['cnii_sector', 'CNII (designated sectors)'], ['compliance_sca', 'Compliance (NovrAgent SCA)'],
     ['sla', 'SLA performance'], ['audit', 'Audit'], ['organization_summary', 'Organization summary']] as const;
 const TYPE_LABEL: Record<string, string> = { ...Object.fromEntries(TYPES), soc_monthly: 'SOC monthly' };
 const FORMATS = [['json', 'JSON'], ['csv', 'CSV']] as const;

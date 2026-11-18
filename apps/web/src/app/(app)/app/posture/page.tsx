@@ -54,7 +54,7 @@ export default function PosturePage() {
                         </Card>
                     ))}
                     <Card>
-                        <SectionTitle title="Configuration compliance (Wazuh SCA)" hint={`${data.compliance.endpoints_assessed} endpoint(s) assessed`} />
+                        <SectionTitle title="Configuration compliance (NovrAgent SCA)" hint={`${data.compliance.endpoints_assessed} endpoint(s) assessed`} />
                         <div className="mt-3 space-y-3" data-testid="compliance">
                             {data.compliance.source.state !== 'connected' && <SourceBanner source={data.compliance.source} what="Configuration assessment" />}
                             {data.compliance.note && <p className="text-xs text-foreground-muted">{data.compliance.note}</p>}
