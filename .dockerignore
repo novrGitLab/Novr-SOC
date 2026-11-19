@@ -29,6 +29,7 @@ services/vms-worker/
 # The VMS worker image needs exactly these (deploy/docker/vms-worker.Dockerfile); its tests and fixtures stay out.
 !services/vms-worker/v2_adapter.py
 !services/vms-worker/worker.py
+!services/vms-worker/gmp.py
 !services/vms-worker/requirements.lock
 scripts/dev/
 scripts/e2e/
